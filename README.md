@@ -1,14 +1,43 @@
-# AlloyDB for LangChain
+# AlloyDB for PostgreSQL for LangChain
 
 *Description*
 
-> **🧪 Preview:** Any notes about stability or launch stage.
+> **🧪 Preview:** This feature is covered by the Pre-GA Offerings Terms of the Google Cloud Terms of Service. Please note that pre-GA products and features might have limited support, and changes to pre-GA products and features might not be compatible with other pre-GA versions. For more information, see the [launch stage descriptions](https://cloud.google.com/products#product-launch-stages)
 
-## Features
+* [Documentation](docs/)
+* [API Reference]()
 
 ## Getting Started
 
-### Prerequisites
+In order to use this library, you first need to go through the following steps:
+
+1. [Select or create a Cloud Platform project.][project]
+2. [Enable billing for your project.][billing]
+3. [Enable the Google Cloud AlloyDB API.][api]
+4. [Setup Authentication.][auth]
+
+### Installation
+
+Install this library in a [`virtualenv`][venv] using pip. [`virtualenv`][venv] is a tool to
+create isolated Python environments. The basic problem it addresses is one of
+dependencies and versions, and indirectly permissions.
+
+With [`virtualenv`][venv], it's possible to install this library without needing system
+install permissions, and without clashing with the installed system
+dependencies.
+
+```bash
+pip install virtualenv
+virtualenv <your-env>
+source <your-env>/bin/activate
+<your-env>/bin/pip install langchain-google-alloydb
+```
+
+## Usage
+
+```python
+from langchain_google_alloydb import AlloyDBVectorstore, AlloyDBLoader, AlloyDBChatMessageHistory
+```
 
 ## Contributing
 
@@ -23,3 +52,13 @@ information.
 ## License
 
 Apache 2.0 - See [LICENSE](LICENSE) for more information.
+
+## Disclaimer
+
+This is not an officially supported Google product.
+
+[project]: https://console.cloud.google.com/project
+[billing]: https://cloud.google.com/billing/docs/how-to/modify-project#enable_billing_for_a_project
+[api]: https://console.cloud.google.com/flows/enableapi?apiid=alloydb.googleapis.com
+[auth]: https://googleapis.dev/python/google-api-core/latest/auth.html
+[venv]: https://virtualenv.pypa.io/en/latest/

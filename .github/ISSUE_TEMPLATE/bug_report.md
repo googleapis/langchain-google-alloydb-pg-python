@@ -10,20 +10,33 @@ Thanks for stopping by to let us know something could be better!
 
 Please run down the following list and make sure you've tried the usual "quick fixes":
 
-  - Search the issues already opened: https://github.com/googleapis/synthtool/issues
+  - Search the issues already opened: https://github.com/googleapis/langchain-google-alloydb-pg-python/issues
+  - Search StackOverflow: https://stackoverflow.com/questions/tagged/google-cloud-platform+python
 
 If you are still having issues, please be sure to include as much information as possible:
 
 #### Environment details
 
-  - OS:
-  - Language version:
-  - Package/Project management version:
+  - OS type and version:
+  - Python version: `python --version`
+  - pip version: `pip --version`
+  - `langchain-google-alloydb-pg` version: `pip show langchain-google-alloydb-pg`
 
 #### Steps to reproduce
 
   1. ?
   2. ?
+
+#### Code example
+
+```python
+# example
+```
+
+#### Stack trace
+```
+# example
+```
 
 Making sure to follow these steps will guarantee the quickest resolution possible.
 
