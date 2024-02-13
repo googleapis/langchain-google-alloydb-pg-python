@@ -17,15 +17,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from threading import Thread
-from typing import (
-    TYPE_CHECKING,
-    Awaitable,
-    Dict,
-    List,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, TypeVar, Union
 
 import aiohttp
 import google.auth  # type: ignore
