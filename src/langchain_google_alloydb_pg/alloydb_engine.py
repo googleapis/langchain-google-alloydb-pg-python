@@ -160,9 +160,7 @@ class AlloyDBEngine:
         instance: str,
         database: str,
     ) -> AlloyDBEngine:
-        return await cls._create(
-            project_id, region, cluster, instance, database
-        )
+        return await cls._create(project_id, region, cluster, instance, database)
 
     async def _aexecute(self, query: str):
         """Execute a SQL query."""
