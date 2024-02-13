@@ -29,8 +29,6 @@ steps:
       - "DATABASE_ID=$_DATABASE_ID"
       - "REGION=$_REGION"
 
-
 options:
   pool:
     name: "projects/langchain-alloydb-testing/locations/us-central1/workerPools/my-pool"
-    
