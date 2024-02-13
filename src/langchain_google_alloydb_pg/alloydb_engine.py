@@ -17,13 +17,21 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from threading import Thread
-from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Awaitable,
+    Dict,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
-from sqlalchemy import text  # Column,
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 if TYPE_CHECKING:
@@ -100,6 +108,7 @@ class AlloyDBEngine:
         region: str,
         instance: str,
         database: str,
+        ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
     ) -> AlloyDBEngine:
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
@@ -112,6 +121,7 @@ class AlloyDBEngine:
             cluster,
             instance,
             database,
+            ip_type,
             loop=loop,
             thread=thread,
         )
@@ -125,6 +135,7 @@ class AlloyDBEngine:
         cluster: str,
         instance: str,
         database: str,
+        ip_type: Union[str, IPTypes],
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread: Optional[Thread] = None,
     ) -> AlloyDBEngine:
@@ -135,6 +146,14 @@ class AlloyDBEngine:
         if cls._connector is None:
             cls._connector = AsyncConnector()
 
+        if isinstance(ip_type, str):
+            if ip_type.lower() == "public":
+                ip_type = IPTypes.PUBLIC
+            elif ip_type.lower() == "private":
+                ip_type = IPTypes.PRIVATE
+            else:
+                raise ValueError("ip_type is not one of: public, private.")
+
         # anonymous function to be used for SQLAlchemy 'creator' argument
         async def getconn() -> asyncpg.Connection:
             conn = await cls._connector.connect(  # type: ignore
@@ -143,7 +162,7 @@ class AlloyDBEngine:
                 user=iam_database_user,
                 db=database,
                 enable_iam_auth=True,
-                ip_type=IPTypes.PUBLIC,
+                ip_type=ip_type,
             )
             return conn
 
@@ -161,8 +180,11 @@ class AlloyDBEngine:
         cluster: str,
         instance: str,
         database: str,
+        ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
     ) -> AlloyDBEngine:
-        return await cls._create(project_id, region, cluster, instance, database)
+        return await cls._create(
+            project_id, region, cluster, instance, database, ip_type
+        )
 
     async def _aexecute(self, query: str):
         """Execute a SQL query."""
