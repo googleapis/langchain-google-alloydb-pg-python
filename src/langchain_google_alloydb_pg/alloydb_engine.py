@@ -141,6 +141,7 @@ class AlloyDBEngine:
                 user=iam_database_user,
                 db=database,
                 enable_iam_auth=True,
+                ip_type=IPTypes.PUBLIC,
             )
             return conn
 
