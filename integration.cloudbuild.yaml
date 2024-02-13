@@ -25,7 +25,7 @@ steps:
     env:
       - "PROJECT_ID=$PROJECT_ID"
       - "INSTANCE_ID=$_INSTANCE_ID"
-      - "CLUSTER_ID=$CLUSTER_ID"
+      - "CLUSTER_ID=$_CLUSTER_ID"
       - "DATABASE_ID=$_DATABASE_ID"
       - "REGION=$_REGION"
 
