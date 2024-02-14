@@ -68,20 +68,13 @@ class TestVectorStoreSearch:
     def db_name(self) -> str:
         return get_env_var("DATABASE_ID", "database name for AlloyDB")
 
-    @pytest.fixture(scope="module")
-    def user(self) -> str:
-        return get_env_var("DB_USER", "user for AlloyDB")
-
-    @pytest.fixture(scope="module")
-    def password(self) -> str:
-        return get_env_var("DB_PASSWORD", "password for AlloyDB")
-
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_instance, db_name):
+    async def engine(self, db_project, db_region, db_instance, db_cluster, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,
             region=db_region,
+            cluster=db_cluster,
             database=db_name,
         )
         yield engine
@@ -103,11 +96,12 @@ class TestVectorStoreSearch:
         await engine._engine.dispose()
 
     @pytest_asyncio.fixture(scope="class")
-    def engine_sync(self, db_project, db_region, db_instance, db_name):
+    def engine_sync(self, db_project, db_region, db_instance, db_cluster, db_name):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             instance=db_instance,
             region=db_region,
+            cluster=db_cluster,
             database=db_name,
         )
         yield engine
