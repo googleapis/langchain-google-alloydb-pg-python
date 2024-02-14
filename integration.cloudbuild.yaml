@@ -32,9 +32,9 @@ steps:
 
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/langchain-test-mysql-username/versions/1
+    - versionName: projects/$PROJECT_ID/secrets/DB_USER/versions/1
       env: "DB_USER"
-    - versionName: projects/$PROJECT_ID/secrets/langchain-test-mysql-password/versions/1
+    - versionName: projects/$PROJECT_ID/secrets/DB_NAME/versions/1
       env: "DB_PASSWORD"
 
 options:
