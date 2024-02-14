@@ -100,6 +100,8 @@ class AlloyDBEngine:
         region: str,
         instance: str,
         database: str,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
     ) -> AlloyDBEngine:
         # Running a loop in a background thread allows us to support
@@ -114,6 +116,8 @@ class AlloyDBEngine:
             instance,
             database,
             ip_type,
+            user,
+            password,
             loop=loop,
             thread=thread,
         )
@@ -128,13 +132,19 @@ class AlloyDBEngine:
         instance: str,
         database: str,
         ip_type: Union[str, IPTypes],
+        user: Optional[str] = None,
+        password: Optional[str] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread: Optional[Thread] = None,
     ) -> AlloyDBEngine:
-        credentials, _ = google.auth.default(
-            scopes=["https://www.googleapis.com/auth/userinfo.email"]
-        )
-        iam_database_user = await _get_iam_principal_email(credentials)
+        # error if only one of user or password is set, must be both or neither
+        if bool(user) ^ bool(password):
+            raise ValueError(
+                "Only one of 'user' or 'password' were specified. Either "
+                "both should be specified to use basic user/password "
+                "authentication or neither for IAM DB authentication."
+            )
+
         if cls._connector is None:
             cls._connector = AsyncConnector()
 
@@ -146,14 +156,28 @@ class AlloyDBEngine:
             else:
                 raise ValueError("ip_type is not one of: public, private.")
 
+        # if user and password are given, use basic auth
+        if user and password:
+            enable_iam_auth = False
+            db_user = user
+        # otherwise use automatic IAM database authentication
+        else:
+            # get application default credentials
+            credentials, _ = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/userinfo.email"]
+            )
+            db_user = await _get_iam_principal_email(credentials)
+            enable_iam_auth = True
+
         # anonymous function to be used for SQLAlchemy 'creator' argument
         async def getconn() -> asyncpg.Connection:
             conn = await cls._connector.connect(  # type: ignore
                 f"projects/{project_id}/locations/{region}/clusters/{cluster}/instances/{instance}",
                 "asyncpg",
-                user=iam_database_user,
+                user=db_user,
+                password=password,
                 db=database,
-                enable_iam_auth=True,
+                enable_iam_auth=enable_iam_auth,
                 ip_type=ip_type,
             )
             return conn
@@ -172,10 +196,19 @@ class AlloyDBEngine:
         cluster: str,
         instance: str,
         database: str,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
     ) -> AlloyDBEngine:
         return await cls._create(
-            project_id, region, cluster, instance, database, ip_type
+            project_id,
+            region,
+            cluster,
+            instance,
+            database,
+            ip_type,
+            user,
+            password,
         )
 
     async def _aexecute(self, query: str):
