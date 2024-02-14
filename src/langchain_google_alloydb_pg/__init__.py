@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from langchain_google_alloydb_pg.alloydb_engine import AlloyDBEngine, Column
+from langchain_google_alloydb_pg.alloydb_vectorstore import AlloyDBVectorStore
 
-__all__ = ["AlloyDBEngine", "Column"]
+__all__ = ["AlloyDBEngine", "Column", "AlloyDBVectorStore"]
