@@ -66,23 +66,23 @@ class TestEngineAsync:
 
     @pytest.fixture(scope="module")
     def db_cluster(self) -> str:
-        return get_env_var("CLUSTER_ID", "instance for AlloyDB")
+        return get_env_var("CLUSTER_ID", "cluster for AlloyDB instance")
 
     @pytest.fixture(scope="module")
     def db_instance(self) -> str:
-        return get_env_var("INSTANCE_ID", "instance for AlloyDB")
+        return get_env_var("INSTANCE_ID", "instance for alloydb")
 
     @pytest.fixture(scope="module")
     def db_name(self) -> str:
-        return get_env_var("DATABASE_ID", "instance for AlloyDB")
+        return get_env_var("DATABASE_ID", "database name for AlloyDB")
 
     @pytest.fixture(scope="module")
     def user(self) -> str:
-        return get_env_var("DB_USER", "instance for AlloyDB")
+        return get_env_var("DB_USER", "user for AlloyDB")
 
     @pytest.fixture(scope="module")
     def password(self) -> str:
-        return get_env_var("DB_PASSWORD", "instance for AlloyDB")
+        return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
     @pytest_asyncio.fixture
     async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):

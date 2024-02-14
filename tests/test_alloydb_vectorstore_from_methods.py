@@ -56,7 +56,11 @@ class TestVectorStoreFromMethods:
 
     @pytest.fixture(scope="module")
     def db_region(self) -> str:
-        return get_env_var("REGION", "region for alloydb instance")
+        return get_env_var("REGION", "region for AlloyDB instance")
+
+    @pytest.fixture(scope="module")
+    def db_cluster(self) -> str:
+        return get_env_var("CLUSTER_ID", "cluster for AlloyDB instance")
 
     @pytest.fixture(scope="module")
     def db_instance(self) -> str:
@@ -64,7 +68,15 @@ class TestVectorStoreFromMethods:
 
     @pytest.fixture(scope="module")
     def db_name(self) -> str:
-        return get_env_var("DATABASE_ID", "instance for alloydb")
+        return get_env_var("DATABASE_ID", "database name for AlloyDB")
+
+    @pytest.fixture(scope="module")
+    def user(self) -> str:
+        return get_env_var("DB_USER", "user for AlloyDB")
+
+    @pytest.fixture(scope="module")
+    def password(self) -> str:
+        return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
     @pytest_asyncio.fixture
     async def engine(self, db_project, db_region, db_instance, db_name):
