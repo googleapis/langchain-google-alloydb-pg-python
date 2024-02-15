@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import os
 import uuid
 from typing import List
@@ -20,6 +19,7 @@ from typing import List
 import pytest
 import pytest_asyncio
 from langchain_community.embeddings import FakeEmbeddings
+from sqlalchemy import VARCHAR
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 
@@ -116,8 +116,8 @@ class TestEngineAsync:
             CUSTOM_TABLE,
             VECTOR_SIZE,
             id_column="uuid",
-            content_column="mycontent",
-            embedding_column="myembedding",
+            content_column="my-content",
+            embedding_column="my_embedding",
             metadata_columns=[Column("page", "TEXT"), Column("source", "TEXT")],
             store_metadata=True,
         )
@@ -125,9 +125,9 @@ class TestEngineAsync:
         results = await engine._afetch(stmt)
         expected = [
             {"column_name": "uuid", "data_type": "uuid"},
-            {"column_name": "myembedding", "data_type": "USER-DEFINED"},
+            {"column_name": "my_embedding", "data_type": "USER-DEFINED"},
             {"column_name": "langchain_metadata", "data_type": "json"},
-            {"column_name": "mycontent", "data_type": "text"},
+            {"column_name": "my-content", "data_type": "text"},
             {"column_name": "page", "data_type": "text"},
             {"column_name": "source", "data_type": "text"},
         ]
@@ -167,3 +167,7 @@ class TestEngineAsync:
         )
         assert engine
         await engine._aexecute("SELECT 1")
+
+    async def test_column(self, engine):
+        with pytest.raises(ValueError):
+            Column("test", VARCHAR)
