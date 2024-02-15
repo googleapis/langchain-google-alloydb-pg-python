@@ -217,10 +217,10 @@ class AlloyDBEngine:
             password,
         )
 
-    async def _aexecute(self, query: str):
+    async def _aexecute(self, query: str, params: Optional[dict] = None):
         """Execute a SQL query."""
         async with self._engine.connect() as conn:
-            await conn.execute(text(query))
+            await conn.execute(text(query), params)
             await conn.commit()
 
     async def _aexecute_outside_tx(self, query: str):
@@ -229,10 +229,10 @@ class AlloyDBEngine:
             await conn.execute(text("COMMIT"))
             await conn.execute(text(query))
 
-    async def _afetch(self, query: str):
+    async def _afetch(self, query: str, params: Optional[dict] = None):
         async with self._engine.connect() as conn:
             """Fetch results from a SQL query."""
-            result = await conn.execute(text(query))
+            result = await conn.execute(text(query), params)
             result_map = result.mappings()
             result_fetch = result_map.fetchall()
 
