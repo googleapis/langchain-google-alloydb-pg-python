@@ -140,7 +140,7 @@ class TestVectorStore:
             metadata_json_column="mymeta",
         )
         yield vs
-        await engine._aexecute(f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
+        await engine._aexecute(f'DROP TABLE IF EXISTS "{CUSTOM_TABLE}"')
 
     async def test_post_init(self, engine):
         with pytest.raises(ValueError):
