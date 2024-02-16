@@ -273,3 +273,12 @@ class AlloyDBEngine:
         query += "\n);"
 
         await self._aexecute(query)
+
+    async def init_chat_history_table(self, table_name) -> None:
+        create_table_query = f"""CREATE TABLE IF NOT EXISTS "{table_name}"(
+            id SERIAL PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            data JSONB NOT NULL,
+            type TEXT NOT NULL
+        );"""
+        await self._aexecute(create_table_query)
