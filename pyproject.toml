@@ -1,6 +1,6 @@
 [project]
 name = "langchain-google-alloydb-pg"
-version = "0.0.1"
+dynamic = ["version"]
 description = "LangChain integrations for Google Cloud AlloyDB for PostgreSQL"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -11,6 +11,9 @@ dependencies = [
     "pgvector>=0.2.5",
     "SQLAlchemy>=2.0.25"
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "langchain_google_alloydb_pg.version.__version__"}
 
 [project.urls]
 Homepage = "https://github.com/googleapis/langchain-google-alloydb-pg-python"

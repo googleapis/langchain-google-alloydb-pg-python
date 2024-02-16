@@ -12,8 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from langchain_google_alloydb_pg.alloydb_chat_message_history import (
+    AlloyDBChatMessageHistory,
+)
 from langchain_google_alloydb_pg.alloydb_engine import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.alloydb_vectorstore import AlloyDBVectorStore
 from langchain_google_alloydb_pg.alloydb_loader import AlloyDBLoader, AlloyDBDocumentSaver
+from langchain_google_alloydb_pg.version import __version__
 
-__all__ = ["AlloyDBEngine", "Column", "AlloyDBVectorStore", "AlloyDBLoader", "AlloyDBDocumentSaver"]
+__all__ = [
+    "AlloyDBEngine",
+    "Column",
+    "AlloyDBVectorStore",
+    "AlloyDBLoader", 
+    "AlloyDBDocumentSaver",
+    "AlloyDBChatMessageHistory",
+    __version__,
+]
