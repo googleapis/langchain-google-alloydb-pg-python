@@ -14,5 +14,6 @@
 
 from langchain_google_alloydb_pg.alloydb_engine import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.alloydb_vectorstore import AlloyDBVectorStore
+from langchain_google_alloydb_pg.alloydb_loader import AlloyDBLoader, AlloyDBDocumentSaver
 
-__all__ = ["AlloyDBEngine", "Column", "AlloyDBVectorStore"]
+__all__ = ["AlloyDBEngine", "Column", "AlloyDBVectorStore", "AlloyDBLoader", "AlloyDBDocumentSaver"]
