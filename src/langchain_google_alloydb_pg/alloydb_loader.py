@@ -124,7 +124,7 @@ class AlloyDBLoader(BaseLoader):
                             f"{v}" for k, v in row.items() if k in content_columns
                         )
 
-                # TODO Improve this comment and see compatibility with PgSQL loader implementation
+                # TODO Improve this comment and see compatibility with mysql implementation
                 # If metadata_columns has langchain_metadata json column
                 #   Unnest langchain_metadata json column
                 #   add that unnested fields to metadata
@@ -179,7 +179,7 @@ def _parse_row_from_doc(column_names: Iterable[str], doc: Document) -> Dict:
 
 
 class AlloyDBDocumentSaver:
-    """A class for saving langchain documents into a Cloud SQL PgSQL database table."""
+    """A class for saving langchain documents into a AlloyDB database table."""
 
     def __init__(
         self,
@@ -193,7 +193,7 @@ class AlloyDBDocumentSaver:
             - langchain_metadata (type: JSON)
 
         Args:
-          engine: AlloyDBEngine object to connect to the PgSQL database.
+          engine: AlloyDBEngine object to connect to the AlloyDB database.
           table_name: The name of table for saving documents.
         """
         self.engine = engine
