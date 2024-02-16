@@ -24,5 +24,5 @@ __all__ = [
     "Column",
     "AlloyDBVectorStore",
     "AlloyDBChatMessageHistory",
-    __version__,
+    "__version__",
 ]
