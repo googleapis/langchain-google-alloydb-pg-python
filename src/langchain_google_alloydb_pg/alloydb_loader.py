@@ -161,7 +161,7 @@ class AlloyDBLoader(BaseLoader):
         return [doc async for doc in self.alazy_load()]
 
     def lazy_load(self) -> Iterator[Document]:
-        yield from self.engine.run_as_sync(self._collect_async_items(self.alazy_load()))
+        yield from self.engine.run_as_sync(self.alazy_load())
 
     async def alazy_load(self) -> AsyncIterator[Document]:
         """Load Alloydb data into Document objects lazily."""
