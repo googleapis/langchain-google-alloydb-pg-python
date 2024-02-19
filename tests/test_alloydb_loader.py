@@ -103,9 +103,7 @@ class TestAlloyDBLoaderAsync:
         finally:
             await self._cleanup_table(engine)
 
-    async def test_load_from_query_customized_content_customized_metadata(
-        self, engine
-    ):
+    async def test_load_from_query_customized_content_customized_metadata(self, engine):
         try:
             await self._cleanup_table(engine)
             query = f"""
@@ -161,9 +159,7 @@ class TestAlloyDBLoaderAsync:
         finally:
             await self._cleanup_table(engine)
 
-    async def test_load_from_query_customized_content_default_metadata(
-        self, engine
-    ):
+    async def test_load_from_query_customized_content_default_metadata(self, engine):
         try:
             await self._cleanup_table(engine)
             query = f"""
@@ -210,9 +206,7 @@ class TestAlloyDBLoaderAsync:
         finally:
             await self._cleanup_table(engine)
 
-    async def test_load_from_query_default_content_customized_metadata(
-        self, engine
-    ):
+    async def test_load_from_query_default_content_customized_metadata(self, engine):
         try:
             await self._cleanup_table(engine)
             query = f"""
@@ -373,9 +367,7 @@ class TestAlloyDBLoaderAsync:
 
             def my_formatter(row, content_columns):
                 return "-".join(
-                    str(row[column])
-                    for column in content_columns
-                    if column in row
+                    str(row[column]) for column in content_columns if column in row
                 )
 
             loader = AlloyDBLoader(
@@ -488,9 +480,7 @@ class TestAlloyDBLoaderAsync:
             await self._cleanup_table(engine)
 
     @pytest.mark.parametrize("store_metadata", [True, False])
-    async def test_save_doc_with_customized_metadata(
-        self, engine, store_metadata
-    ):
+    async def test_save_doc_with_customized_metadata(self, engine, store_metadata):
         await self._cleanup_table(engine)
         await engine.ainit_document_table(
             table_name,
@@ -605,14 +595,10 @@ class TestAlloyDBLoaderAsync:
             assert docs == test_docs
 
             await saver.adelete(docs[:1])
-            assert (
-                len(await self._collect_async_items(loader.alazy_load())) == 1
-            )
+            assert len(await self._collect_async_items(loader.alazy_load())) == 1
 
             await saver.adelete(docs)
-            assert (
-                len(await self._collect_async_items(loader.alazy_load())) == 0
-            )
+            assert len(await self._collect_async_items(loader.alazy_load())) == 0
         finally:
             await self._cleanup_table(engine)
 
@@ -669,15 +655,11 @@ class TestAlloyDBLoaderAsync:
             assert len(docs) == 1
 
             await saver.adelete(docs)
-            assert (
-                len(await self._collect_async_items(loader.alazy_load())) == 0
-            )
+            assert len(await self._collect_async_items(loader.alazy_load())) == 0
         finally:
             await self._cleanup_table(engine)
 
-    @pytest.mark.parametrize(
-        "metadata_json_column", [None, "metadata_col_test"]
-    )
+    @pytest.mark.parametrize("metadata_json_column", [None, "metadata_col_test"])
     async def test_delete_doc_with_customized_metadata(
         self, engine, metadata_json_column
     ):
@@ -749,9 +731,7 @@ class TestAlloyDBLoaderAsync:
         try:
             sync_engine.run_as_sync(self._cleanup_table(sync_engine))
             sync_engine.init_document_table(table_name)
-            saver = AlloyDBDocumentSaver(
-                engine=sync_engine, table_name=table_name
-            )
+            saver = AlloyDBDocumentSaver(engine=sync_engine, table_name=table_name)
             test_docs = [
                 Document(
                     page_content="Cavendish 200 0.59 0",
