@@ -36,7 +36,7 @@ table_name = "test-table" + str(uuid.uuid4())
 
 
 @pytest.mark.asyncio
-class TestAlloyDBLoaderAsync:
+class TestAlloyDBLoader:
     @pytest_asyncio.fixture
     async def engine(self):
         engine = await AlloyDBEngine.afrom_instance(
@@ -748,17 +748,11 @@ class TestAlloyDBLoaderAsync:
                 engine=sync_engine,
                 query=f'SELECT * FROM "{table_name}";',
             )
-
             documents = loader.load()
-
             assert documents == test_docs
 
-            documents = loader.lazy_load()
-            for document in documents:
-                assert documents == test_docs
             saver.delete(test_docs)
             documents = loader.load()
-
             assert len(documents) == 0
 
         finally:

@@ -160,15 +160,6 @@ class AlloyDBLoader(BaseLoader):
     async def aload(self) -> List[Document]:
         return [doc async for doc in self.alazy_load()]
 
-    def lazy_load(self) -> Iterator[Document]:
-        # yield from self.engine.run_as_sync(self.alazy_load())
-        gen = self.alazy_load()
-        while True:
-            try:
-                yield self.engine.run_as_sync(gen.__anext__())
-            except StopAsyncIteration:
-                break
-
     async def alazy_load(self) -> AsyncIterator[Document]:
         """Load Alloydb data into Document objects lazily."""
         content_columns = self.content_columns
@@ -345,26 +336,26 @@ class AlloyDBDocumentSaver:
             )
             # delete by matching all fields of document
             where_conditions_list = []
-            inner_values = {}
             for key, value in row.items():
                 if isinstance(value, dict):
-                    # Handle nested dictionaries using JSON extraction
-                    for inner_key, inner_value in value.items():
-                        new_key = f"{inner_key}_x".replace("-", "_")
-                        inner_values[new_key] = inner_value
-                        where_conditions_list.append(
-                            f"{key}->>'{inner_key}' = :{new_key}"
-                        )
+                    where_conditions_list.append(
+                        f"{key}::jsonb @> '{json.dumps(value)}'::jsonb"
+                    )
                 else:
                     # Handle simple key-value pairs
                     where_conditions_list.append(f"{key} = :{key}")
 
             where_conditions = " AND ".join(where_conditions_list)
             stmt = f'DELETE FROM "{self.table_name}" WHERE {where_conditions};'
-            values = {**row, **inner_values}
-            for key, value in values.items():
+            values = {}
+            for key, value in row.items():
                 if type(value) is int:
                     values[key] = str(value)
+                else:
+                    values[key] = value
+
+            print(values)
+            print(stmt)
             await self.engine._aexecute(stmt, values)
 
     def delete(self, docs: List[Document]) -> None:
