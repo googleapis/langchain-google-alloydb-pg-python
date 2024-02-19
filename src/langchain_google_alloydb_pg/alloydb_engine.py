@@ -26,11 +26,15 @@ from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from .version import __version__
+
 if TYPE_CHECKING:
     import asyncpg  # type: ignore
     import google.auth.credentials  # type: ignore
 
 T = TypeVar("T")
+
+USER_AGENT = "langchain-google-alloydb-pg-python/" + __version__
 
 
 async def _get_iam_principal_email(
@@ -152,7 +156,7 @@ class AlloyDBEngine:
             )
 
         if cls._connector is None:
-            cls._connector = AsyncConnector()
+            cls._connector = AsyncConnector(user_agent=USER_AGENT)
 
         if isinstance(ip_type, str):
             if ip_type.lower() == "public":
