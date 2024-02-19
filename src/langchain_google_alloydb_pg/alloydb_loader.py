@@ -41,16 +41,22 @@ DEFAULT_FORMAT = "text"
 
 
 def text_formatter(row, content_columns) -> str:
-    return " ".join(str(row[column]) for column in content_columns if column in row)
+    return " ".join(
+        str(row[column]) for column in content_columns if column in row
+    )
 
 
 def cvs_formatter(row, content_columns) -> str:
-    return ", ".join(str(row[column]) for column in content_columns if column in row)
+    return ", ".join(
+        str(row[column]) for column in content_columns if column in row
+    )
 
 
 def yaml_formatter(row, content_columns) -> str:
     return "\n".join(
-        f"{column}: {str(row[column])}" for column in content_columns if column in row
+        f"{column}: {str(row[column])}"
+        for column in content_columns
+        if column in row
     )
 
 
@@ -129,7 +135,9 @@ class AlloyDBLoader(BaseLoader):
         self.table_name = table_name
         self.query = query
         if table_name and query:
-            raise ValueError("Only one of 'table_name' or 'query' should be specified.")
+            raise ValueError(
+                "Only one of 'table_name' or 'query' should be specified."
+            )
         if not table_name and not query:
             raise ValueError(
                 "At least one of the parameters 'table_name' or 'query' needs to be provided"
@@ -137,10 +145,14 @@ class AlloyDBLoader(BaseLoader):
         self.content_columns = content_columns
         self.metadata_columns = metadata_columns
         if format and formatter:
-            raise ValueError("Only one of 'format' or 'formatter' should be specified.")
+            raise ValueError(
+                "Only one of 'format' or 'formatter' should be specified."
+            )
 
         if format and format not in ["csv", "text", "JSON", "YAML"]:
-            raise ValueError("format must be type: 'csv', 'text', 'JSON', 'YAML'")
+            raise ValueError(
+                "format must be type: 'csv', 'text', 'JSON', 'YAML'"
+            )
         self.format = format or DEFAULT_FORMAT
         self.formatter = formatter
         self.read_only = read_only
@@ -161,7 +173,9 @@ class AlloyDBLoader(BaseLoader):
         return [doc async for doc in self.alazy_load()]
 
     def lazy_load(self) -> Iterator[Document]:
-        yield from self.engine.run_as_sync(self._collect_async_items(self.alazy_load()))
+        yield from self.engine.run_as_sync(
+            self._collect_async_items(self.alazy_load())
+        )
 
     async def alazy_load(self) -> AsyncIterator[Document]:
         """Load Alloydb data into Document objects lazily."""
@@ -201,7 +215,10 @@ class AlloyDBLoader(BaseLoader):
                     f"Column {self.metadata_json_column} not found in query result {column_names}."
                 )
             # use default metadata json column if not specified
-            if self.metadata_json_column and self.metadata_json_column in column_names:
+            if (
+                self.metadata_json_column
+                and self.metadata_json_column in column_names
+            ):
                 metadata_json_column = self.metadata_json_column
             elif DEFAULT_METADATA_COL in column_names:
                 metadata_json_column = DEFAULT_METADATA_COL
@@ -295,7 +312,9 @@ class AlloyDBDocumentSaver:
                 and (column != self.metadata_json_column)
             ]
             # Create list of column names
-            insert_stmt = f'INSERT INTO "{self.table_name}"({self.content_column}'
+            insert_stmt = (
+                f'INSERT INTO "{self.table_name}"({self.content_column}'
+            )
             values_stmt = f"VALUES (:{self.content_column}"
 
             # Add metadata
@@ -317,6 +336,9 @@ class AlloyDBDocumentSaver:
 
             query = insert_stmt + values_stmt
             await self.engine._aexecute(query, row)
+
+    def add_documents(self, docs: List[Document]) -> None:
+        self.engine.run_as_sync(self.aadd_documents(docs))
 
     async def adelete(self, docs: List[Document]) -> None:
         """
@@ -357,6 +379,9 @@ class AlloyDBDocumentSaver:
                 if type(value) is int:
                     values[key] = str(value)
             await self.engine._aexecute(stmt, values)
+
+    def delete(self, docs: List[Document]) -> None:
+        self.engine.run_as_sync(self.adelete(docs))
 
     async def _aload_document_table(self) -> sqlalchemy.Table:
         """
