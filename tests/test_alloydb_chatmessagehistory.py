@@ -6,7 +6,7 @@ import sqlalchemy
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
 
-from langchain_google_alloydb import AlloyDBChatMessageHistory, AlloyDBEngine
+from langchain_google_alloydb_pg import AlloyDBChatMessageHistory, AlloyDBEngine
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
