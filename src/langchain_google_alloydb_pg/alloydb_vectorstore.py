@@ -772,6 +772,8 @@ class AlloyDBVectorStore(VectorStore):
         return bool(len(results) == 1)
 
 
+### The following is copied from langchain-community until it's moved into core
+
 Matrix = Union[List[List[float]], List[np.ndarray], np.ndarray]
 
 
@@ -842,3 +844,6 @@ def cosine_similarity(X: Matrix, Y: Matrix) -> np.ndarray:
             similarity = np.dot(X, Y.T) / np.outer(X_norm, Y_norm)
         similarity[np.isnan(similarity) | np.isinf(similarity)] = 0.0
         return similarity
+
+
+### End code from langchain-community
