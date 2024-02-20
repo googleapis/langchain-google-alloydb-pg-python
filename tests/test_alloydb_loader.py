@@ -20,7 +20,12 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBLoader
+from langchain_google_alloydb_pg import (
+    AlloyDBDocumentSaver,
+    AlloyDBEngine,
+    AlloyDBLoader,
+    Column,
+)
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
@@ -31,7 +36,7 @@ table_name = "test-table" + str(uuid.uuid4())
 
 
 @pytest.mark.asyncio
-class TestAlloyDBLoaderAsync:
+class TestAlloyDBLoader:
     @pytest_asyncio.fixture
     async def engine(self):
         engine = await AlloyDBEngine.afrom_instance(
@@ -441,3 +446,312 @@ class TestAlloyDBLoaderAsync:
 
         finally:
             await self._cleanup_table(engine)
+
+    async def test_save_doc_with_default_metadata(self, engine):
+        try:
+            await self._cleanup_table(engine)
+            await engine.ainit_document_table(table_name)
+            test_docs = [
+                Document(
+                    page_content="Apple Granny Smith 150 0.99 1",
+                    metadata={"fruit_id": 1},
+                ),
+                Document(
+                    page_content="Banana Cavendish 200 0.59 0",
+                    metadata={"fruit_id": 2},
+                ),
+                Document(
+                    page_content="Orange Navel 80 1.29 1",
+                    metadata={"fruit_id": 3},
+                ),
+            ]
+            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            loader = AlloyDBLoader(engine=engine, table_name=table_name)
+
+            await saver.aadd_documents(test_docs)
+            docs = await self._collect_async_items(loader.alazy_load())
+
+            assert docs == test_docs
+            assert (await saver._aload_document_table()).columns.keys() == [
+                "page_content",
+                "langchain_metadata",
+            ]
+        finally:
+            await self._cleanup_table(engine)
+
+    @pytest.mark.parametrize("store_metadata", [True, False])
+    async def test_save_doc_with_customized_metadata(self, engine, store_metadata):
+        await self._cleanup_table(engine)
+        await engine.ainit_document_table(
+            table_name,
+            metadata_columns=[
+                Column("fruit_name", "VARCHAR"),
+                Column("organic", "BOOLEAN"),
+            ],
+            store_metadata=store_metadata,
+        )
+        test_docs = [
+            Document(
+                page_content="Granny Smith 150 0.99",
+                metadata={
+                    "fruit_id": 1,
+                    "fruit_name": "Apple",
+                    "organic": True,
+                },
+            ),
+        ]
+        saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+        loader = AlloyDBLoader(
+            engine=engine,
+            table_name=table_name,
+            metadata_columns=[
+                "fruit_name",
+                "organic",
+            ],
+        )
+
+        await saver.aadd_documents(test_docs)
+        docs = await self._collect_async_items(loader.alazy_load())
+
+        if store_metadata:
+            docs == test_docs
+            assert (await saver._aload_document_table()).columns.keys() == [
+                "page_content",
+                "fruit_name",
+                "organic",
+                "langchain_metadata",
+            ]
+        else:
+            assert docs == [
+                Document(
+                    page_content="Granny Smith 150 0.99",
+                    metadata={"fruit_name": "Apple", "organic": True},
+                ),
+            ]
+            assert (await saver._aload_document_table()).columns.keys() == [
+                "page_content",
+                "fruit_name",
+                "organic",
+            ]
+
+    async def test_save_doc_without_metadata(self, engine):
+        try:
+            await self._cleanup_table(engine)
+            await engine.ainit_document_table(table_name, store_metadata=False)
+            test_docs = [
+                Document(
+                    page_content="Granny Smith 150 0.99",
+                    metadata={
+                        "fruit_id": 1,
+                        "fruit_name": "Apple",
+                        "organic": 1,
+                    },
+                ),
+            ]
+            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            await saver.aadd_documents(test_docs)
+
+            loader = AlloyDBLoader(
+                engine=engine,
+                table_name=table_name,
+            )
+
+            docs = await self._collect_async_items(loader.alazy_load())
+
+            assert docs == [
+                Document(
+                    page_content="Granny Smith 150 0.99",
+                    metadata={},
+                ),
+            ]
+            assert (await saver._aload_document_table()).columns.keys() == [
+                "page_content",
+            ]
+        finally:
+            await self._cleanup_table(engine)
+
+    async def test_delete_doc_with_default_metadata(self, engine):
+        await self._cleanup_table(engine)
+        await engine.ainit_document_table(table_name)
+
+        try:
+            test_docs = [
+                Document(
+                    page_content="Apple Granny Smith 150 0.99 1",
+                    metadata={"fruit_id": 1},
+                ),
+                Document(
+                    page_content="Banana Cavendish 200 0.59 0 1",
+                    metadata={"fruit_id": 2},
+                ),
+            ]
+            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            loader = AlloyDBLoader(engine=engine, table_name=table_name)
+
+            await saver.aadd_documents(test_docs)
+            docs = await self._collect_async_items(loader.alazy_load())
+            assert docs == test_docs
+
+            await saver.adelete(docs[:1])
+            assert len(await self._collect_async_items(loader.alazy_load())) == 1
+
+            await saver.adelete(docs)
+            assert len(await self._collect_async_items(loader.alazy_load())) == 0
+        finally:
+            await self._cleanup_table(engine)
+
+    async def test_delete_doc_with_query(self, engine):
+        await self._cleanup_table(engine)
+        await engine.ainit_document_table(
+            table_name,
+            metadata_columns=[
+                Column(
+                    "fruit_name",
+                    "VARCHAR",
+                ),
+                Column(
+                    "organic",
+                    "BOOLEAN",
+                ),
+            ],
+            store_metadata=True,
+        )
+
+        try:
+            test_docs = [
+                Document(
+                    page_content="Granny Smith 150 0.99",
+                    metadata={
+                        "fruit-id": 1,
+                        "fruit_name": "Apple",
+                        "organic": True,
+                    },
+                ),
+                Document(
+                    page_content="Cavendish 200 0.59 0",
+                    metadata={
+                        "fruit_id": 2,
+                        "fruit_name": "Banana",
+                        "organic": False,
+                    },
+                ),
+                Document(
+                    page_content="Navel 80 1.29 1",
+                    metadata={
+                        "fruit_id": 3,
+                        "fruit_name": "Orange",
+                        "organic": True,
+                    },
+                ),
+            ]
+            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            query = f"SELECT * FROM \"{table_name}\" WHERE fruit_name='Apple';"
+            loader = AlloyDBLoader(engine=engine, query=query)
+
+            await saver.aadd_documents(test_docs)
+            docs = await self._collect_async_items(loader.alazy_load())
+            assert len(docs) == 1
+
+            await saver.adelete(docs)
+            assert len(await self._collect_async_items(loader.alazy_load())) == 0
+        finally:
+            await self._cleanup_table(engine)
+
+    @pytest.mark.parametrize("metadata_json_column", [None, "metadata_col_test"])
+    async def test_delete_doc_with_customized_metadata(
+        self, engine, metadata_json_column
+    ):
+        await self._cleanup_table(engine)
+        content_column = "content_col_test"
+        await engine.ainit_document_table(
+            table_name,
+            metadata_columns=[
+                Column("fruit_name", "VARCHAR"),
+                Column("organic", "BOOLEAN"),
+            ],
+            content_column=content_column,
+            metadata_json_column=metadata_json_column,
+        )
+        test_docs = [
+            Document(
+                page_content="Granny Smith 150 0.99",
+                metadata={
+                    "fruit-id": 1,
+                    "fruit_name": "Apple",
+                    "organic": True,
+                },
+            ),
+            Document(
+                page_content="Cavendish 200 0.59 0",
+                metadata={
+                    "fruit_id": 2,
+                    "fruit_name": "Banana",
+                    "organic": True,
+                },
+            ),
+        ]
+        saver = AlloyDBDocumentSaver(
+            engine=engine,
+            table_name=table_name,
+            content_column=content_column,
+            metadata_json_column=metadata_json_column,
+        )
+        loader = AlloyDBLoader(
+            engine=engine,
+            table_name=table_name,
+            content_columns=[content_column],
+            metadata_json_column=metadata_json_column,
+        )
+
+        await saver.aadd_documents(test_docs)
+
+        docs = await loader.aload()
+        assert len(docs) == 2
+
+        await saver.adelete(docs[:1])
+        assert len(await self._collect_async_items(loader.alazy_load())) == 1
+
+        await saver.adelete(docs)
+        assert len(await self._collect_async_items(loader.alazy_load())) == 0
+
+    @pytest_asyncio.fixture
+    def sync_engine(self):
+        engine = AlloyDBEngine.from_instance(
+            project_id=project_id,
+            instance=instance_id,
+            region=region,
+            database=db_name,
+            cluster=cluster,
+        )
+        yield engine
+
+    async def test_load_from_query_default_sync(self, sync_engine):
+        try:
+            sync_engine.run_as_sync(self._cleanup_table(sync_engine))
+            sync_engine.init_document_table(table_name)
+            saver = AlloyDBDocumentSaver(engine=sync_engine, table_name=table_name)
+            test_docs = [
+                Document(
+                    page_content="Cavendish 200 0.59 0",
+                    metadata={
+                        "fruit_id": 2,
+                        "fruit_name": "Banana",
+                        "organic": True,
+                    },
+                ),
+            ]
+
+            saver.add_documents(test_docs)
+            loader = AlloyDBLoader(
+                engine=sync_engine,
+                query=f'SELECT * FROM "{table_name}";',
+            )
+            documents = loader.load()
+            assert documents == test_docs
+
+            saver.delete(test_docs)
+            documents = loader.load()
+            assert len(documents) == 0
+
+        finally:
+            sync_engine.run_as_sync(self._cleanup_table(sync_engine))

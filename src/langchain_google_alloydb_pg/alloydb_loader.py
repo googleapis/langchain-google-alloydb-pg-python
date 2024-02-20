@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+from threading import Thread
 from typing import (
     Any,
     AsyncIterator,
@@ -24,12 +26,12 @@ from typing import (
     Iterator,
     List,
     Optional,
-    cast,
 )
 
 import sqlalchemy
 from langchain_community.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
+from sqlalchemy import Table
 
 from .alloydb_engine import AlloyDBEngine
 
@@ -79,6 +81,24 @@ def _parse_doc_from_row(
             metadata[column] = row[column]
 
     return Document(page_content=page_content, metadata=metadata)
+
+
+def _parse_row_from_doc(
+    column_names: Iterable[str],
+    doc: Document,
+    content_column: str = DEFAULT_CONTENT_COL,
+    metadata_json_column: str = DEFAULT_METADATA_COL,
+) -> Dict:
+    doc_metadata = doc.metadata.copy()
+    row: Dict[str, Any] = {content_column: doc.page_content}
+    for entry in doc.metadata:
+        if entry in column_names:
+            row[entry] = doc_metadata[entry]
+            del doc_metadata[entry]
+    # store extra metadata in langchain_metadata column in json format
+    if metadata_json_column in column_names and len(doc_metadata) > 0:
+        row[metadata_json_column] = doc_metadata
+    return row
 
 
 class AlloyDBLoader(BaseLoader):
@@ -199,6 +219,7 @@ class AlloyDBLoader(BaseLoader):
                 row = result_proxy.fetchone()
                 if not row:
                     break
+
                 row_data = {}
                 for column in column_names:
                     value = getattr(row, column)
@@ -221,3 +242,148 @@ class AlloyDBLoader(BaseLoader):
                     metadata_json_column,
                     formatter,
                 )
+
+
+class AlloyDBDocumentSaver:
+    """A class for saving langchain documents into a AlloyDB database table."""
+
+    def __init__(
+        self,
+        engine: AlloyDBEngine,
+        table_name: str,
+        content_column: str = DEFAULT_CONTENT_COL,
+        metadata_columns: List[str] = [],
+        metadata_json_column: str = DEFAULT_METADATA_COL,
+    ):
+        self.engine = engine
+        self.table_name = table_name
+        self.content_column = content_column
+        self.metadata_columns = metadata_columns
+        self.metadata_json_column = metadata_json_column
+
+    async def aadd_documents(self, docs: List[Document]) -> None:
+        """
+        Save documents in the DocumentSaver table. Document’s metadata is added to columns if found or
+        stored in langchain_metadata JSON column.
+
+        Args:
+            docs (List[langchain_core.documents.Document]): a list of documents to be saved.
+        """
+        table_schema = await self._aload_document_table()
+
+        for doc in docs:
+            row = _parse_row_from_doc(
+                table_schema.columns.keys(),
+                doc,
+                self.content_column,
+                self.metadata_json_column,
+            )
+            for key, value in row.items():
+                if isinstance(value, dict):
+                    row[key] = json.dumps(value)
+
+            columns = (
+                self.metadata_columns
+                if len(self.metadata_columns) > 0
+                else table_schema.columns.keys()
+            )
+            # Filter columns
+            columns_filtered = [
+                column
+                for column in columns
+                if (column != self.content_column)
+                and (column != self.metadata_json_column)
+            ]
+            # Create list of column names
+            insert_stmt = f'INSERT INTO "{self.table_name}"({self.content_column}'
+            values_stmt = f"VALUES (:{self.content_column}"
+
+            # Add metadata
+            for metadata_column in columns_filtered:
+                if metadata_column in doc.metadata:
+                    insert_stmt += f", {metadata_column}"
+                    values_stmt += f", :{metadata_column}"
+
+            # Add JSON column and/or close statement
+            insert_stmt += (
+                f", {self.metadata_json_column})"
+                if self.metadata_json_column in table_schema.columns.keys()
+                else ")"
+            )
+            if self.metadata_json_column in table_schema.columns.keys():
+                values_stmt += f", :{self.metadata_json_column})"
+            else:
+                values_stmt += ")"
+
+            query = insert_stmt + values_stmt
+            await self.engine._aexecute(query, row)
+
+    def add_documents(self, docs: List[Document]) -> None:
+        self.engine.run_as_sync(self.aadd_documents(docs))
+
+    async def adelete(self, docs: List[Document]) -> None:
+        """
+        Delete all instances of a document from the DocumentSaver table by matching the entire Document
+        object.
+
+        Args:
+            docs (List[langchain_core.documents.Document]): a list of documents to be deleted.
+        """
+        table_schema = await self._aload_document_table()
+        for doc in docs:
+            row = _parse_row_from_doc(
+                table_schema.columns.keys(),
+                doc,
+                self.content_column,
+                self.metadata_json_column,
+            )
+            # delete by matching all fields of document
+            where_conditions_list = []
+            for key, value in row.items():
+                if isinstance(value, dict):
+                    where_conditions_list.append(
+                        f"{key}::jsonb @> '{json.dumps(value)}'::jsonb"
+                    )
+                else:
+                    # Handle simple key-value pairs
+                    where_conditions_list.append(f"{key} = :{key}")
+
+            where_conditions = " AND ".join(where_conditions_list)
+            stmt = f'DELETE FROM "{self.table_name}" WHERE {where_conditions};'
+            values = {}
+            for key, value in row.items():
+                if type(value) is int:
+                    values[key] = str(value)
+                else:
+                    values[key] = value
+
+            await self.engine._aexecute(stmt, values)
+
+    def delete(self, docs: List[Document]) -> None:
+        self.engine.run_as_sync(self.adelete(docs))
+
+    async def _aload_document_table(self) -> sqlalchemy.Table:
+        """
+        Load table schema from existing table in PgSQL database.
+
+        Returns:
+            (sqlalchemy.Table): The loaded table.
+        """
+        metadata = sqlalchemy.MetaData()
+        async with self.engine._engine.connect() as conn:
+            await conn.run_sync(metadata.reflect, only=[self.table_name])
+
+        table = Table(self.table_name, metadata)
+        # Extract the schema information
+        schema = []
+        for column in table.columns:
+            schema.append(
+                {
+                    "name": column.name,
+                    "type": column.type.python_type,
+                    "max_length": getattr(column.type, "length", None),
+                    "nullable": not column.nullable,
+                }
+            )
+
+        return metadata.tables[self.table_name]
