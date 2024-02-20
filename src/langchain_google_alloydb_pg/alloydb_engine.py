@@ -42,7 +42,7 @@ async def _get_iam_principal_email(
 ) -> str:
     """Get email address associated with current authenticated IAM principal.
 
-    Email will be used for automatic IAM database authentication to Cloud SQL.
+    Email will be used for automatic IAM database authentication to AlloyDB.
 
     Args:
         credentials (google.auth.credentials.Credentials):
@@ -88,7 +88,7 @@ class Column:
 
 
 class AlloyDBEngine:
-    """A class for managing connections to a Cloud SQL for Postgres database."""
+    """A class for managing connections to a AlloyDB database."""
 
     _connector: Optional[AsyncConnector] = None
 
