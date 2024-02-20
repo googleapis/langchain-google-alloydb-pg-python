@@ -31,13 +31,13 @@ db_name = os.environ["DATABASE_ID"]
 
 @pytest.fixture(name="memory_engine")
 def setup() -> Generator:
+    table_name = "message_store"
     engine = AlloyDBEngine.from_instance(
         project_id=project_id, region=region, cluster=cluster_id, instance=instance_id, database=db_name
     )
-
+    engine.init_chat_history_table(table_name=table_name)
     yield engine
     # use default table for AlloyDBChatMessageHistory
-    table_name = "message_store"
     query = f"DROP TABLE IF EXISTS `{table_name}`"
     engine._aexecute(query)
 
