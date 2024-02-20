@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import json
 from threading import Thread
-
 from typing import (
     Any,
     AsyncIterator,
@@ -244,6 +243,7 @@ class AlloyDBLoader(BaseLoader):
                     formatter,
                 )
 
+
 class AlloyDBDocumentSaver:
     """A class for saving langchain documents into a AlloyDB database table."""
 
@@ -356,7 +356,7 @@ class AlloyDBDocumentSaver:
                     values[key] = str(value)
                 else:
                     values[key] = value
-            
+
             await self.engine._aexecute(stmt, values)
 
     def delete(self, docs: List[Document]) -> None:

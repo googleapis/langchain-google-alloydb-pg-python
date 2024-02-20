@@ -511,8 +511,6 @@ class TestAlloyDBLoader:
         )
 
         await saver.aadd_documents(test_docs)
-        x = await engine._afetch(f'SELECT * FROM "{table_name}"')
-        print(x)
         docs = await self._collect_async_items(loader.alazy_load())
 
         if store_metadata:
