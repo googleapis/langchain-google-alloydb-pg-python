@@ -34,11 +34,11 @@ def setup() -> Generator:
     engine = AlloyDBEngine.from_instance(
         project_id=project_id, region=region, cluster=cluster_id, instance=instance_id, database=db_name
     )
-    engine.init_chat_history_table(table_name=table_name)
+    engine.run_as_sync(engine.init_chat_history_table(table_name=table_name))
     yield engine
     # use default table for AlloyDBChatMessageHistory
     query = f"DROP TABLE IF EXISTS `{table_name}`"
-    engine._aexecute(query)
+    engine.run_as_sync(engine._aexecute(query))
 
 def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
     history = AlloyDBChatMessageHistory(engine=memory_engine, session_id="test", table_name=table_name)
