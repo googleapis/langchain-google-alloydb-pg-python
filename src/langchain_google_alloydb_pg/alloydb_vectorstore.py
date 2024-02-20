@@ -36,7 +36,7 @@ from .indexes import (
 
 
 class AlloyDBVectorStore(VectorStore):
-    """Google Cloud SQL for PostgreSQL Vector Store class"""
+    """Google AlloyDB Vector Store class"""
 
     __create_key = object()
 
