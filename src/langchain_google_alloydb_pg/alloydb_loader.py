@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 from threading import Thread
+
 from typing import (
     Any,
     AsyncIterator,
@@ -160,6 +161,9 @@ class AlloyDBLoader(BaseLoader):
     async def aload(self) -> List[Document]:
         return [doc async for doc in self.alazy_load()]
 
+    def lazy_load(self) -> Iterator[Document]:
+        yield from self.engine.run_as_sync(self._collect_async_items(self.alazy_load()))
+
     async def alazy_load(self) -> AsyncIterator[Document]:
         """Load Alloydb data into Document objects lazily."""
         content_columns = self.content_columns
@@ -216,7 +220,7 @@ class AlloyDBLoader(BaseLoader):
                 row = result_proxy.fetchone()
                 if not row:
                     break
-                # Handle JSON fields
+
                 row_data = {}
                 for column in column_names:
                     value = getattr(row, column)
@@ -239,7 +243,6 @@ class AlloyDBLoader(BaseLoader):
                     metadata_json_column,
                     formatter,
                 )
-
 
 class AlloyDBDocumentSaver:
     """A class for saving langchain documents into a AlloyDB database table."""
