@@ -10,6 +10,7 @@ from langchain_google_alloydb import AlloyDBChatMessageHistory, AlloyDBEngine
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
+cluster_id = os.environ["CLUSTER"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DB_NAME"]
 
@@ -17,7 +18,7 @@ db_name = os.environ["DB_NAME"]
 @pytest.fixture(name="memory_engine")
 def setup() -> Generator:
     engine = AlloyDBEngine.from_instance(
-        project_id=project_id, region=region, instance=instance_id, database=db_name
+        project_id=project_id, region=region, cluster=cluster_id, instance=instance_id, database=db_name
     )
 
     yield engine
