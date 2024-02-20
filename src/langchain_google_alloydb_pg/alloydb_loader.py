@@ -353,9 +353,7 @@ class AlloyDBDocumentSaver:
                     values[key] = str(value)
                 else:
                     values[key] = value
-
-            print(values)
-            print(stmt)
+            
             await self.engine._aexecute(stmt, values)
 
     def delete(self, docs: List[Document]) -> None:
