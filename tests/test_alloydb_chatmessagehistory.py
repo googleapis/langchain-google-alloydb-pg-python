@@ -24,9 +24,9 @@ from langchain_google_alloydb_pg import AlloyDBChatMessageHistory, AlloyDBEngine
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
-cluster_id = os.environ["CLUSTER"]
+cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
-db_name = os.environ["DB_NAME"]
+db_name = os.environ["DATABASE_ID"]
 
 
 @pytest.fixture(name="memory_engine")
