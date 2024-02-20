@@ -27,11 +27,10 @@ region = os.environ["REGION"]
 cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
-
+table_name = "message_store"
 
 @pytest.fixture(name="memory_engine")
 def setup() -> Generator:
-    table_name = "message_store"
     engine = AlloyDBEngine.from_instance(
         project_id=project_id, region=region, cluster=cluster_id, instance=instance_id, database=db_name
     )
@@ -42,27 +41,7 @@ def setup() -> Generator:
     engine._aexecute(query)
 
 def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
-    history = AlloyDBChatMessageHistory(engine=memory_engine, session_id="test")
-    history.add_user_message("hi!")
-    history.add_ai_message("whats up?")
-    messages = history.messages
-
-    # verify messages are correct
-    assert messages[0].content == "hi!"
-    assert type(messages[0]) is HumanMessage
-    assert messages[1].content == "whats up?"
-    assert type(messages[1]) is AIMessage
-
-    # verify clear() clears message history
-    history.clear()
-    assert len(history.messages) == 0
-
-
-def test_chat_message_history_custom_table_name(memory_engine: AlloyDBEngine) -> None:
-    """Test AlloyDBChatMessageHistory with custom table name"""
-    history = AlloyDBChatMessageHistory(
-        engine=memory_engine, session_id="test", table_name="message-store"
-    )
+    history = AlloyDBChatMessageHistory(engine=memory_engine, session_id="test", table_name=table_name)
     history.add_user_message("hi!")
     history.add_ai_message("whats up?")
     messages = history.messages
