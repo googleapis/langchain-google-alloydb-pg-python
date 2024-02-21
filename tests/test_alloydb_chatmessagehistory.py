@@ -29,10 +29,15 @@ instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
 table_name = "message_store"
 
+
 @pytest.fixture(name="memory_engine")
 def setup() -> Generator:
     engine = AlloyDBEngine.from_instance(
-        project_id=project_id, region=region, cluster=cluster_id, instance=instance_id, database=db_name
+        project_id=project_id,
+        region=region,
+        cluster=cluster_id,
+        instance=instance_id,
+        database=db_name,
     )
     engine.run_as_sync(engine.init_chat_history_table(table_name=table_name))
     yield engine
@@ -40,8 +45,11 @@ def setup() -> Generator:
     query = f'DROP TABLE IF EXISTS "{table_name}"'
     engine.run_as_sync(engine._aexecute(query))
 
+
 def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
-    history = AlloyDBChatMessageHistory(engine=memory_engine, session_id="test", table_name=table_name)
+    history = AlloyDBChatMessageHistory(
+        engine=memory_engine, session_id="test", table_name=table_name
+    )
     history.add_user_message("hi!")
     history.add_ai_message("whats up?")
     messages = history.messages
