@@ -20,6 +20,11 @@ steps:
 
   - id: Install module (and test requirements)
     name: python:3.11
+    entrypoint: pip
+    args: ["install", ".[test]", "--user"]
+
+  - id: Run integration tests
+    name: python:3.11
     entrypoint: python
     args: ["-m", "pytest"]
     env:
