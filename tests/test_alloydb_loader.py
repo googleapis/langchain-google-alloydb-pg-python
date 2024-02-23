@@ -465,7 +465,7 @@ class TestAlloyDBLoader:
                     metadata={"fruit_id": 3},
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = AlloyDBDocumentSaver.create(engine=engine, table_name=table_name)
             loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
 
             await saver.aadd_documents(test_docs)
@@ -500,7 +500,7 @@ class TestAlloyDBLoader:
                 },
             ),
         ]
-        saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+        saver = AlloyDBDocumentSaver.create(engine=engine, table_name=table_name)
         loader = await AlloyDBLoader.create(
             engine=engine,
             table_name=table_name,
@@ -548,7 +548,7 @@ class TestAlloyDBLoader:
                     },
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = AlloyDBDocumentSaver.create(engine=engine, table_name=table_name)
             await saver.aadd_documents(test_docs)
 
             loader = await AlloyDBLoader.create(
@@ -585,7 +585,7 @@ class TestAlloyDBLoader:
                     metadata={"fruit_id": 2},
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = AlloyDBDocumentSaver.create(engine=engine, table_name=table_name)
             loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
 
             await saver.aadd_documents(test_docs)
@@ -644,7 +644,7 @@ class TestAlloyDBLoader:
                     },
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = AlloyDBDocumentSaver.create(engine=engine, table_name=table_name)
             query = f"SELECT * FROM \"{table_name}\" WHERE fruit_name='Apple';"
             loader = await AlloyDBLoader.create(engine=engine, query=query)
 
@@ -690,7 +690,7 @@ class TestAlloyDBLoader:
                 },
             ),
         ]
-        saver = AlloyDBDocumentSaver(
+        saver = AlloyDBDocumentSaver.create(
             engine=engine,
             table_name=table_name,
             content_column=content_column,
@@ -729,7 +729,9 @@ class TestAlloyDBLoader:
         try:
             sync_engine.run_as_sync(self._cleanup_table(sync_engine))
             sync_engine.init_document_table(table_name)
-            saver = AlloyDBDocumentSaver(engine=sync_engine, table_name=table_name)
+            saver = AlloyDBDocumentSaver.create_sync(
+                engine=sync_engine, table_name=table_name
+            )
             test_docs = [
                 Document(
                     page_content="Cavendish 200 0.59 0",
