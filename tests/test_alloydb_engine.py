@@ -16,10 +16,13 @@ import os
 import uuid
 from typing import List
 
+import asyncpg  # type: ignore
 import pytest
 import pytest_asyncio
+from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from langchain_community.embeddings import FakeEmbeddings
 from sqlalchemy import VARCHAR
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 
@@ -157,6 +160,38 @@ class TestEngineAsync:
         )
         assert engine
         await engine._aexecute("SELECT 1")
+
+    async def test_from_engine(
+        self,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        user,
+        password,
+    ):
+        async with AsyncConnector() as connector:
+
+            async def getconn() -> asyncpg.Connection:
+                conn = await connector.connect(  # type: ignore
+                    f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
+                    "asyncpg",
+                    user=user,
+                    password=password,
+                    db=db_name,
+                    enable_iam_auth=False,
+                    ip_type=IPTypes.PUBLIC,
+                )
+                return conn
+
+            engine = create_async_engine(
+                "postgresql+asyncpg://",
+                async_creator=getconn,
+            )
+
+            engine = AlloyDBEngine.from_engine(engine)
+            await engine._aexecute("SELECT 1")
 
     async def test_column(self, engine):
         with pytest.raises(ValueError):
