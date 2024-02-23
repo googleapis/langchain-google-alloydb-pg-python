@@ -727,7 +727,7 @@ class TestAlloyDBLoader:
 
     async def test_load_from_query_default_sync(self, sync_engine):
         try:
-            sync_engine.__run_as_sync(self._cleanup_table(sync_engine))
+            sync_engine._run_as_sync(self._cleanup_table(sync_engine))
             sync_engine.init_document_table(table_name)
             saver = AlloyDBDocumentSaver(engine=sync_engine, table_name=table_name)
             test_docs = [
@@ -754,4 +754,4 @@ class TestAlloyDBLoader:
             assert len(documents) == 0
 
         finally:
-            sync_engine.__run_as_sync(self._cleanup_table(sync_engine))
+            sync_engine._run_as_sync(self._cleanup_table(sync_engine))

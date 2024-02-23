@@ -206,7 +206,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult,
             index_query_options,
         )
-        return engine.__run_as_sync(coro)
+        return engine._run_as_sync(coro)
 
     @property
     def embeddings(self) -> Embeddings:
@@ -291,7 +291,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        return self.engine.__run_as_sync(
+        return self.engine._run_as_sync(
             self.aadd_texts(texts, metadatas, ids, **kwargs)
         )
 
@@ -301,7 +301,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        return self.engine.__run_as_sync(self.aadd_documents(documents, ids, **kwargs))
+        return self.engine._run_as_sync(self.aadd_documents(documents, ids, **kwargs))
 
     async def adelete(
         self,
@@ -321,7 +321,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
-        return self.engine.__run_as_sync(self.adelete(ids, **kwargs))
+        return self.engine._run_as_sync(self.adelete(ids, **kwargs))
 
     @classmethod
     async def afrom_texts(  # type: ignore[override]
@@ -418,7 +418,7 @@ class AlloyDBVectorStore(VectorStore):
             ids=ids,
             **kwargs,
         )
-        return engine.__run_as_sync(coro)
+        return engine._run_as_sync(coro)
 
     @classmethod
     def from_documents(  # type: ignore[override]
@@ -450,7 +450,7 @@ class AlloyDBVectorStore(VectorStore):
             ids=ids,
             **kwargs,
         )
-        return engine.__run_as_sync(coro)
+        return engine._run_as_sync(coro)
 
     async def __query_collection(
         self,
@@ -478,7 +478,7 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Document]:
-        return self.engine.__run_as_sync(
+        return self.engine._run_as_sync(
             self.asimilarity_search(query, k=k, filter=filter, **kwargs)
         )
 
@@ -649,7 +649,7 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         coro = self.asimilarity_search_with_score(query, k, filter=filter, **kwargs)
-        return self.engine.__run_as_sync(coro)
+        return self.engine._run_as_sync(coro)
 
     def similarity_search_by_vector(
         self,
@@ -659,7 +659,7 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[Document]:
         coro = self.asimilarity_search_by_vector(embedding, k, filter=filter, **kwargs)
-        return self.engine.__run_as_sync(coro)
+        return self.engine._run_as_sync(coro)
 
     def similarity_search_with_score_by_vector(
         self,
@@ -671,7 +671,7 @@ class AlloyDBVectorStore(VectorStore):
         coro = self.asimilarity_search_with_score_by_vector(
             embedding, k, filter=filter, **kwargs
         )
-        return self.engine.__run_as_sync(coro)
+        return self.engine._run_as_sync(coro)
 
     def max_marginal_relevance_search(
         self,
@@ -690,7 +690,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             **kwargs,
         )
-        return self.engine.__run_as_sync(coro)
+        return self.engine._run_as_sync(coro)
 
     def max_marginal_relevance_search_by_vector(
         self,
@@ -709,7 +709,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             **kwargs,
         )
-        return self.engine.__run_as_sync(coro)
+        return self.engine._run_as_sync(coro)
 
     def max_marginal_relevance_search_with_score_by_vector(
         self,
@@ -728,7 +728,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             **kwargs,
         )
-        return self.engine.__run_as_sync(coro)
+        return self.engine._run_as_sync(coro)
 
     async def aapply_vector_index(
         self,

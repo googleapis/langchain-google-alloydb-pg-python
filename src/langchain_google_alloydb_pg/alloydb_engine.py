@@ -243,12 +243,12 @@ class AlloyDBEngine:
         return result_fetch
 
     def _execute(self, query: str, params: Optional[dict] = None):
-        return self.__run_as_sync(self._aexecute(query, params))
+        return self._run_as_sync(self._aexecute(query, params))
 
     def _fetch(self, query: str, params: Optional[dict] = None):
-        return self.__run_as_sync(self._afetch(query, params))
+        return self._run_as_sync(self._afetch(query, params))
 
-    def __run_as_sync(self, coro: Awaitable[T]) -> T:
+    def _run_as_sync(self, coro: Awaitable[T]) -> T:
         if not self._loop:
             raise Exception("Engine was initialized async.")
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
@@ -296,7 +296,7 @@ class AlloyDBEngine:
         overwrite_existing: bool = False,
         store_metadata: bool = True,
     ) -> None:
-        return self.__run_as_sync(
+        return self._run_as_sync(
             self.ainit_vectorstore_table(
                 table_name,
                 vector_size,
@@ -320,7 +320,7 @@ class AlloyDBEngine:
         await self._aexecute(create_table_query)
 
     def init_chat_history_table(self, table_name) -> None:
-        return self.__run_as_sync(
+        return self._run_as_sync(
             self.ainit_chat_history_table(
                 table_name,
             )
@@ -367,7 +367,7 @@ class AlloyDBEngine:
         metadata_json_column: str = "langchain_metadata",
         store_metadata: bool = True,
     ) -> None:
-        return self.__run_as_sync(
+        return self._run_as_sync(
             self.ainit_document_table(
                 table_name,
                 content_column,

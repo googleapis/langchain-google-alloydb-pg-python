@@ -246,14 +246,14 @@ class AlloyDBLoader(BaseLoader):
             format,
             formatter,
         )
-        return engine.__run_as_sync(coro)
+        return engine._run_as_sync(coro)
 
     async def _collect_async_items(self, docs_generator):
         return [doc async for doc in docs_generator]
 
     def load(self) -> List[Document]:
         """Load Alloydb data into Document objects."""
-        documents = self.engine.__run_as_sync(
+        documents = self.engine._run_as_sync(
             self._collect_async_items(self.alazy_load())
         )
         return documents
@@ -264,7 +264,7 @@ class AlloyDBLoader(BaseLoader):
 
     def lazy_load(self) -> Iterator[Document]:
         """Load AlloyDB data into Document objects lazily."""
-        yield from self.engine.__run_as_sync(
+        yield from self.engine._run_as_sync(
             self._collect_async_items(self.alazy_load())
         )
 
@@ -372,7 +372,7 @@ class AlloyDBDocumentSaver:
             await self.engine._aexecute(query, row)
 
     def add_documents(self, docs: List[Document]) -> None:
-        self.engine.__run_as_sync(self.aadd_documents(docs))
+        self.engine._run_as_sync(self.aadd_documents(docs))
 
     async def adelete(self, docs: List[Document]) -> None:
         """
@@ -413,7 +413,7 @@ class AlloyDBDocumentSaver:
             await self.engine._aexecute(stmt, values)
 
     def delete(self, docs: List[Document]) -> None:
-        self.engine.__run_as_sync(self.adelete(docs))
+        self.engine._run_as_sync(self.adelete(docs))
 
     async def _aload_document_table(self) -> sqlalchemy.Table:
         """
