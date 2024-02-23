@@ -92,23 +92,20 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     def vs_sync(self, engine_sync):
-        engine_sync.run_as_sync(
-            engine_sync.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
-        )
+        engine_sync.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
         vs = AlloyDBVectorStore.create_sync(
             engine_sync,
             embedding_service=embeddings_service,
             table_name=DEFAULT_TABLE_SYNC,
         )
         yield vs
-        engine_sync.run_as_sync(
-            engine_sync._aexecute(f"DROP TABLE IF EXISTS {DEFAULT_TABLE_SYNC}")
-        )
-        engine_sync.run_as_sync(engine_sync._engine.dispose())
+        engine_sync._execute(f"DROP TABLE IF EXISTS {DEFAULT_TABLE_SYNC}")
+
+        engine_sync._engine.dispose()
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
-        await engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             engine,
             embedding_service=embeddings_service,
@@ -120,7 +117,7 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom(self, engine):
-        await engine.init_vectorstore_table(
+        await engine.ainit_vectorstore_table(
             CUSTOM_TABLE,
             VECTOR_SIZE,
             id_column="myid",
@@ -231,18 +228,14 @@ class TestVectorStore:
         assert len(results) == 3
         await engine._aexecute(f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
 
-    async def test_add_docs(self, engine_sync, vs_sync):
+    def test_add_docs(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         vs_sync.add_documents(docs, ids=ids)
-        results = engine_sync.run_as_sync(
-            engine_sync._afetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
-        )
+        results = engine_sync._fetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
         assert len(results) == 3
 
-    async def test_add_texts(self, engine_sync, vs_sync):
+    def test_add_texts(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         vs_sync.add_texts(texts, ids=ids)
-        results = engine_sync.run_as_sync(
-            engine_sync._afetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
-        )
+        results = engine_sync._fetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
         assert len(results) == 6
