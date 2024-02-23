@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+import uuid
 from typing import Generator
 
 import pytest
-import sqlalchemy
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
 
@@ -27,7 +26,7 @@ region = os.environ["REGION"]
 cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
-table_name = "message_store"
+table_name = "message_store" + str(uuid.uuid4())
 
 
 @pytest.fixture(name="memory_engine")
@@ -39,11 +38,11 @@ def setup() -> Generator:
         instance=instance_id,
         database=db_name,
     )
-    engine.run_as_sync(engine.init_chat_history_table(table_name=table_name))
+    engine.init_chat_history_table(table_name=table_name)
     yield engine
     # use default table for AlloyDBChatMessageHistory
     query = f'DROP TABLE IF EXISTS "{table_name}"'
-    engine.run_as_sync(engine._aexecute(query))
+    engine._execute(query)
 
 
 def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
