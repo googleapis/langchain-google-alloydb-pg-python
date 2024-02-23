@@ -346,8 +346,10 @@ class AlloyDBDocumentSaver:
         for column in metadata_columns:
             if column not in column_names:
                 raise ValueError(f"Metadata column, {column}, does not exist.")
+
         if (
-            metadata_json_column != DEFAULT_METADATA_COL
+            metadata_json_column
+            and metadata_json_column != DEFAULT_METADATA_COL
             and metadata_json_column not in column_names
         ):
             raise ValueError(f"Metadata JSON column, {column}, does not exist.")
