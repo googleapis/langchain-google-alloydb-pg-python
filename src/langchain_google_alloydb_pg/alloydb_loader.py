@@ -245,14 +245,14 @@ class AlloyDBLoader(BaseLoader):
             format,
             formatter,
         )
-        return engine.run_as_sync(coro)
+        return engine._run_as_sync(coro)
 
     async def _collect_async_items(self, docs_generator):
         return [doc async for doc in docs_generator]
 
     def load(self) -> List[Document]:
         """Load Alloydb data into Document objects."""
-        documents = self.engine.run_as_sync(
+        documents = self.engine._run_as_sync(
             self._collect_async_items(self.alazy_load())
         )
         return documents
@@ -263,7 +263,9 @@ class AlloyDBLoader(BaseLoader):
 
     def lazy_load(self) -> Iterator[Document]:
         """Load AlloyDB data into Document objects lazily."""
-        yield from self.engine.run_as_sync(self._collect_async_items(self.alazy_load()))
+        yield from self.engine._run_as_sync(
+            self._collect_async_items(self.alazy_load())
+        )
 
     async def alazy_load(self) -> AsyncIterator[Document]:
         """Load AlloyDB data into Document objects lazily."""
@@ -422,7 +424,7 @@ class AlloyDBDocumentSaver:
             await self.engine._aexecute(query, row)
 
     def add_documents(self, docs: List[Document]) -> None:
-        self.engine.run_as_sync(self.aadd_documents(docs))
+        self.engine._run_as_sync(self.aadd_documents(docs))
 
     async def adelete(self, docs: List[Document]) -> None:
         """
@@ -462,4 +464,30 @@ class AlloyDBDocumentSaver:
             await self.engine._aexecute(stmt, values)
 
     def delete(self, docs: List[Document]) -> None:
-        self.engine.run_as_sync(self.adelete(docs))
+        self.engine._run_as_sync(self.adelete(docs))
+
+    async def _aload_document_table(self) -> sqlalchemy.Table:
+        """
+        Load table schema from existing table in PgSQL database.
+
+        Returns:
+            (sqlalchemy.Table): The loaded table.
+        """
+        metadata = sqlalchemy.MetaData()
+        async with self.engine._engine.connect() as conn:
+            await conn.run_sync(metadata.reflect, only=[self.table_name])
+
+        table = Table(self.table_name, metadata)
+        # Extract the schema information
+        schema = []
+        for column in table.columns:
+            schema.append(
+                {
+                    "name": column.name,
+                    "type": column.type.python_type,
+                    "max_length": getattr(column.type, "length", None),
+                    "nullable": not column.nullable,
+                }
+            )
+
+        return metadata.tables[self.table_name]
