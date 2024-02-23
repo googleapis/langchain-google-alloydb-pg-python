@@ -20,11 +20,7 @@ import pytest_asyncio
 from langchain_community.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
 
-from langchain_google_alloydb_pg import (
-    AlloyDBEngine,
-    AlloyDBVectorStore,
-    Column,
-)
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.indexes import HNSWQueryOptions
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
@@ -35,12 +31,9 @@ embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 texts = ["foo", "bar", "baz", "boo"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
-metadatas = [
-    {"page": str(i), "source": "google.com"} for i in range(len(texts))
-]
+metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
-    Document(page_content=texts[i], metadata=metadatas[i])
-    for i in range(len(texts))
+    Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
@@ -76,9 +69,7 @@ class TestVectorStoreSearch:
         return get_env_var("DATABASE_ID", "database name for AlloyDB")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_instance, db_cluster, db_name
-    ):
+    async def engine(self, db_project, db_region, db_instance, db_cluster, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,
@@ -105,9 +96,7 @@ class TestVectorStoreSearch:
         await engine._engine.dispose()
 
     @pytest_asyncio.fixture(scope="class")
-    def engine_sync(
-        self, db_project, db_region, db_instance, db_cluster, db_name
-    ):
+    def engine_sync(self, db_project, db_region, db_instance, db_cluster, db_name):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             instance=db_instance,
@@ -151,9 +140,7 @@ class TestVectorStoreSearch:
         results = await vs.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo")]
-        results = await vs.asimilarity_search(
-            "foo", k=1, filter="content = 'bar'"
-        )
+        results = await vs.asimilarity_search("foo", k=1, filter="content = 'bar'")
         assert results == [Document(page_content="bar")]
 
     async def test_asimilarity_search_score(self, vs):
@@ -200,9 +187,7 @@ class TestVectorStoreSearch:
         results = vs_custom.similarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo")]
-        results = vs_custom.similarity_search(
-            "foo", k=1, filter="mycontent = 'bar'"
-        )
+        results = vs_custom.similarity_search("foo", k=1, filter="mycontent = 'bar'")
         assert results == [Document(page_content="bar")]
 
     def test_similarity_search_score(self, vs_custom):
