@@ -24,6 +24,7 @@ import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from sqlalchemy import MetaData, Table, text
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from .version import __version__
@@ -393,7 +394,10 @@ class AlloyDBEngine:
         """
         metadata = MetaData()
         async with self._engine.connect() as conn:
-            await conn.run_sync(metadata.reflect, only=[table_name])
+            try:
+                await conn.run_sync(metadata.reflect, only=[table_name])
+            except InvalidRequestError as e:
+                raise ValueError(f"Table, {table_name}, does not exist: " + str(e))
 
         table = Table(table_name, metadata)
         # Extract the schema information

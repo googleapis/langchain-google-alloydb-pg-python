@@ -18,7 +18,7 @@ import json
 from typing import List
 
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
+from langchain_core.messages import BaseMessage, messages_from_dict
 
 from .alloydb_engine import AlloyDBEngine
 
@@ -26,10 +26,58 @@ from .alloydb_engine import AlloyDBEngine
 class AlloyDBChatMessageHistory(BaseChatMessageHistory):
     """Chat message history stored in an AlloyDB."""
 
-    def __init__(self, engine: AlloyDBEngine, session_id: str, table_name: str):
+    __create_key = object()
+
+    def __init__(self, key, engine: AlloyDBEngine, session_id: str, table_name: str):
+        if key != AlloyDBChatMessageHistory.__create_key:
+            raise Exception(
+                "Only create class through 'create' or 'create_sync' methods!"
+            )
         self.engine = engine
         self.session_id = session_id
         self.table_name = table_name
+
+    @classmethod
+    async def create(
+        cls,
+        engine: AlloyDBEngine,
+        session_id: str,
+        table_name: str,
+    ):
+        table_schema = await engine._aload_document_table(table_name)
+        column_names = table_schema.columns.keys()
+
+        required_columns = ["id", "session_id", "data", "type"]
+
+        if not (all(x in column_names for x in required_columns)):
+            raise IndexError(
+                f"Table '{table_name}' has incorrect schema. Got "
+                f"column names '{column_names}' but required column names "
+                f"'{required_columns}'.\nPlease create table with following schema:"
+                f"\nCREATE TABLE {table_name} ("
+                "\n    id INT AUTO_INCREMENT PRIMARY KEY,"
+                "\n    session_id TEXT NOT NULL,"
+                "\n    data JSON NOT NULL,"
+                "\n    type TEXT NOT NULL"
+                "\n);"
+            )
+
+        return cls(
+            cls.__create_key,
+            engine,
+            session_id,
+            table_name,
+        )
+
+    @classmethod
+    def create_sync(
+        cls,
+        engine: AlloyDBEngine,
+        session_id: str,
+        table_name: str,
+    ):
+        coro = cls.create(engine, session_id, table_name)
+        return engine._run_as_sync(coro)
 
     @property
     def messages(self) -> List[BaseMessage]:  # type: ignore
