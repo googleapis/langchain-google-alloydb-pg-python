@@ -103,7 +103,9 @@ class TestAlloyDBLoader:
         finally:
             await self._cleanup_table(engine)
 
-    async def test_load_from_query_customized_content_customized_metadata(self, engine):
+    async def test_load_from_query_customized_content_customized_metadata(
+        self, engine
+    ):
         try:
             await self._cleanup_table(engine)
             query = f"""
@@ -159,7 +161,9 @@ class TestAlloyDBLoader:
         finally:
             await self._cleanup_table(engine)
 
-    async def test_load_from_query_customized_content_default_metadata(self, engine):
+    async def test_load_from_query_customized_content_default_metadata(
+        self, engine
+    ):
         try:
             await self._cleanup_table(engine)
             query = f"""
@@ -206,7 +210,9 @@ class TestAlloyDBLoader:
         finally:
             await self._cleanup_table(engine)
 
-    async def test_load_from_query_default_content_customized_metadata(self, engine):
+    async def test_load_from_query_default_content_customized_metadata(
+        self, engine
+    ):
         try:
             await self._cleanup_table(engine)
             query = f"""
@@ -367,7 +373,9 @@ class TestAlloyDBLoader:
 
             def my_formatter(row, content_columns):
                 return "-".join(
-                    str(row[column]) for column in content_columns if column in row
+                    str(row[column])
+                    for column in content_columns
+                    if column in row
                 )
 
             loader = await AlloyDBLoader.create(
@@ -468,13 +476,17 @@ class TestAlloyDBLoader:
             saver = await AlloyDBDocumentSaver.create(
                 engine=engine, table_name=table_name
             )
-            loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
+            loader = await AlloyDBLoader.create(
+                engine=engine, table_name=table_name
+            )
 
             await saver.aadd_documents(test_docs)
             docs = await self._collect_async_items(loader.alazy_load())
 
             assert docs == test_docs
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (
+                await engine._aload_document_table(table_name)
+            ).columns.keys() == [
                 "page_content",
                 "langchain_metadata",
             ]
@@ -482,7 +494,9 @@ class TestAlloyDBLoader:
             await self._cleanup_table(engine)
 
     @pytest.mark.parametrize("store_metadata", [True, False])
-    async def test_save_doc_with_customized_metadata(self, engine, store_metadata):
+    async def test_save_doc_with_customized_metadata(
+        self, engine, store_metadata
+    ):
         await self._cleanup_table(engine)
         await engine.ainit_document_table(
             table_name,
@@ -502,7 +516,9 @@ class TestAlloyDBLoader:
                 },
             ),
         ]
-        saver = await AlloyDBDocumentSaver.create(engine=engine, table_name=table_name)
+        saver = await AlloyDBDocumentSaver.create(
+            engine=engine, table_name=table_name
+        )
         loader = await AlloyDBLoader.create(
             engine=engine,
             table_name=table_name,
@@ -517,7 +533,9 @@ class TestAlloyDBLoader:
 
         if store_metadata:
             docs == test_docs
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (
+                await engine._aload_document_table(table_name)
+            ).columns.keys() == [
                 "page_content",
                 "fruit_name",
                 "organic",
@@ -530,7 +548,9 @@ class TestAlloyDBLoader:
                     metadata={"fruit_name": "Apple", "organic": True},
                 ),
             ]
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (
+                await engine._aload_document_table(table_name)
+            ).columns.keys() == [
                 "page_content",
                 "fruit_name",
                 "organic",
@@ -568,7 +588,9 @@ class TestAlloyDBLoader:
                     metadata={},
                 ),
             ]
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (
+                await engine._aload_document_table(table_name)
+            ).columns.keys() == [
                 "page_content",
             ]
         finally:
@@ -592,17 +614,23 @@ class TestAlloyDBLoader:
             saver = await AlloyDBDocumentSaver.create(
                 engine=engine, table_name=table_name
             )
-            loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
+            loader = await AlloyDBLoader.create(
+                engine=engine, table_name=table_name
+            )
 
             await saver.aadd_documents(test_docs)
             docs = await self._collect_async_items(loader.alazy_load())
             assert docs == test_docs
 
             await saver.adelete(docs[:1])
-            assert len(await self._collect_async_items(loader.alazy_load())) == 1
+            assert (
+                len(await self._collect_async_items(loader.alazy_load())) == 1
+            )
 
             await saver.adelete(docs)
-            assert len(await self._collect_async_items(loader.alazy_load())) == 0
+            assert (
+                len(await self._collect_async_items(loader.alazy_load())) == 0
+            )
         finally:
             await self._cleanup_table(engine)
 
@@ -661,11 +689,15 @@ class TestAlloyDBLoader:
             assert len(docs) == 1
 
             await saver.adelete(docs)
-            assert len(await self._collect_async_items(loader.alazy_load())) == 0
+            assert (
+                len(await self._collect_async_items(loader.alazy_load())) == 0
+            )
         finally:
             await self._cleanup_table(engine)
 
-    @pytest.mark.parametrize("metadata_json_column", [None, "metadata_col_test"])
+    @pytest.mark.parametrize(
+        "metadata_json_column", [None, "metadata_col_test"]
+    )
     async def test_delete_doc_with_customized_metadata(
         self, engine, metadata_json_column
     ):
