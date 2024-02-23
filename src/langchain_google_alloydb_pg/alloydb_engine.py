@@ -221,6 +221,10 @@ class AlloyDBEngine:
             password,
         )
 
+    @classmethod
+    def from_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
+        return cls(engine, None, None)
+
     async def _aexecute(self, query: str, params: Optional[dict] = None):
         """Execute a SQL query."""
         async with self._engine.connect() as conn:
