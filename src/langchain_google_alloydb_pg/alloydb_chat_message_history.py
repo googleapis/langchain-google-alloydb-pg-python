@@ -18,11 +18,7 @@ import json
 from typing import List
 
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import (
-    BaseMessage,
-    message_to_dict,
-    messages_from_dict,
-)
+from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
 
 from .alloydb_engine import AlloyDBEngine
 
@@ -45,10 +41,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         if not results:
             return []
 
-        items = [
-            {"data": result["data"], "type": result["type"]}
-            for result in results
-        ]
+        items = [{"data": result["data"], "type": result["type"]} for result in results]
         messages = messages_from_dict(items)
         return messages
 
