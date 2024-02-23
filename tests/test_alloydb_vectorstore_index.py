@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import os
 import uuid
-from typing import List
 
 import pytest
 import pytest_asyncio
 from langchain_community.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
     DEFAULT_INDEX_NAME,
     DistanceStrategy,
@@ -88,7 +86,7 @@ class TestIndex:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
-        await engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             engine,
             embedding_service=embeddings_service,

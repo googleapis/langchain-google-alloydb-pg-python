@@ -21,7 +21,7 @@ from langchain_community.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
-from langchain_google_alloydb_pg.indexes import HNSWQueryOptions, IVFFlatQueryOptions
+from langchain_google_alloydb_pg.indexes import HNSWQueryOptions
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
@@ -81,7 +81,7 @@ class TestVectorStoreSearch:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
-        await engine.init_vectorstore_table(
+        await engine.ainit_vectorstore_table(
             DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False
         )
         vs = await AlloyDBVectorStore.create(
@@ -108,20 +108,19 @@ class TestVectorStoreSearch:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom(self, engine_sync):
-        engine_sync.run_as_sync(
-            engine_sync.init_vectorstore_table(
-                CUSTOM_TABLE,
-                VECTOR_SIZE,
-                id_column="myid",
-                content_column="mycontent",
-                embedding_column="myembedding",
-                metadata_columns=[
-                    Column("page", "TEXT"),
-                    Column("source", "TEXT"),
-                ],
-                store_metadata=False,
-            )
+        engine_sync.init_vectorstore_table(
+            CUSTOM_TABLE,
+            VECTOR_SIZE,
+            id_column="myid",
+            content_column="mycontent",
+            embedding_column="myembedding",
+            metadata_columns=[
+                Column("page", "TEXT"),
+                Column("source", "TEXT"),
+            ],
+            store_metadata=False,
         )
+
         vs_custom = AlloyDBVectorStore.create_sync(
             engine_sync,
             embedding_service=embeddings_service,
@@ -131,12 +130,11 @@ class TestVectorStoreSearch:
             embedding_column="myembedding",
             index_query_options=HNSWQueryOptions(ef_search=1),
         )
-        engine_sync.run_as_sync(vs_custom.aadd_documents(docs, ids=ids))
+        vs_custom.add_documents(docs, ids=ids)
         yield vs_custom
-        engine_sync.run_as_sync(
-            engine_sync._aexecute(f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
-        )
-        engine_sync.run_as_sync(engine_sync._engine.dispose())
+
+        engine_sync._execute(f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
+        engine_sync._engine.dispose()
 
     async def test_asimilarity_search(self, vs):
         results = await vs.asimilarity_search("foo", k=1)
