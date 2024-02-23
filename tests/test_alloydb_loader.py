@@ -78,7 +78,7 @@ class TestAlloyDBLoader:
             """
             await engine._aexecute(insert_query)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 table_name=table_name,
@@ -126,7 +126,7 @@ class TestAlloyDBLoader:
             """
             await engine._aexecute(insert_query)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 content_columns=[
@@ -180,7 +180,7 @@ class TestAlloyDBLoader:
             """
             await engine._aexecute(insert_query)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 content_columns=[
@@ -232,7 +232,7 @@ class TestAlloyDBLoader:
             """
             await engine._aexecute(insert_query)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 metadata_columns=["fruit_name", "organic"],
@@ -272,7 +272,7 @@ class TestAlloyDBLoader:
                 VALUES ('Apple', 'Granny Smith', 150, 1, '{metadata}');"""
             await engine._aexecute(insert_query)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 metadata_columns=[
@@ -319,7 +319,7 @@ class TestAlloyDBLoader:
                 VALUES ('Apple', '{variety}', 150, 1, '{metadata}');"""
             await engine._aexecute(insert_query)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 metadata_columns=[
@@ -370,7 +370,7 @@ class TestAlloyDBLoader:
                     str(row[column]) for column in content_columns if column in row
                 )
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 content_columns=[
@@ -420,7 +420,7 @@ class TestAlloyDBLoader:
                         """
             await engine._aexecute(insert_query)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 query=f'SELECT * FROM "{table_name}";',
                 content_columns=[
@@ -466,7 +466,7 @@ class TestAlloyDBLoader:
                 ),
             ]
             saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
-            loader = AlloyDBLoader(engine=engine, table_name=table_name)
+            loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
 
             await saver.aadd_documents(test_docs)
             docs = await self._collect_async_items(loader.alazy_load())
@@ -501,7 +501,7 @@ class TestAlloyDBLoader:
             ),
         ]
         saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
-        loader = AlloyDBLoader(
+        loader = await AlloyDBLoader.create(
             engine=engine,
             table_name=table_name,
             metadata_columns=[
@@ -551,7 +551,7 @@ class TestAlloyDBLoader:
             saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
             await saver.aadd_documents(test_docs)
 
-            loader = AlloyDBLoader(
+            loader = await AlloyDBLoader.create(
                 engine=engine,
                 table_name=table_name,
             )
@@ -586,7 +586,7 @@ class TestAlloyDBLoader:
                 ),
             ]
             saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
-            loader = AlloyDBLoader(engine=engine, table_name=table_name)
+            loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
 
             await saver.aadd_documents(test_docs)
             docs = await self._collect_async_items(loader.alazy_load())
@@ -646,7 +646,7 @@ class TestAlloyDBLoader:
             ]
             saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
             query = f"SELECT * FROM \"{table_name}\" WHERE fruit_name='Apple';"
-            loader = AlloyDBLoader(engine=engine, query=query)
+            loader = await AlloyDBLoader.create(engine=engine, query=query)
 
             await saver.aadd_documents(test_docs)
             docs = await self._collect_async_items(loader.alazy_load())
@@ -696,7 +696,7 @@ class TestAlloyDBLoader:
             content_column=content_column,
             metadata_json_column=metadata_json_column,
         )
-        loader = AlloyDBLoader(
+        loader = await AlloyDBLoader.create(
             engine=engine,
             table_name=table_name,
             content_columns=[content_column],
@@ -742,7 +742,7 @@ class TestAlloyDBLoader:
             ]
 
             saver.add_documents(test_docs)
-            loader = AlloyDBLoader(
+            loader = AlloyDBLoader.create_sync(
                 engine=sync_engine,
                 query=f'SELECT * FROM "{table_name}";',
             )
