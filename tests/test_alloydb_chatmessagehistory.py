@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+import uuid
 from typing import Generator
 
 import pytest
@@ -26,7 +26,7 @@ region = os.environ["REGION"]
 cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
-table_name = "message_store"
+table_name = "message_store" + str(uuid.uuid4())
 
 
 @pytest.fixture(name="memory_engine")
