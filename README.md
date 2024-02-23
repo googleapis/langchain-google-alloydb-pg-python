@@ -44,7 +44,7 @@ from langchain.embeddings import VertexAIEmbeddings
 
 engine = AlloyDBEngine.from_instance("region", "my-instance", "my-database")
 embeddings_service = VertexAIEmbeddings()
-vectorstore = CloudQLVectorStore(
+vectorstore = AlloyDBVectorStore(
     engine,
     table_name="my-table",
     embeddings=embedding_service
