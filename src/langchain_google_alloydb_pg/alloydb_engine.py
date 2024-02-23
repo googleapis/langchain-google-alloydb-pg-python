@@ -23,7 +23,7 @@ import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
-from sqlalchemy import text
+from sqlalchemy import MetaData, Table, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from .version import __version__
@@ -376,3 +376,32 @@ class AlloyDBEngine:
                 store_metadata,
             )
         )
+
+    async def _aload_document_table(
+        self,
+        table_name: str,
+    ) -> Table:
+        """
+        Load table schema from existing table in PgSQL database.
+
+        Returns:
+            (sqlalchemy.Table): The loaded table.
+        """
+        metadata = MetaData()
+        async with self._engine.connect() as conn:
+            await conn.run_sync(metadata.reflect, only=[table_name])
+
+        table = Table(table_name, metadata)
+        # Extract the schema information
+        schema = []
+        for column in table.columns:
+            schema.append(
+                {
+                    "name": column.name,
+                    "type": column.type.python_type,
+                    "max_length": getattr(column.type, "length", None),
+                    "nullable": not column.nullable,
+                }
+            )
+
+        return metadata.tables[table_name]
