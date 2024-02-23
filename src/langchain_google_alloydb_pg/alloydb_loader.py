@@ -14,9 +14,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
-from threading import Thread
 from typing import (
     Any,
     AsyncIterator,
@@ -37,7 +35,6 @@ from .alloydb_engine import AlloyDBEngine
 
 DEFAULT_CONTENT_COL = "page_content"
 DEFAULT_METADATA_COL = "langchain_metadata"
-DEFAULT_FORMAT = "text"
 
 
 def text_formatter(row, content_columns) -> str:
@@ -149,14 +146,25 @@ class AlloyDBLoader(BaseLoader):
         """Constructor for AlloyDBLoader
 
         Args:
-            engine (AlloyDBEngine): _description_
-            query (Optional[str], optional): _description_. Defaults to None.
-            table_name (Optional[str], optional): _description_. Defaults to None.
-            content_columns (Optional[List[str]], optional): _description_. Defaults to None.
-            metadata_columns (Optional[List[str]], optional): _description_. Defaults to None.
-            metadata_json_column (Optional[str], optional): _description_. Defaults to None.
-            format (Optional[str], optional): _description_. Defaults to None.
-            formatter (Optional[Callable], optional): _description_. Defaults to None.
+            engine (AlloyDBEngine):AsyncEngine with pool connection to the postgres database
+            query (Optional[str], optional): SQL query. Defaults to None.
+            table_name (Optional[str], optional): Name of table to query. Defaults to None.
+            content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
+            metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata.. Defaults to None.
+            metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            format (Optional[str], optional): Format of page content (OneOf: text, csv, YAML, JSON). Defaults to 'text'.
+            formatter (Optional[Callable], optional): A function to format page content (OneOf: format, formatter). Defaults to None.
+
+
+            table_name (str): Name of the existing table or the table to be created.
+            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
+            content_column (str): Column that represent a Document’s page_content. Defaults to "content".
+            embedding_column (str): Column for embedding vectors.
+                              The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (List[str]): Column(s) that represent a document's metadata.
+            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document’s metadata.
+                                     Can not be used with metadata_columns. Defaults to None.
+            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
             AlloyDBLoader
@@ -209,6 +217,7 @@ class AlloyDBLoader(BaseLoader):
                 metadata_json_column = DEFAULT_METADATA_COL
             else:
                 metadata_json_column = None
+
             # check validity of other column
             all_names = content_columns + metadata_columns
             for name in all_names:
@@ -281,6 +290,9 @@ class AlloyDBLoader(BaseLoader):
 
                 row_data = {}
                 column_names = self.content_columns + self.metadata_columns
+                column_names += (
+                    [self.metadata_json_column] if self.metadata_json_column else []
+                )
                 for column in column_names:
                     value = getattr(row, column)
                     row_data[column] = value
