@@ -108,7 +108,7 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
-        await engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             engine,
             embedding_service=embeddings_service,
@@ -120,7 +120,7 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom(self, engine):
-        await engine.init_vectorstore_table(
+        await engine.ainit_vectorstore_table(
             CUSTOM_TABLE,
             VECTOR_SIZE,
             id_column="myid",

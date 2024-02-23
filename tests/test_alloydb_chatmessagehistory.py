@@ -16,7 +16,6 @@ import os
 from typing import Generator
 
 import pytest
-import sqlalchemy
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
 
@@ -39,11 +38,11 @@ def setup() -> Generator:
         instance=instance_id,
         database=db_name,
     )
-    engine.run_as_sync(engine.init_chat_history_table(table_name=table_name))
+    engine.init_chat_history_table(table_name=table_name)
     yield engine
     # use default table for AlloyDBChatMessageHistory
     query = f'DROP TABLE IF EXISTS "{table_name}"'
-    engine.run_as_sync(engine._aexecute(query))
+    engine._execute(query)
 
 
 def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
