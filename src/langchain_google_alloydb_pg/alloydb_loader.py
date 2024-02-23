@@ -155,17 +155,6 @@ class AlloyDBLoader(BaseLoader):
             format (Optional[str], optional): Format of page content (OneOf: text, csv, YAML, JSON). Defaults to 'text'.
             formatter (Optional[Callable], optional): A function to format page content (OneOf: format, formatter). Defaults to None.
 
-
-            table_name (str): Name of the existing table or the table to be created.
-            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
-            content_column (str): Column that represent a Document’s page_content. Defaults to "content".
-            embedding_column (str): Column for embedding vectors.
-                              The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document’s metadata.
-                                     Can not be used with metadata_columns. Defaults to None.
-            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
-
         Returns:
             AlloyDBLoader
         """
