@@ -122,21 +122,27 @@ class AlloyDBVectorStore(VectorStore):
         if id_column not in columns:
             raise ValueError(f"Id column, {id_column}, does not exist.")
         if content_column not in columns:
-            raise ValueError(f"Content column, {content_column}, does not exist.")
+            raise ValueError(
+                f"Content column, {content_column}, does not exist."
+            )
         content_type = columns[content_column]
         if content_type != "text" and "char" not in content_type:
             raise ValueError(
                 f"Content column, {content_column}, is type, {content_type}. It must be a type of character string."
             )
         if embedding_column not in columns:
-            raise ValueError(f"Embedding column, {embedding_column}, does not exist.")
+            raise ValueError(
+                f"Embedding column, {embedding_column}, does not exist."
+            )
         if columns[embedding_column] != "USER-DEFINED":
             raise ValueError(
                 f"Embedding column, {embedding_column}, is not type Vector."
             )
 
         metadata_json_column = (
-            None if metadata_json_column not in columns else metadata_json_column
+            None
+            if metadata_json_column not in columns
+            else metadata_json_column
         )
 
         # If using metadata_columns check to make sure column exists
@@ -206,7 +212,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult,
             index_query_options,
         )
-        return engine.run_as_sync(coro)
+        return engine.__run_as_sync(coro)
 
     @property
     def embeddings(self) -> Embeddings:
@@ -225,7 +231,9 @@ class AlloyDBVectorStore(VectorStore):
         if not metadatas:
             metadatas = [{} for _ in texts]
         # Insert embeddings
-        for id, content, embedding, metadata in zip(ids, texts, embeddings, metadatas):
+        for id, content, embedding, metadata in zip(
+            ids, texts, embeddings, metadatas
+        ):
             metadata_col_names = (
                 ", " + ", ".join(self.metadata_columns)
                 if len(self.metadata_columns) > 0
@@ -247,7 +255,9 @@ class AlloyDBVectorStore(VectorStore):
 
             # Add JSON column and/or close statement
             insert_stmt += (
-                f", {self.metadata_json_column})" if self.metadata_json_column else ")"
+                f", {self.metadata_json_column})"
+                if self.metadata_json_column
+                else ")"
             )
             if self.metadata_json_column:
                 values_stmt += ", :extra)"
@@ -281,7 +291,9 @@ class AlloyDBVectorStore(VectorStore):
     ) -> List[str]:
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
-        ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
+        ids = await self.aadd_texts(
+            texts, metadatas=metadatas, ids=ids, **kwargs
+        )
         return ids
 
     def add_texts(
@@ -291,7 +303,9 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        return self.engine.run_as_sync(self.aadd_texts(texts, metadatas, ids, **kwargs))
+        return self.engine.__run_as_sync(
+            self.aadd_texts(texts, metadatas, ids, **kwargs)
+        )
 
     def add_documents(
         self,
@@ -299,7 +313,9 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        return self.engine.run_as_sync(self.aadd_documents(documents, ids, **kwargs))
+        return self.engine.__run_as_sync(
+            self.aadd_documents(documents, ids, **kwargs)
+        )
 
     async def adelete(
         self,
@@ -319,7 +335,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
-        return self.engine.run_as_sync(self.adelete(ids, **kwargs))
+        return self.engine.__run_as_sync(self.adelete(ids, **kwargs))
 
     @classmethod
     async def afrom_texts(  # type: ignore[override]
@@ -416,7 +432,7 @@ class AlloyDBVectorStore(VectorStore):
             ids=ids,
             **kwargs,
         )
-        return engine.run_as_sync(coro)
+        return engine.__run_as_sync(coro)
 
     @classmethod
     def from_documents(  # type: ignore[override]
@@ -448,7 +464,7 @@ class AlloyDBVectorStore(VectorStore):
             ids=ids,
             **kwargs,
         )
-        return engine.run_as_sync(coro)
+        return engine.__run_as_sync(coro)
 
     async def __query_collection(
         self,
@@ -476,7 +492,7 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Document]:
-        return self.engine.run_as_sync(
+        return self.engine.__run_as_sync(
             self.asimilarity_search(query, k=k, filter=filter, **kwargs)
         )
 
@@ -610,7 +626,9 @@ class AlloyDBVectorStore(VectorStore):
         k = k if k else self.k
         fetch_k = fetch_k if fetch_k else self.fetch_k
         lambda_mult = lambda_mult if lambda_mult else self.lambda_mult
-        embedding_list = [json.loads(row[self.embedding_column]) for row in results]
+        embedding_list = [
+            json.loads(row[self.embedding_column]) for row in results
+        ]
         mmr_selected = maximal_marginal_relevance(
             np.array(embedding, dtype=np.float32),
             embedding_list,
@@ -637,7 +655,9 @@ class AlloyDBVectorStore(VectorStore):
                 )
             )
 
-        return [r for i, r in enumerate(documents_with_scores) if i in mmr_selected]
+        return [
+            r for i, r in enumerate(documents_with_scores) if i in mmr_selected
+        ]
 
     def similarity_search_with_score(
         self,
@@ -646,8 +666,10 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
-        coro = self.asimilarity_search_with_score(query, k, filter=filter, **kwargs)
-        return self.engine.run_as_sync(coro)
+        coro = self.asimilarity_search_with_score(
+            query, k, filter=filter, **kwargs
+        )
+        return self.engine.__run_as_sync(coro)
 
     def similarity_search_by_vector(
         self,
@@ -656,8 +678,10 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Document]:
-        coro = self.asimilarity_search_by_vector(embedding, k, filter=filter, **kwargs)
-        return self.engine.run_as_sync(coro)
+        coro = self.asimilarity_search_by_vector(
+            embedding, k, filter=filter, **kwargs
+        )
+        return self.engine.__run_as_sync(coro)
 
     def similarity_search_with_score_by_vector(
         self,
@@ -669,7 +693,7 @@ class AlloyDBVectorStore(VectorStore):
         coro = self.asimilarity_search_with_score_by_vector(
             embedding, k, filter=filter, **kwargs
         )
-        return self.engine.run_as_sync(coro)
+        return self.engine.__run_as_sync(coro)
 
     def max_marginal_relevance_search(
         self,
@@ -688,7 +712,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             **kwargs,
         )
-        return self.engine.run_as_sync(coro)
+        return self.engine.__run_as_sync(coro)
 
     def max_marginal_relevance_search_by_vector(
         self,
@@ -707,7 +731,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             **kwargs,
         )
-        return self.engine.run_as_sync(coro)
+        return self.engine.__run_as_sync(coro)
 
     def max_marginal_relevance_search_with_score_by_vector(
         self,
@@ -726,7 +750,7 @@ class AlloyDBVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             **kwargs,
         )
-        return self.engine.run_as_sync(coro)
+        return self.engine.__run_as_sync(coro)
 
     async def aapply_vector_index(
         self,
@@ -738,7 +762,9 @@ class AlloyDBVectorStore(VectorStore):
             await self.adrop_vector_index()
             return
 
-        filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
+        filter = (
+            f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
+        )
         params = "WITH " + index.index_options()
         function = index.distance_strategy.index_function
         name = name or index.name

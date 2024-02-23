@@ -38,16 +38,22 @@ DEFAULT_METADATA_COL = "langchain_metadata"
 
 
 def text_formatter(row, content_columns) -> str:
-    return " ".join(str(row[column]) for column in content_columns if column in row)
+    return " ".join(
+        str(row[column]) for column in content_columns if column in row
+    )
 
 
 def cvs_formatter(row, content_columns) -> str:
-    return ", ".join(str(row[column]) for column in content_columns if column in row)
+    return ", ".join(
+        str(row[column]) for column in content_columns if column in row
+    )
 
 
 def yaml_formatter(row, content_columns) -> str:
     return "\n".join(
-        f"{column}: {str(row[column])}" for column in content_columns if column in row
+        f"{column}: {str(row[column])}"
+        for column in content_columns
+        if column in row
     )
 
 
@@ -159,16 +165,22 @@ class AlloyDBLoader(BaseLoader):
             AlloyDBLoader
         """
         if table_name and query:
-            raise ValueError("Only one of 'table_name' or 'query' should be specified.")
+            raise ValueError(
+                "Only one of 'table_name' or 'query' should be specified."
+            )
         if not table_name and not query:
             raise ValueError(
                 "At least one of the parameters 'table_name' or 'query' needs to be provided"
             )
         if format and formatter:
-            raise ValueError("Only one of 'format' or 'formatter' should be specified.")
+            raise ValueError(
+                "Only one of 'format' or 'formatter' should be specified."
+            )
 
         if format and format not in ["csv", "text", "JSON", "YAML"]:
-            raise ValueError("format must be type: 'csv', 'text', 'JSON', 'YAML'")
+            raise ValueError(
+                "format must be type: 'csv', 'text', 'JSON', 'YAML'"
+            )
         if formatter:
             formatter = formatter
         elif format == "csv":
@@ -195,7 +207,10 @@ class AlloyDBLoader(BaseLoader):
                 col for col in column_names if col not in content_columns
             ]
             # Check validity of metadata json column
-            if metadata_json_column and metadata_json_column not in column_names:
+            if (
+                metadata_json_column
+                and metadata_json_column not in column_names
+            ):
                 raise ValueError(
                     f"Column {metadata_json_column} not found in query result {column_names}."
                 )
@@ -246,14 +261,14 @@ class AlloyDBLoader(BaseLoader):
             format,
             formatter,
         )
-        return engine.run_as_sync(coro)
+        return engine.__run_as_sync(coro)
 
     async def _collect_async_items(self, docs_generator):
         return [doc async for doc in docs_generator]
 
     def load(self) -> List[Document]:
         """Load Alloydb data into Document objects."""
-        documents = self.engine.run_as_sync(
+        documents = self.engine.__run_as_sync(
             self._collect_async_items(self.alazy_load())
         )
         return documents
@@ -264,7 +279,9 @@ class AlloyDBLoader(BaseLoader):
 
     def lazy_load(self) -> Iterator[Document]:
         """Load AlloyDB data into Document objects lazily."""
-        yield from self.engine.run_as_sync(self._collect_async_items(self.alazy_load()))
+        yield from self.engine.__run_as_sync(
+            self._collect_async_items(self.alazy_load())
+        )
 
     async def alazy_load(self) -> AsyncIterator[Document]:
         """Load AlloyDB data into Document objects lazily."""
@@ -280,7 +297,9 @@ class AlloyDBLoader(BaseLoader):
                 row_data = {}
                 column_names = self.content_columns + self.metadata_columns
                 column_names += (
-                    [self.metadata_json_column] if self.metadata_json_column else []
+                    [self.metadata_json_column]
+                    if self.metadata_json_column
+                    else []
                 )
                 for column in column_names:
                     value = getattr(row, column)
@@ -346,7 +365,9 @@ class AlloyDBDocumentSaver:
                 and (column != self.metadata_json_column)
             ]
             # Create list of column names
-            insert_stmt = f'INSERT INTO "{self.table_name}"({self.content_column}'
+            insert_stmt = (
+                f'INSERT INTO "{self.table_name}"({self.content_column}'
+            )
             values_stmt = f"VALUES (:{self.content_column}"
 
             # Add metadata
@@ -370,7 +391,7 @@ class AlloyDBDocumentSaver:
             await self.engine._aexecute(query, row)
 
     def add_documents(self, docs: List[Document]) -> None:
-        self.engine.run_as_sync(self.aadd_documents(docs))
+        self.engine.__run_as_sync(self.aadd_documents(docs))
 
     async def adelete(self, docs: List[Document]) -> None:
         """
@@ -411,7 +432,7 @@ class AlloyDBDocumentSaver:
             await self.engine._aexecute(stmt, values)
 
     def delete(self, docs: List[Document]) -> None:
-        self.engine.run_as_sync(self.adelete(docs))
+        self.engine.__run_as_sync(self.adelete(docs))
 
     async def _aload_document_table(self) -> sqlalchemy.Table:
         """
