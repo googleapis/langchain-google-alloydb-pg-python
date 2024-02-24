@@ -599,11 +599,12 @@ class TestAlloyDBLoader:
             assert docs == test_docs
 
             await saver.adelete(docs[:1])
-            docs = await loader.aload()
+            docs = await self._collect_async_items(loader.alazy_load())
             assert len(docs) == 1
 
             await saver.adelete(docs)
-            assert len(await loader.aload()) == 0
+            docs = await self._collect_async_items(loader.alazy_load())
+            assert len(docs) == 0
         finally:
             await self._cleanup_table(engine)
 

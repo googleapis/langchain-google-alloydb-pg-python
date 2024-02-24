@@ -439,7 +439,7 @@ class AlloyDBDocumentSaver:
         for doc in docs:
             row = _parse_row_from_doc(
                 doc,
-                self.content_column,
+                self.metadata_columns,
                 self.content_column,
                 self.metadata_json_column,
             )
@@ -467,29 +467,3 @@ class AlloyDBDocumentSaver:
 
     def delete(self, docs: List[Document]) -> None:
         self.engine._run_as_sync(self.adelete(docs))
-
-    async def _aload_document_table(self) -> sqlalchemy.Table:
-        """
-        Load table schema from existing table in PgSQL database.
-
-        Returns:
-            (sqlalchemy.Table): The loaded table.
-        """
-        metadata = sqlalchemy.MetaData()
-        async with self.engine._engine.connect() as conn:
-            await conn.run_sync(metadata.reflect, only=[self.table_name])
-
-        table = Table(self.table_name, metadata)
-        # Extract the schema information
-        schema = []
-        for column in table.columns:
-            schema.append(
-                {
-                    "name": column.name,
-                    "type": column.type.python_type,
-                    "max_length": getattr(column.type, "length", None),
-                    "nullable": not column.nullable,
-                }
-            )
-
-        return metadata.tables[self.table_name]
