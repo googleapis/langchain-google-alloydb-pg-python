@@ -465,14 +465,16 @@ class TestAlloyDBLoader:
                     metadata={"fruit_id": 3},
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = await AlloyDBDocumentSaver.create(
+                engine=engine, table_name=table_name
+            )
             loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
 
             await saver.aadd_documents(test_docs)
             docs = await self._collect_async_items(loader.alazy_load())
 
             assert docs == test_docs
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (await engine._aload_document_table(table_name)).columns.keys() == [
                 "page_content",
                 "langchain_metadata",
             ]
@@ -500,7 +502,7 @@ class TestAlloyDBLoader:
                 },
             ),
         ]
-        saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+        saver = await AlloyDBDocumentSaver.create(engine=engine, table_name=table_name)
         loader = await AlloyDBLoader.create(
             engine=engine,
             table_name=table_name,
@@ -515,7 +517,7 @@ class TestAlloyDBLoader:
 
         if store_metadata:
             docs == test_docs
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (await engine._aload_document_table(table_name)).columns.keys() == [
                 "page_content",
                 "fruit_name",
                 "organic",
@@ -528,7 +530,7 @@ class TestAlloyDBLoader:
                     metadata={"fruit_name": "Apple", "organic": True},
                 ),
             ]
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (await engine._aload_document_table(table_name)).columns.keys() == [
                 "page_content",
                 "fruit_name",
                 "organic",
@@ -548,7 +550,9 @@ class TestAlloyDBLoader:
                     },
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = await AlloyDBDocumentSaver.create(
+                engine=engine, table_name=table_name
+            )
             await saver.aadd_documents(test_docs)
 
             loader = await AlloyDBLoader.create(
@@ -564,7 +568,7 @@ class TestAlloyDBLoader:
                     metadata={},
                 ),
             ]
-            assert (await saver._aload_document_table()).columns.keys() == [
+            assert (await engine._aload_document_table(table_name)).columns.keys() == [
                 "page_content",
             ]
         finally:
@@ -585,7 +589,9 @@ class TestAlloyDBLoader:
                     metadata={"fruit_id": 2},
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = await AlloyDBDocumentSaver.create(
+                engine=engine, table_name=table_name
+            )
             loader = await AlloyDBLoader.create(engine=engine, table_name=table_name)
 
             await saver.aadd_documents(test_docs)
@@ -593,10 +599,12 @@ class TestAlloyDBLoader:
             assert docs == test_docs
 
             await saver.adelete(docs[:1])
-            assert len(await self._collect_async_items(loader.alazy_load())) == 1
+            docs = await self._collect_async_items(loader.alazy_load())
+            assert len(docs) == 1
 
             await saver.adelete(docs)
-            assert len(await self._collect_async_items(loader.alazy_load())) == 0
+            docs = await self._collect_async_items(loader.alazy_load())
+            assert len(docs) == 0
         finally:
             await self._cleanup_table(engine)
 
@@ -644,7 +652,9 @@ class TestAlloyDBLoader:
                     },
                 ),
             ]
-            saver = AlloyDBDocumentSaver(engine=engine, table_name=table_name)
+            saver = await AlloyDBDocumentSaver.create(
+                engine=engine, table_name=table_name
+            )
             query = f"SELECT * FROM \"{table_name}\" WHERE fruit_name='Apple';"
             loader = await AlloyDBLoader.create(engine=engine, query=query)
 
@@ -690,7 +700,7 @@ class TestAlloyDBLoader:
                 },
             ),
         ]
-        saver = AlloyDBDocumentSaver(
+        saver = await AlloyDBDocumentSaver.create(
             engine=engine,
             table_name=table_name,
             content_column=content_column,
@@ -709,7 +719,8 @@ class TestAlloyDBLoader:
         assert len(docs) == 2
 
         await saver.adelete(docs[:1])
-        assert len(await self._collect_async_items(loader.alazy_load())) == 1
+        docs = await loader.aload()
+        assert len(docs) == 1
 
         await saver.adelete(docs)
         assert len(await self._collect_async_items(loader.alazy_load())) == 0
@@ -729,7 +740,9 @@ class TestAlloyDBLoader:
         try:
             sync_engine._run_as_sync(self._cleanup_table(sync_engine))
             sync_engine.init_document_table(table_name)
-            saver = AlloyDBDocumentSaver(engine=sync_engine, table_name=table_name)
+            saver = AlloyDBDocumentSaver.create_sync(
+                engine=sync_engine, table_name=table_name
+            )
             test_docs = [
                 Document(
                     page_content="Cavendish 200 0.59 0",
