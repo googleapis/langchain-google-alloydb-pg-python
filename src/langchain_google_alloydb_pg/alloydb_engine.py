@@ -343,7 +343,7 @@ class AlloyDBEngine:
 
         Args:
             table_name (str): The PgSQL database table name.
-            metadata_columns (List[sqlalchemy.Column]): A list of SQLAlchemy Columns
+            metadata_columns (List[Column]): A list of Columns
                 to create for custom metadata. Optional.
             store_metadata (bool): Whether to store extra metadata in a metadata column
                 if not described in 'metadata' field list (Default: True).
