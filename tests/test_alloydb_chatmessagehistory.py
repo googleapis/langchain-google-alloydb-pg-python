@@ -112,8 +112,8 @@ async def test_chat_message_history_async(async_engine: AlloyDBEngine) -> None:
     )
     msg1 = HumanMessage(content="hi!")
     msg2 = AIMessage(content="whats up?")
-    history.aadd_message(msg1)
-    history.aadd_message(msg2)
+    await history.aadd_message(msg1)
+    await history.aadd_message(msg2)
     messages = history.messages
 
     # verify messages are correct
