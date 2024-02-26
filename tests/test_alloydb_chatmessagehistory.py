@@ -39,8 +39,6 @@ def setup() -> Generator:
         cluster=cluster_id,
         instance=instance_id,
         database=db_name,
-        user="postgres",
-        password="my-test-password",
     )
     engine.init_chat_history_table(table_name=table_name)
     yield engine
@@ -57,8 +55,6 @@ async def async_engine():
         cluster=cluster_id,
         instance=instance_id,
         database=db_name,
-        user="postgres",
-        password="my-test-password",
     )
     await engine.ainit_chat_history_table(table_name=table_name_async)
     yield engine
@@ -123,7 +119,7 @@ async def test_chat_message_history_async(async_engine: AlloyDBEngine) -> None:
     assert type(messages[1]) is AIMessage
 
     # verify clear() clears message history
-    history.clear()
+    await history.aclear()
     assert len(history.messages) == 0
 
 
