@@ -106,8 +106,8 @@ class AlloyDBEngine:
     def from_instance(
         cls,
         project_id: str,
-        cluster: str,
         region: str,
+        cluster: str,
         instance: str,
         database: str,
         user: Optional[str] = None,
