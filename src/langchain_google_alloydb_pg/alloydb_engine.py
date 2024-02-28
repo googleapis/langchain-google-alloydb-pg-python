@@ -382,7 +382,7 @@ class AlloyDBEngine:
             )
         )
 
-    async def _aload_document_table(
+    async def _aload_table(
         self,
         table_name: str,
     ) -> Table:
