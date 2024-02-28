@@ -23,7 +23,8 @@ import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
-from sqlalchemy import text
+from sqlalchemy import MetaData, Table, text
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from .version import __version__
@@ -42,7 +43,7 @@ async def _get_iam_principal_email(
 ) -> str:
     """Get email address associated with current authenticated IAM principal.
 
-    Email will be used for automatic IAM database authentication to Cloud SQL.
+    Email will be used for automatic IAM database authentication to AlloyDB.
 
     Args:
         credentials (google.auth.credentials.Credentials):
@@ -88,7 +89,7 @@ class Column:
 
 
 class AlloyDBEngine:
-    """A class for managing connections to a Cloud SQL for Postgres database."""
+    """A class for managing connections to a AlloyDB database."""
 
     _connector: Optional[AsyncConnector] = None
 
@@ -106,8 +107,8 @@ class AlloyDBEngine:
     def from_instance(
         cls,
         project_id: str,
-        cluster: str,
         region: str,
+        cluster: str,
         instance: str,
         database: str,
         user: Optional[str] = None,
@@ -221,6 +222,10 @@ class AlloyDBEngine:
             password,
         )
 
+    @classmethod
+    def from_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
+        return cls(engine, None, None)
+
     async def _aexecute(self, query: str, params: Optional[dict] = None):
         """Execute a SQL query."""
         async with self._engine.connect() as conn:
@@ -242,12 +247,18 @@ class AlloyDBEngine:
 
         return result_fetch
 
-    def run_as_sync(self, coro: Awaitable[T]) -> T:
+    def _execute(self, query: str, params: Optional[dict] = None):
+        return self._run_as_sync(self._aexecute(query, params))
+
+    def _fetch(self, query: str, params: Optional[dict] = None):
+        return self._run_as_sync(self._afetch(query, params))
+
+    def _run_as_sync(self, coro: Awaitable[T]) -> T:
         if not self._loop:
             raise Exception("Engine was initialized async.")
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
-    async def init_vectorstore_table(
+    async def ainit_vectorstore_table(
         self,
         table_name: str,
         vector_size: int,
@@ -278,7 +289,33 @@ class AlloyDBEngine:
 
         await self._aexecute(query)
 
-    async def init_chat_history_table(self, table_name) -> None:
+    def init_vectorstore_table(
+        self,
+        table_name: str,
+        vector_size: int,
+        content_column: str = "content",
+        embedding_column: str = "embedding",
+        metadata_columns: List[Column] = [],
+        metadata_json_column: str = "langchain_metadata",
+        id_column: str = "langchain_id",
+        overwrite_existing: bool = False,
+        store_metadata: bool = True,
+    ) -> None:
+        return self._run_as_sync(
+            self.ainit_vectorstore_table(
+                table_name,
+                vector_size,
+                content_column,
+                embedding_column,
+                metadata_columns,
+                metadata_json_column,
+                id_column,
+                overwrite_existing,
+                store_metadata,
+            )
+        )
+
+    async def ainit_chat_history_table(self, table_name) -> None:
         create_table_query = f"""CREATE TABLE IF NOT EXISTS "{table_name}"(
             id SERIAL PRIMARY KEY,
             session_id TEXT NOT NULL,
@@ -286,3 +323,93 @@ class AlloyDBEngine:
             type TEXT NOT NULL
         );"""
         await self._aexecute(create_table_query)
+
+    def init_chat_history_table(self, table_name) -> None:
+        return self._run_as_sync(
+            self.ainit_chat_history_table(
+                table_name,
+            )
+        )
+
+    async def ainit_document_table(
+        self,
+        table_name: str,
+        content_column: str = "page_content",
+        metadata_columns: List[Column] = [],
+        metadata_json_column: str = "langchain_metadata",
+        store_metadata: bool = True,
+    ) -> None:
+        """
+        Create a table for saving of langchain documents.
+
+        Args:
+            table_name (str): The PgSQL database table name.
+            metadata_columns (List[Column]): A list of Columns
+                to create for custom metadata. Optional.
+            store_metadata (bool): Whether to store extra metadata in a metadata column
+                if not described in 'metadata' field list (Default: True).
+        """
+
+        query = f"""CREATE TABLE "{table_name}"(
+            {content_column} TEXT NOT NULL
+            """
+        for column in metadata_columns:
+            query += f',\n"{column.name}" {column.data_type}' + (
+                "NOT NULL" if not column.nullable else ""
+            )
+        metadata_json_column = metadata_json_column or "langchain_metadata"
+        if store_metadata:
+            query += f',\n"{metadata_json_column}" JSON'
+        query += "\n);"
+
+        await self._aexecute(query)
+
+    def init_document_table(
+        self,
+        table_name: str,
+        content_column: str = "page_content",
+        metadata_columns: List[Column] = [],
+        metadata_json_column: str = "langchain_metadata",
+        store_metadata: bool = True,
+    ) -> None:
+        return self._run_as_sync(
+            self.ainit_document_table(
+                table_name,
+                content_column,
+                metadata_columns,
+                metadata_json_column,
+                store_metadata,
+            )
+        )
+
+    async def _aload_table_schema(
+        self,
+        table_name: str,
+    ) -> Table:
+        """
+        Load table schema from existing table in PgSQL database.
+
+        Returns:
+            (sqlalchemy.Table): The loaded table.
+        """
+        metadata = MetaData()
+        async with self._engine.connect() as conn:
+            try:
+                await conn.run_sync(metadata.reflect, only=[table_name])
+            except InvalidRequestError as e:
+                raise ValueError(f"Table, {table_name}, does not exist: " + str(e))
+
+        table = Table(table_name, metadata)
+        # Extract the schema information
+        schema = []
+        for column in table.columns:
+            schema.append(
+                {
+                    "name": column.name,
+                    "type": column.type.python_type,
+                    "max_length": getattr(column.type, "length", None),
+                    "nullable": not column.nullable,
+                }
+            )
+
+        return metadata.tables[table_name]

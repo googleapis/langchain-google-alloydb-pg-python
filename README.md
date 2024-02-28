@@ -1,10 +1,10 @@
 # AlloyDB for PostgreSQL for LangChain
 
-*Description*
+This package contains the [LangChain][langchain] integrations for AlloyDB for PostgreSQL.
 
 > **🧪 Preview:** This feature is covered by the Pre-GA Offerings Terms of the Google Cloud Terms of Service. Please note that pre-GA products and features might have limited support, and changes to pre-GA products and features might not be compatible with other pre-GA versions. For more information, see the [launch stage descriptions](https://cloud.google.com/products#product-launch-stages)
 
-* [Documentation](docs/)
+* [Documentation][docs]
 * [API Reference]()
 
 ## Getting Started
@@ -30,28 +30,78 @@ dependencies.
 pip install virtualenv
 virtualenv <your-env>
 source <your-env>/bin/activate
-<your-env>/bin/pip install langchain-google-alloydb
+<your-env>/bin/pip install langchain-google-alloydb-pg
 ```
 
-## Usage
+## Vector Store Usage
+
+Use a vector store to store embedded data and perform vector search.
 
 ```python
-from langchain_google_alloydb import AlloyDBVectorstore, AlloyDBLoader, AlloyDBChatMessageHistory
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorstore
+from langchain_google_vertexai import VertexAIEmbeddings
+
+
+engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+embeddings_service = VertexAIEmbeddings()
+vectorstore = AlloyDBVectorStore(
+    engine,
+    table_name="my-table",
+    embeddings=embedding_service
+)
 ```
+
+See the full [Vector Store][vectorstore] tutorial.
+
+## Document Loader Usage
+
+Use a document loader to load data as LangChain `Document`s.
+
+```python
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBLoader
+
+
+engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+loader = PostgresSQLLoader(
+    engine,
+    table_name="my-table-name"
+)
+docs = loader.lazy_load()
+```
+
+See the full [Document Loader][loader] tutorial.
+
+## Chat Message History Usage
+
+Use `ChatMessageHistory` to store messages and provide conversation history to LLMs.
+
+```python
+from langchain_google_alloydb_pg import AlloyDBChatMessageHistory, AlloyDBEngine
+
+
+engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+history = AlloyDBChatMessageHistory(
+    engine,
+    table_name="my-message-store",
+    session_id="my-session-id"
+)
+```
+
+See the full [Chat Message History][history] tutorial.
 
 ## Contributing
 
 Contributions to this library are always welcome and highly encouraged.
 
-See [CONTRIBUTING](CONTRIBUTING.md) for more information how to get started.
+See [CONTRIBUTING][contributing] for more information how to get started.
 
 Please note that this project is released with a Contributor Code of Conduct. By participating in
-this project you agree to abide by its terms. See [Code of Conduct](CODE_OF_CONDUCT.md) for more
+this project you agree to abide by its terms. See [Code of Conduct][coc] for more
 information.
 
 ## License
 
-Apache 2.0 - See [LICENSE](LICENSE) for more information.
+Apache 2.0 - See [LICENSE][license] for more information.
 
 ## Disclaimer
 
@@ -62,3 +112,10 @@ This is not an officially supported Google product.
 [api]: https://console.cloud.google.com/flows/enableapi?apiid=alloydb.googleapis.com
 [auth]: https://googleapis.dev/python/google-api-core/latest/auth.html
 [venv]: https://virtualenv.pypa.io/en/latest/
+[loader]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/document_loader.ipynb
+[history]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/chat_message_history.ipynb
+[langchain]: https://github.com/langchain-ai/langchain
+[docs]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs
+[license]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/LICENSE
+[contributing]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/CONTRIBUTING.md
+[coc]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/CODE_OF_CONDUCT.md
