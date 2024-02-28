@@ -38,11 +38,11 @@ source <your-env>/bin/activate
 Use a vector store to store embedded data and perform vector search.
 
 ```python
-from langchain_google_alloydb_pg import AlloyDBVectorstore, AlloyDBEngine
-from langchain.embeddings import VertexAIEmbeddings
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorstore
+from langchain_google_vertexai import VertexAIEmbeddings
 
 
-engine = AlloyDBEngine.from_instance("region", "my-instance", "my-database")
+engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
 embeddings_service = VertexAIEmbeddings()
 vectorstore = AlloyDBVectorStore(
     engine,
@@ -61,7 +61,7 @@ Use a document loader to load data as LangChain `Document`s.
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBLoader
 
 
-engine = AlloyDBEngine.from_instance("region", "my-instance", "my-database")
+engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
 loader = PostgresSQLLoader(
     engine,
     table_name="my-table-name"
@@ -79,11 +79,11 @@ Use `ChatMessageHistory` to store messages and provide conversation history to L
 from langchain_google_alloydb_pg import AlloyDBChatMessageHistory, AlloyDBEngine
 
 
-engine = AlloyDBEngine.from_instance("region", "my-instance", "my-database")
+engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
 history = AlloyDBChatMessageHistory(
     engine,
     table_name="my-message-store",
-    session_id="my-session_id"
+    session_id="my-session-id"
 )
 ```
 
