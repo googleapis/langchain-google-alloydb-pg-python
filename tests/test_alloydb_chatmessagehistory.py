@@ -137,11 +137,12 @@ async def test_chat_message_history_sync_messages(
     msg2 = AIMessage(content="whats up?")
     await history1.aadd_message(msg1)
     await history2.aadd_message(msg2)
-    messages = history2.messages
-    assert len(messages) == 1
-    assert messages[0].content == "whats up?"
-    await history2.async_messages()
-    assert len(messages) == 2
+
+    assert len(history1.messages) == 1
+    assert len(history2.messages) == 2
+
+    await history1.async_messages()
+    assert len(history1.messages) == 2
 
     # verify clear() clears message history
     await history2.aclear()
