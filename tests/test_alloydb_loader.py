@@ -474,7 +474,7 @@ class TestAlloyDBLoader:
             docs = await self._collect_async_items(loader.alazy_load())
 
             assert docs == test_docs
-            assert (await engine._aload_table(table_name)).columns.keys() == [
+            assert (await engine._aload_table_schema(table_name)).columns.keys() == [
                 "page_content",
                 "langchain_metadata",
             ]
@@ -517,7 +517,7 @@ class TestAlloyDBLoader:
 
         if store_metadata:
             docs == test_docs
-            assert (await engine._aload_table(table_name)).columns.keys() == [
+            assert (await engine._aload_table_schema(table_name)).columns.keys() == [
                 "page_content",
                 "fruit_name",
                 "organic",
@@ -530,7 +530,7 @@ class TestAlloyDBLoader:
                     metadata={"fruit_name": "Apple", "organic": True},
                 ),
             ]
-            assert (await engine._aload_table(table_name)).columns.keys() == [
+            assert (await engine._aload_table_schema(table_name)).columns.keys() == [
                 "page_content",
                 "fruit_name",
                 "organic",
@@ -568,7 +568,7 @@ class TestAlloyDBLoader:
                     metadata={},
                 ),
             ]
-            assert (await engine._aload_table(table_name)).columns.keys() == [
+            assert (await engine._aload_table_schema(table_name)).columns.keys() == [
                 "page_content",
             ]
         finally:

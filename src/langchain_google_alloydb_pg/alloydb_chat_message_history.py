@@ -67,7 +67,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         session_id: str,
         table_name: str,
     ):
-        table_schema = await engine._aload_table(table_name)
+        table_schema = await engine._aload_table_schema(table_name)
         column_names = table_schema.columns.keys()
 
         required_columns = ["id", "session_id", "data", "type"]

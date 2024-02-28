@@ -124,6 +124,31 @@ async def test_chat_message_history_async(async_engine: AlloyDBEngine) -> None:
 
 
 @pytest.mark.asyncio
+async def test_chat_message_history_sync_messages(
+    async_engine: AlloyDBEngine,
+) -> None:
+    history1 = await AlloyDBChatMessageHistory.create(
+        engine=async_engine, session_id="test", table_name=table_name_async
+    )
+    history2 = await AlloyDBChatMessageHistory.create(
+        engine=async_engine, session_id="test", table_name=table_name_async
+    )
+    msg1 = HumanMessage(content="hi!")
+    msg2 = AIMessage(content="whats up?")
+    await history1.aadd_message(msg1)
+    await history2.aadd_message(msg2)
+    messages = history2.messages
+    assert len(messages) == 1
+    assert messages[0].content == "whats up?"
+    await history2.async_messages()
+    assert len(messages) == 2
+
+    # verify clear() clears message history
+    await history2.aclear()
+    assert len(history2.messages) == 0
+
+
+@pytest.mark.asyncio
 async def test_chat_table_async(async_engine):
     with pytest.raises(ValueError):
         await AlloyDBChatMessageHistory.create(
