@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import List, Sequence
 
@@ -109,7 +110,9 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
                 "type": message.type,
             },
         )
-        self.messages.append(message)
+        self.messages = await _aget_messages(
+            self.engine, self.session_id, self.table_name
+        )
 
     def add_message(self, message: BaseMessage) -> None:
         self.engine._run_as_sync(self.aadd_message(message))
@@ -129,3 +132,11 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
 
     def clear(self) -> None:
         self.engine._run_as_sync(self.aclear())
+
+    async def async_messages(self) -> None:
+        self.messages = await _aget_messages(
+            self.engine, self.session_id, self.table_name
+        )
+
+    def sync_messages(self) -> None:
+        self.engine._run_as_sync(self.async_messages())
