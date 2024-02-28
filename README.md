@@ -112,10 +112,10 @@ This is not an officially supported Google product.
 [api]: https://console.cloud.google.com/flows/enableapi?apiid=alloydb.googleapis.com
 [auth]: https://googleapis.dev/python/google-api-core/latest/auth.html
 [venv]: https://virtualenv.pypa.io/en/latest/
-[loader]: https://github.com/googleapis/langchain-google-alloydb-python/tree/main/docs/document_loader.ipynb
-[history]: https://github.com/googleapis/langchain-google-alloydb-python/tree/main/docs/chat_message_history.ipynb
+[loader]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/document_loader.ipynb
+[history]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/chat_message_history.ipynb
 [langchain]: https://github.com/langchain-ai/langchain
-[docs]: https://github.com/googleapis/langchain-google-alloydb-python/tree/main/docs
-[license]: https://github.com/googleapis/langchain-google-alloydb-python/tree/main/LICENSE
-[contributing]: https://github.com/googleapis/langchain-google-alloydb-python/tree/main/CONTRIBUTING.md
-[coc]: https://github.com/googleapis/langchain-google-alloydb-python/tree/main/CODE_OF_CONDUCT.md
+[docs]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs
+[license]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/LICENSE
+[contributing]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/CONTRIBUTING.md
+[coc]: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/CODE_OF_CONDUCT.md
