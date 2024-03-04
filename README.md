@@ -20,7 +20,7 @@ In order to use this library, you first need to go through the following steps:
 
 Install this library in a [`virtualenv`][venv] using pip. [`virtualenv`][venv] is a tool to
 create isolated Python environments. The basic problem it addresses is one of
-dependencies and versions, and indirectly permissions.
+dependencies and versions, and indirectly permission.
 
 With [`virtualenv`][venv], it's possible to install this library without needing system
 install permissions, and without clashing with the installed system
