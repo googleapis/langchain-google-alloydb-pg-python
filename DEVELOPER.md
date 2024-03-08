@@ -1,5 +1,19 @@
 # DEVELOPER.md
 
+## Versioning
+
+This library follows [Semantic Versioning](http://semver.org/).
+
+## Processes
+
+### Conventional Commit messages
+
+This repository uses tool [Release Please](https://github.com/googleapis/release-please) to create GitHub and PyPi releases. It does so by parsing your
+git history, looking for [Conventional Commit messages](https://www.conventionalcommits.org/),
+and creating release PRs.
+
+Learn more by reading [How should I write my commits?](https://github.com/googleapis/release-please?tab=readme-ov-file#how-should-i-write-my-commits)
+
 ## Testing
 
 ### Run tests locally
