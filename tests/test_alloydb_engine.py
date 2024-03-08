@@ -121,7 +121,10 @@ class TestEngineAsync:
             id_column="uuid",
             content_column="my-content",
             embedding_column="my_embedding",
-            metadata_columns=[Column("page", "TEXT"), Column("source", "TEXT")],
+            metadata_columns=[
+                Column("page", "TEXT", False),
+                Column("source", "TEXT"),
+            ],
             store_metadata=True,
         )
         stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CUSTOM_TABLE}';"
