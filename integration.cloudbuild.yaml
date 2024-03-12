@@ -14,17 +14,21 @@
 
 steps:
   - id: Install dependencies
-    name: python:3.11
-    entrypoint: pip
-    args: ["install", "--user", "-r", "requirements.txt"]
+    name: python:${_VERSION}
+    entrypoint: /bin/bash
+    args:
+      - -c
+      - |
+        if [[ $_VERSION == "3.8" ]]; then version="-3.8"; fi
+        pip install --user -r requirements${version}.txt
 
   - id: Install module (and test requirements)
-    name: python:3.11
+    name: python:${_VERSION}
     entrypoint: pip
     args: ["install", ".[test]", "--user"]
 
   - id: Run integration tests
-    name: python:3.11
+    name: python:${_VERSION}
     entrypoint: python
     args: ["-m", "pytest"]
     env:
@@ -42,6 +46,10 @@ availableSecrets:
     - versionName: projects/$PROJECT_ID/secrets/DB_PASSWORD/versions/1
       env: "DB_PASSWORD"
 
+substitutions:
+  _VERSION: "3.8"
+
 options:
   pool:
     name: "projects/langchain-alloydb-testing/locations/us-central1/workerPools/my-pool"
+  dynamicSubstitutions: true
