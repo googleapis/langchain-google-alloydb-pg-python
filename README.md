@@ -38,7 +38,7 @@ source <your-env>/bin/activate
 Use a vector store to store embedded data and perform vector search.
 
 ```python
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorstore
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_vertexai import VertexAIEmbeddings
 
 
