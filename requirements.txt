@@ -1,4 +1,4 @@
-google-cloud-alloydb-connector[asyncpg]==0.4.1
+google-cloud-alloydb-connector[asyncpg]==1.0.0
 langchain-core==0.1.30
 langchain-community==0.0.27
 numpy==1.26.4
