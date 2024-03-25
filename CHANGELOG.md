@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.1.0...v0.2.0) (2024-03-25)
+
+
+### Features
+
+* **ci:** Test against multiple python versions ([#57](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/57)) ([c398581](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/c39858126006835fc1ff680ee4e6199d3f8d12ca))
+
+
+### Bug Fixes
+
+* Sql statement for non-nullable columns ([#59](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/59)) ([84c9d26](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/84c9d26d00b58220c082c99a91e9d5308760c605))
+
+
+### Documentation
+
+* Add Demo Langchain Application. ([#42](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/42)) ([9fd2aa7](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9fd2aa7cecaa6d1a0010f8ced5f518096a167388))
+* Add github links ([#51](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/51)) ([0f86e02](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/0f86e022fd2f698da00b7098d151ac22b5ca2d5e))
+* Correcting vectorstore import ([#64](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/64)) ([1309da6](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/1309da67b0a7d431a15593bf5bc414f54aeb5290))
+* Update CODEOWNERS ([#45](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/45)) ([f5e0e01](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f5e0e0150962ab352da27317d67fe0710108444d))
+* Update langchain_quick_start.ipynb ([#47](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/47)) ([026cd63](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/026cd6324fac77daab3566ea310adcac5fbaa8ac))
+* Update langchain_quick_start.ipynb ([#52](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/52)) ([8108c02](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/8108c02fe66a66b1ba11c91c452364794fdc33d7))
+* Update langchain_quick_start.ipynb ([#53](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/53)) ([31b90c0](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/31b90c0d66c495e623e629f92bad0d30bd2ad33e))
+* Update langchain_quick_start.ipynb ([#54](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/54)) ([41ccee8](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/41ccee89d53bf4b7f073da6fd9eb4e0e0bc74920))
+* Update langchain_quick_start.ipynb ([#55](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/55)) ([56cdda2](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/56cdda22cdac196f472bab2e85c37e324639588e))
+* Update README.md ([#46](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/46)) ([e488bbd](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/e488bbd0b361203763006b83af9eeb6741438221))
+* Update tutorials and add GitHub links ([#49](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/49)) ([96f4515](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/96f45152efaaa1dcc7d0776d9234ebeac50992e5))
+
 ## 0.1.0 (2024-02-28)
 
 
