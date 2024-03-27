@@ -20,7 +20,11 @@ import pytest_asyncio
 from langchain_community.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg import (
+    AlloyDBEngine,
+    AlloyDBVectorStore,
+    Column,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4()).replace("-", "_")
@@ -30,9 +34,12 @@ VECTOR_SIZE = 768
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 texts = ["foo", "bar", "baz"]
-metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
+metadatas = [
+    {"page": str(i), "source": "google.com"} for i in range(len(texts))
+]
 docs = [
-    Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
+    Document(page_content=texts[i], metadata=metadatas[i])
+    for i in range(len(texts))
 ]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
@@ -68,7 +75,9 @@ class TestVectorStore:
         return get_env_var("DATABASE_ID", "database name for AlloyDB")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_instance, db_cluster, db_name):
+    async def engine(
+        self, db_project, db_region, db_instance, db_cluster, db_name
+    ):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,
@@ -80,7 +89,9 @@ class TestVectorStore:
         yield engine
 
     @pytest_asyncio.fixture(scope="class")
-    def engine_sync(self, db_project, db_region, db_instance, db_cluster, db_name):
+    def engine_sync(
+        self, db_project, db_region, db_instance, db_cluster, db_name
+    ):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             instance=db_instance,
@@ -225,6 +236,7 @@ class TestVectorStore:
         content = [result["mycontent"] for result in results]
         assert len(results) == 2
         assert "foo" not in content
+        await vs_custom.adelete(ids)
 
     async def test_aadd_docs_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
