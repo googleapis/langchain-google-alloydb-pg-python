@@ -179,7 +179,7 @@ def test_from_engine():
         def getconn():
             conn = connector.connect(  # type: ignore
                 f"projects/{project_id}/locations/{region}/clusters/{cluster_id}/instances/{instance_id}",
-                "pg8000",
+                "asyncpg",
                 user=os.getenv("DB_USER"),
                 password=os.getenv("DB_PASSWORD"),
                 db=db_name,
@@ -189,7 +189,7 @@ def test_from_engine():
             return conn
 
         engine = create_async_engine(
-            "postgresql+pg8000://",
+            "postgresql+asynpg://",
             creator=getconn,
         )
 
