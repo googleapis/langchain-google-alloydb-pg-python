@@ -17,7 +17,7 @@ from typing import Generator
 
 import pytest
 import pytest_asyncio
-from google.cloud.alloydb.connector import Connector
+from google.cloud.alloydb.connector import AsyncConnector
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
 from sqlalchemy import create_engine
@@ -174,7 +174,7 @@ async def test_chat_schema_async(async_engine):
 
 
 def test_from_engine():
-    with Connector() as connector:
+    async with AsyncConnector() as connector:
 
         async def getconn():
             conn = connector.connect(  # type: ignore
