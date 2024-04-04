@@ -17,15 +17,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from threading import Thread
-from typing import (
-    TYPE_CHECKING,
-    Awaitable,
-    Dict,
-    List,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, TypeVar, Union
 
 import aiohttp
 import google.auth  # type: ignore
@@ -412,9 +404,7 @@ class AlloyDBEngine:
             try:
                 await conn.run_sync(metadata.reflect, only=[table_name])
             except InvalidRequestError as e:
-                raise ValueError(
-                    f"Table, {table_name}, does not exist: " + str(e)
-                )
+                raise ValueError(f"Table, {table_name}, does not exist: " + str(e))
 
         table = Table(table_name, metadata)
         # Extract the schema information
