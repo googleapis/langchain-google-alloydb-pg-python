@@ -21,6 +21,7 @@ from google.cloud.alloydb.connector import Connector
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from langchain_google_alloydb_pg import AlloyDBChatMessageHistory, AlloyDBEngine
 
@@ -187,7 +188,7 @@ def test_from_engine():
             )
             return conn
 
-        engine = create_engine(
+        engine = create_async_engine(
             "postgresql+pg8000://",
             creator=getconn,
         )
