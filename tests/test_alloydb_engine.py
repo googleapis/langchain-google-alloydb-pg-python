@@ -222,7 +222,7 @@ class TestEngineAsync:
 
             engine = create_engine(
                 "postgresql+pg8000://",
-                async_creator=getconn,
+                creator=getconn,
             )
 
             engine = AlloyDBEngine.from_engine(engine)
