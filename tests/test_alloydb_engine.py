@@ -164,6 +164,38 @@ class TestEngineAsync:
         assert engine
         await engine._aexecute("SELECT 1")
 
+    async def test_afrom_engine(
+        self,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        user,
+        password,
+    ):
+        async with AsyncConnector() as connector:
+
+            async def getconn() -> asyncpg.Connection:
+                conn = await connector.connect(  # type: ignore
+                    f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
+                    "asyncpg",
+                    user=user,
+                    password=password,
+                    db=db_name,
+                    enable_iam_auth=False,
+                    ip_type=IPTypes.PUBLIC,
+                )
+                return conn
+
+            engine = create_async_engine(
+                "postgresql+asyncpg://",
+                async_creator=getconn,
+            )
+
+            engine = await AlloyDBEngine.afrom_engine(engine)
+            await engine._aexecute("SELECT 1")
+
     async def test_from_engine(
         self,
         db_project,
@@ -194,7 +226,7 @@ class TestEngineAsync:
             )
 
             engine = AlloyDBEngine.from_engine(engine)
-            await engine._aexecute("SELECT 1")
+            engine._aexecute("SELECT 1")
 
     async def test_column(self, engine):
         with pytest.raises(ValueError):

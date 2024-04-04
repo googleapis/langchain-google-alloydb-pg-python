@@ -232,7 +232,7 @@ class AlloyDBEngine:
         return cls(engine, loop, thread)
 
     @classmethod
-    def afrom_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
+    async def afrom_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
         return cls(engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None):
