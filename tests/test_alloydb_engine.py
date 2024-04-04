@@ -226,7 +226,7 @@ class TestEngineAsync:
             )
 
             engine = AlloyDBEngine.from_engine(engine)
-            engine._aexecute("SELECT 1")
+            engine._execute("SELECT 1")
 
     async def test_column(self, engine):
         with pytest.raises(ValueError):
