@@ -19,9 +19,9 @@ from typing import List
 import asyncpg  # type: ignore
 import pytest
 import pytest_asyncio
-from google.cloud.alloydb.connector import AsyncConnector, IPTypes
+from google.cloud.alloydb.connector import AsyncConnector, Connector, IPTypes
 from langchain_community.embeddings import FakeEmbeddings
-from sqlalchemy import VARCHAR
+from sqlalchemy import VARCHAR, create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
@@ -206,12 +206,12 @@ class TestEngineAsync:
         user,
         password,
     ):
-        async with AsyncConnector() as connector:
+        with Connector() as connector:
 
-            async def getconn() -> asyncpg.Connection:
-                conn = await connector.connect(  # type: ignore
+            def getconn():
+                conn = connector.connect(  # type: ignore
                     f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
-                    "asyncpg",
+                    "pg8000",
                     user=user,
                     password=password,
                     db=db_name,
@@ -220,8 +220,8 @@ class TestEngineAsync:
                 )
                 return conn
 
-            engine = create_async_engine(
-                "postgresql+asyncpg://",
+            engine = create_engine(
+                "postgresql+pg8000://",
                 async_creator=getconn,
             )
 
