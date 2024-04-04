@@ -17,7 +17,15 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from threading import Thread
-from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Awaitable,
+    Dict,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 import aiohttp
 import google.auth  # type: ignore
@@ -224,6 +232,15 @@ class AlloyDBEngine:
 
     @classmethod
     def from_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
+        # Running a loop in a background thread allows us to support
+        # async methods from non-async environments
+        loop = asyncio.new_event_loop()
+        thread = Thread(target=loop.run_forever, daemon=True)
+        thread.start()
+        return cls(engine, loop, thread)
+
+    @classmethod
+    def afrom_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
         return cls(engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None):
@@ -395,7 +412,9 @@ class AlloyDBEngine:
             try:
                 await conn.run_sync(metadata.reflect, only=[table_name])
             except InvalidRequestError as e:
-                raise ValueError(f"Table, {table_name}, does not exist: " + str(e))
+                raise ValueError(
+                    f"Table, {table_name}, does not exist: " + str(e)
+                )
 
         table = Table(table_name, metadata)
         # Extract the schema information
