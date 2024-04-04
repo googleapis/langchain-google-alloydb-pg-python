@@ -189,7 +189,7 @@ def test_from_engine():
             return conn
 
         engine = create_async_engine(
-            "postgresql+asynpg://",
+            "postgresql+asyncpg://",
             creator=getconn,
         )
 
