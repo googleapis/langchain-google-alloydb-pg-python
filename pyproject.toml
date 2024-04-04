@@ -28,7 +28,6 @@ Changelog = "https://github.com/googleapis/langchain-google-alloydb-pg-python/bl
 
 [project.optional-dependencies]
 test = [
-    "google-cloud-alloydb-connector[pg8000]==1.0.0",
     "black[jupyter]==23.12.1",
     "isort==5.13.2",
     "mypy==1.9.0",

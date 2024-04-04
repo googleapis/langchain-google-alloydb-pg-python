@@ -176,7 +176,7 @@ async def test_chat_schema_async(async_engine):
 def test_from_engine():
     with Connector() as connector:
 
-        def getconn():
+        async def getconn():
             conn = connector.connect(  # type: ignore
                 f"projects/{project_id}/locations/{region}/clusters/{cluster_id}/instances/{instance_id}",
                 "asyncpg",
@@ -190,7 +190,7 @@ def test_from_engine():
 
         engine = create_async_engine(
             "postgresql+asyncpg://",
-            creator=getconn,
+            async_creator=getconn,
         )
 
         engine = AlloyDBEngine.from_engine(engine)
