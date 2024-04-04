@@ -173,7 +173,8 @@ async def test_chat_schema_async(async_engine):
     await async_engine._aexecute(query)
 
 
-def test_from_engine():
+@pytest_asyncio.fixture
+async def sync_engine():
     async with AsyncConnector() as connector:
 
         async def getconn():
@@ -192,10 +193,13 @@ def test_from_engine():
             "postgresql+asyncpg://",
             async_creator=getconn,
         )
+        yield engine
 
-        engine = AlloyDBEngine.from_engine(engine)
-        table_name = "test_table" + str(uuid.uuid4())
-        engine.init_document_table(table_name=table_name)
-        history = AlloyDBChatMessageHistory.create_sync(
-            engine=engine, session_id="test", table_name=table_name
-        )
+
+def test_from_engine(sync_engine):
+    engine = AlloyDBEngine.from_engine(engine)
+    table_name = "test_table" + str(uuid.uuid4())
+    engine.init_document_table(table_name=table_name)
+    history = AlloyDBChatMessageHistory.create_sync(
+        engine=engine, session_id="test", table_name=table_name
+    )
