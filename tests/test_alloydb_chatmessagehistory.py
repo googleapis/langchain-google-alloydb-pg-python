@@ -17,8 +17,10 @@ from typing import Generator
 
 import pytest
 import pytest_asyncio
+from google.cloud.alloydb.connector import Connector
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
+from sqlalchemy import create_engine
 
 from langchain_google_alloydb_pg import AlloyDBChatMessageHistory, AlloyDBEngine
 
@@ -168,3 +170,31 @@ async def test_chat_schema_async(async_engine):
 
     query = f'DROP TABLE IF EXISTS "{table_name}"'
     await async_engine._aexecute(query)
+
+
+def test_from_engine():
+    with Connector() as connector:
+
+        def getconn():
+            conn = connector.connect(  # type: ignore
+                f"projects/{project_id}/locations/{region}/clusters/{cluster_id}/instances/{instance_id}",
+                "pg8000",
+                user=os.getenv("DB_USER"),
+                password=os.getenv("DB_PASSWORD"),
+                db=db_name,
+                enable_iam_auth=False,
+                ip_type="public",
+            )
+            return conn
+
+        engine = create_engine(
+            "postgresql+pg8000://",
+            creator=getconn,
+        )
+
+        engine = AlloyDBEngine.from_engine(engine)
+        table_name = "test_table" + str(uuid.uuid4())
+        engine.init_document_table(table_name=table_name)
+        history = AlloyDBChatMessageHistory.create_sync(
+            engine=engine, session_id="test", table_name=table_name
+        )
