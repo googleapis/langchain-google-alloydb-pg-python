@@ -6,10 +6,10 @@
     "group:allNonMajor", // https://docs.renovatebot.com/presets-group/#groupallnonmajor
     ":separateMajorReleases", // https://docs.renovatebot.com/presets-default/#separatemajorreleases
     ":prConcurrentLimitNone", // View complete backlog as PRs. https://docs.renovatebot.com/presets-default/#prconcurrentlimitnone
-    ":prNotPending", // https://docs.renovatebot.com/presets-default/#prnotpending
     ":prHourlyLimitNone", // https://docs.renovatebot.com/presets-default/#prhourlylimitnone
     ":preserveSemverRanges",
   ],
+  "ignorePaths": [".kokoro/**"],
 
   // Give ecosystem time to catch up.
   // npm allows maintainers to unpublish a release up to 3 days later.
@@ -27,13 +27,11 @@
     "type: process",
   ],
   "packageRules": [
-
     {
        "groupName": "GitHub Actions",
        "matchManagers": ["github-actions"],
        "pinDigests": true,
     },
-
     // Python Specific
     {
       "matchPackageNames": ["pytest"],
@@ -44,6 +42,5 @@
       "matchLanguages": ["python"],
       "matchUpdateTypes": ["minor", "patch"],
     },
-
   ],
 }

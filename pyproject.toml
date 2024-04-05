@@ -31,7 +31,7 @@ test = [
     "black[jupyter]==23.12.1",
     "isort==5.13.2",
     "mypy==1.9.0",
-    "pytest-asyncio==0.23.5.post1",
+    "pytest-asyncio==0.23.6",
     "pytest==7.4.4"
 ]
 
