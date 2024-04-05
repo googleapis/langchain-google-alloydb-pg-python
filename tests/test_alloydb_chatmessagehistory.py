@@ -197,7 +197,7 @@ async def sync_engine():
 
 
 def test_from_engine(sync_engine):
-    engine = AlloyDBEngine.from_engine(engine)
+    engine = AlloyDBEngine.from_engine(sync_engine)
     table_name = "test_table" + str(uuid.uuid4())
     engine.init_document_table(table_name=table_name)
     history = AlloyDBChatMessageHistory.create_sync(
