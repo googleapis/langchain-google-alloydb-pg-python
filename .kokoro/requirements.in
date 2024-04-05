@@ -11,4 +11,4 @@ click<8.1.0
 build
 tomli
 secretstorage
-cryptography==42.0.2
+cryptography

@@ -186,6 +186,16 @@ class TestVectorStore:
         assert len(results) == 3
         await engine._aexecute(f"TRUNCATE TABLE {DEFAULT_TABLE}")
 
+    async def test_adelete(self, engine, vs):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs.aadd_texts(texts, ids=ids)
+        results = await engine._afetch(f"SELECT * FROM {DEFAULT_TABLE}")
+        assert len(results) == 3
+        # delete an ID
+        await vs.adelete([ids[0]])
+        results = await engine._afetch(f"SELECT * FROM {DEFAULT_TABLE}")
+        assert len(results) == 2
+
     async def test_aadd_texts_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         await vs_custom.aadd_texts(texts, ids=ids)
@@ -201,6 +211,21 @@ class TestVectorStore:
         results = await engine._afetch(f'SELECT * FROM "{CUSTOM_TABLE}"')
         assert len(results) == 6
         await engine._aexecute(f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
+
+    async def test_adelete_custom(self, engine, vs_custom):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs_custom.aadd_texts(texts, ids=ids)
+        results = await engine._afetch(f'SELECT * FROM "{CUSTOM_TABLE}"')
+        content = [result["mycontent"] for result in results]
+        assert len(results) == 3
+        assert "foo" in content
+        # delete an ID
+        await vs_custom.adelete([ids[0]])
+        results = await engine._afetch(f'SELECT * FROM "{CUSTOM_TABLE}"')
+        content = [result["mycontent"] for result in results]
+        assert len(results) == 2
+        assert "foo" not in content
+        await vs_custom.adelete(ids)
 
     async def test_aadd_docs_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
