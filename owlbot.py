@@ -38,16 +38,17 @@ s.move(
         "header-checker-lint.yml",
     ],
 )
-# s.move(templated_files / "README.rst")
+# s.move(templated_files / "README.rst") # Do not overwrite README examples
+# s.move(templated_files / "noxfile.py") # Do not use nox for testing
 s.move(
     templated_files / ".kokoro",
     excludes=[
-        "continuous/**",
+        "continuous/**",  # Do not use Kokoro for testing
         "presubmit/**",
         "samples/**",
         "publish-docs.sh",
         "test-samples*.sh",
-        "requirements.in",
+        "requirements.in",  # Self manage Kokoro dependencies
         "requirements.txt",
     ],
 )
@@ -68,13 +69,4 @@ s.replace(
 )
 s.replace(
     ".kokoro/docs/common.cfg", '"docs-staging-v2-staging', '"docs-staging-v2'
-)
-# s.replace(".gitignore", "bigquery/docs/generated", "package-lock.json")
-s.replace(
-    ".kokoro/docker/docs/Dockerfile",
-    "RUN python3 -m pip",
-    """RUN python3 -m pip
-    # Install build requirements
-    COPY requirements.txt /requirements.txt
-    RUN python3 -m pip install --require-hashes -r requirements.txt""",
 )
