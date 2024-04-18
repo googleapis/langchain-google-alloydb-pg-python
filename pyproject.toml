@@ -46,3 +46,6 @@ profile = "black"
 [tool.mypy]
 python_version = "3.11"
 warn_unused_configs = true
+exclude = [
+    "owlbot.py"
+]
