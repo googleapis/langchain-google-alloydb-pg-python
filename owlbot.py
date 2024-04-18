@@ -67,6 +67,4 @@ s.replace(
     "python3 setup.py sdist bdist_wheel",
     "python3 -m build --wheel",
 )
-s.replace(
-    ".kokoro/docs/common.cfg", '"docs-staging-v2-staging', '"docs-staging-v2'
-)
+s.replace(".kokoro/docs/common.cfg", '"docs-staging-v2-staging', '"docs-staging-v2')

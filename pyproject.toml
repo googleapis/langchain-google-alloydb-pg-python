@@ -44,8 +44,9 @@ build-backend = "setuptools.build_meta"
 profile = "black"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = 3.8
 warn_unused_configs = true
 exclude = [
-    "owlbot.py"
+    'docs/*',
+    'noxfile.py'
 ]
