@@ -201,7 +201,6 @@ class TestEngineAsync:
             Column("test", VARCHAR)
 
 
-@pytest.mark.asyncio
 class TestEngineSync:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
@@ -245,11 +244,11 @@ class TestEngineSync:
     def test_execute(self, engine):
         engine._execute("SELECT 1")
 
-    async def test_init_table(self, engine):
+    def test_init_table(self, engine):
         engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
-        embedding = await embeddings_service.aembed_query(content)
+        embedding = embeddings_service.embed_query(content)
         stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         engine._execute(stmt)
 
@@ -283,7 +282,7 @@ class TestEngineSync:
 
         engine._execute(f"DROP TABLE {CUSTOM_TABLE}")
 
-    async def test_password(
+    def test_password(
         self,
         db_project,
         db_region,
@@ -302,5 +301,23 @@ class TestEngineSync:
             user=user,
             password=password,
         )
+        assert engine
+        engine._execute("SELECT 1")
+
+    @pytest.mark.asyncio
+    async def test_from_engine(
+        self,
+        db_name,
+        user,
+        password,
+    ):
+        host = os.getenv("_DB_HOST")
+        conn_string = f"postgresql+asyncpg://{user}:{password}@{host}:5432/{db_name}"
+
+        pool = create_async_engine(
+            conn_string,
+        )
+
+        engine = AlloyDBEngine.from_engine(pool)
         assert engine
         engine._execute("SELECT 1")
