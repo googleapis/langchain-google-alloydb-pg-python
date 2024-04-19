@@ -312,6 +312,7 @@ class TestEngineSync:
         password,
     ):
         host = os.getenv("_DB_HOST")
+        assert host
         conn_string = f"postgresql+asyncpg://{user}:{password}@{host}:5432/{db_name}"
 
         pool = create_async_engine(
