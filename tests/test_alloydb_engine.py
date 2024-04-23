@@ -95,7 +95,7 @@ class TestEngineAsync:
             region=db_region,
             cluster=db_cluster,
             database=db_name,
-            ip_type="private",
+            ip_type=IPTypes.PRIVATE,
         )
         yield engine
 
