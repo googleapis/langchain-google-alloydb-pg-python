@@ -95,6 +95,7 @@ class TestEngineAsync:
             region=db_region,
             cluster=db_cluster,
             database=db_name,
+            ip_type="private",
         )
         yield engine
 
@@ -184,7 +185,6 @@ class TestEngineAsync:
                     password=password,
                     db=db_name,
                     enable_iam_auth=False,
-                    ip_type=IPTypes.PRIVATE,
                 )
                 return conn
 
