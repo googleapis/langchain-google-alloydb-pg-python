@@ -32,7 +32,6 @@ steps:
       - "INSTANCE_ID=$_INSTANCE_ID"
       - "CLUSTER_ID=$_CLUSTER_ID"
       - "DATABASE_ID=$_DATABASE_ID"
-      - "DB_HOST=$_DB_HOST"
       - "REGION=$_REGION"
     secretEnv: ["DB_USER", "DB_PASSWORD", "DB_HOST"]
 
