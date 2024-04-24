@@ -303,26 +303,3 @@ class TestEngineSync:
         )
         assert engine
         engine._execute("SELECT 1")
-
-    @pytest.mark.asyncio
-    async def test_from_engine(
-        self,
-        db_name,
-        user,
-        password,
-    ):
-        host = os.getenv("DB_HOST")
-        assert host
-        conn_string = f"postgresql+asyncpg://{user}:{password}@{host}:5432/{db_name}"
-
-        pool = create_async_engine(
-            conn_string,
-            connect_args={"timeout": 10},
-        )
-
-        async with pool.connect() as conn:
-            await conn.execute("SELECT 1")
-
-        engine = AlloyDBEngine.from_engine(pool)
-        assert engine
-        engine._execute("SELECT 1")

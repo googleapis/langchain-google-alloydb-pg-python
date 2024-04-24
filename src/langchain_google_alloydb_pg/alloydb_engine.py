@@ -215,16 +215,6 @@ class AlloyDBEngine:
         )
 
     @classmethod
-    def from_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
-        # Running a loop in a background thread allows us to support
-        # async methods from non-async environments
-        # loop = asyncio.new_event_loop()
-        loop = asyncio.get_running_loop()
-        thread = Thread(target=loop.run_forever, daemon=True)
-        thread.start()
-        return cls(engine, loop, thread)
-
-    @classmethod
     async def afrom_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
         return cls(engine, None, None)
 
