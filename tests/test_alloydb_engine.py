@@ -39,8 +39,7 @@ class FakeEmbeddingsWithDimension(FakeEmbeddings):
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Return simple embeddings."""
         return [
-            [float(1.0)] * (VECTOR_SIZE - 1) + [float(i)]
-            for i in range(len(texts))
+            [float(1.0)] * (VECTOR_SIZE - 1) + [float(i)] for i in range(len(texts))
         ]
 
     def embed_query(self, text: str = "default") -> List[float]:
@@ -89,9 +88,7 @@ class TestEngineAsync:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
     @pytest_asyncio.fixture
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,
@@ -243,6 +240,7 @@ class TestEngineSync:
             region=db_region,
             database=db_name,
             cluster=db_cluster,
+            ip_type="private",
         )
         yield engine
 
