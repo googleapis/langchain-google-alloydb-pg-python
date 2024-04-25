@@ -1,3 +1,4 @@
+aiohttp==3.9.3
 google-cloud-alloydb-connector[asyncpg]==1.1.0
 langchain-core==0.1.44
 langchain-community==0.0.33
