@@ -180,7 +180,7 @@ class TestEngineAsync:
     ):
         async def init_connection_pool(
             connector: AsyncConnector,
-        ) -> AsyncEngine:
+        ):
             async def getconn() -> asyncpg.Connection:
                 conn = await connector.connect(  # type: ignore
                     f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
