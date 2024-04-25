@@ -163,7 +163,7 @@ class TestEngineAsync:
             database=db_name,
             user=user,
             password=password,
-            ip_type="private",
+            ip_type="PRIVATE",
         )
         assert engine
         await engine._aexecute("SELECT 1")
@@ -252,7 +252,7 @@ class TestEngineSync:
             region=db_region,
             database=db_name,
             cluster=db_cluster,
-            ip_type="private",
+            ip_type="PRIVATE",
         )
         yield engine
 
