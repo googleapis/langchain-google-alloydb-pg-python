@@ -105,6 +105,11 @@ class TestEngineAsync:
         await engine._aexecute("SELECT 1")
 
     async def test_init_table(self, engine):
+        try:
+            await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
+        except:
+            print("Table already deleted.")
+
         await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
@@ -118,6 +123,11 @@ class TestEngineAsync:
         await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
 
     async def test_init_table_custom(self, engine):
+        try:
+            await engine._aexecute(f"DROP TABLE {CUSTOM_TABLE}")
+        except:
+            print("Table already deleted.")
+
         await engine.ainit_vectorstore_table(
             CUSTOM_TABLE,
             VECTOR_SIZE,
@@ -254,6 +264,10 @@ class TestEngineSync:
         engine._execute("SELECT 1")
 
     async def test_init_table(self, engine):
+        try:
+            engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
+        except:
+            print("Table already deleted.")
         engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
@@ -267,6 +281,11 @@ class TestEngineSync:
         engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
 
     def test_init_table_custom(self, engine):
+        try:
+            engine._execute(f"DROP TABLE {CUSTOM_TABLE}")
+        except:
+            print("Table already deleted.")
+
         engine.init_vectorstore_table(
             CUSTOM_TABLE,
             VECTOR_SIZE,
