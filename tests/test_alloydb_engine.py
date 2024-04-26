@@ -117,7 +117,6 @@ class TestEngineAsync:
         stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         await engine._aexecute(stmt)
 
-    async def test_fetch(self, engine):
         results = await engine._afetch(f"SELECT * FROM {DEFAULT_TABLE}")
         assert len(results) > 0
         await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
@@ -275,7 +274,6 @@ class TestEngineSync:
         stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         engine._execute(stmt)
 
-    def test_fetch(self, engine):
         results = engine._fetch(f"SELECT * FROM {DEFAULT_TABLE}")
         assert len(results) > 0
         engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
