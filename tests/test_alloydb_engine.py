@@ -39,8 +39,7 @@ class FakeEmbeddingsWithDimension(FakeEmbeddings):
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Return simple embeddings."""
         return [
-            [float(1.0)] * (VECTOR_SIZE - 1) + [float(i)]
-            for i in range(len(texts))
+            [float(1.0)] * (VECTOR_SIZE - 1) + [float(i)] for i in range(len(texts))
         ]
 
     def embed_query(self, text: str = "default") -> List[float]:
@@ -88,9 +87,9 @@ class TestEngineAsync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
-    @pytest_asyncio.fixture
+    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
     async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
+        self, request, db_project, db_region, db_cluster, db_instance, db_name
     ):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
@@ -98,6 +97,7 @@ class TestEngineAsync:
             region=db_region,
             cluster=db_cluster,
             database=db_name,
+            ip_type=request.param,
         )
         yield engine
 
@@ -178,10 +178,8 @@ class TestEngineAsync:
         user,
         password,
     ):
-        async def init_connection_pool(
-            connector: AsyncConnector,
-        ):
-            async def getconn() -> asyncpg.Connection:
+        async def init_connection_pool(connector):
+            async def getconn():
                 conn = await connector.connect(  # type: ignore
                     f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
                     "asyncpg",
@@ -201,10 +199,6 @@ class TestEngineAsync:
 
         async with AsyncConnector() as connector:
             pool = await init_connection_pool(connector)
-            import sqlalchemy
-
-            async with pool.connect() as conn:
-                await conn.execute(sqlalchemy.text("SELECT NOW()"))
 
             engine = AlloyDBEngine.from_engine(pool)
             await engine._aexecute("SELECT 1")
@@ -244,15 +238,15 @@ class TestEngineSync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
-    @pytest.fixture
-    def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
+    @pytest.fixture(params=["PUBLIC", "PRIVATE"])
+    def engine(self, request, db_project, db_region, db_cluster, db_instance, db_name):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             instance=db_instance,
             region=db_region,
             database=db_name,
             cluster=db_cluster,
-            ip_type="PRIVATE",
+            ip_type=request.param,
         )
         yield engine
 
