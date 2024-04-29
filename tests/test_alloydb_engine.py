@@ -87,14 +87,17 @@ class TestEngineAsync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
-    @pytest_asyncio.fixture
-    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
+    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
+    async def engine(
+        self, request, db_project, db_region, db_cluster, db_instance, db_name
+    ):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,
             region=db_region,
             cluster=db_cluster,
             database=db_name,
+            ip_type=request.param,
         )
         yield engine
 
@@ -102,6 +105,11 @@ class TestEngineAsync:
         await engine._aexecute("SELECT 1")
 
     async def test_init_table(self, engine):
+        try:
+            await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
+        except:
+            print("Table already deleted.")
+
         await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
@@ -109,12 +117,16 @@ class TestEngineAsync:
         stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         await engine._aexecute(stmt)
 
-    async def test_fetch(self, engine):
         results = await engine._afetch(f"SELECT * FROM {DEFAULT_TABLE}")
         assert len(results) > 0
         await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
 
     async def test_init_table_custom(self, engine):
+        try:
+            await engine._aexecute(f"DROP TABLE {CUSTOM_TABLE}")
+        except:
+            print("Table already deleted.")
+
         await engine.ainit_vectorstore_table(
             CUSTOM_TABLE,
             VECTOR_SIZE,
@@ -160,6 +172,7 @@ class TestEngineAsync:
             database=db_name,
             user=user,
             password=password,
+            ip_type="PRIVATE",
         )
         assert engine
         await engine._aexecute("SELECT 1")
@@ -174,9 +187,8 @@ class TestEngineAsync:
         user,
         password,
     ):
-        async with AsyncConnector() as connector:
-
-            async def getconn() -> asyncpg.Connection:
+        async def init_connection_pool(connector):
+            async def getconn():
                 conn = await connector.connect(  # type: ignore
                     f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
                     "asyncpg",
@@ -184,16 +196,20 @@ class TestEngineAsync:
                     password=password,
                     db=db_name,
                     enable_iam_auth=False,
-                    ip_type=IPTypes.PUBLIC,
+                    ip_type=IPTypes.PRIVATE,
                 )
                 return conn
 
-            engine = create_async_engine(
+            pool = create_async_engine(
                 "postgresql+asyncpg://",
                 async_creator=getconn,
             )
+            return pool
 
-            engine = AlloyDBEngine.from_engine(engine)
+        async with AsyncConnector() as connector:
+            pool = await init_connection_pool(connector)
+
+            engine = AlloyDBEngine.from_engine(pool)
             await engine._aexecute("SELECT 1")
 
     async def test_column(self, engine):
@@ -231,14 +247,15 @@ class TestEngineSync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
-    @pytest.fixture
-    def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
+    @pytest.fixture(params=["PUBLIC", "PRIVATE"])
+    def engine(self, request, db_project, db_region, db_cluster, db_instance, db_name):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             instance=db_instance,
             region=db_region,
             database=db_name,
             cluster=db_cluster,
+            ip_type=request.param,
         )
         yield engine
 
@@ -246,6 +263,10 @@ class TestEngineSync:
         engine._execute("SELECT 1")
 
     async def test_init_table(self, engine):
+        try:
+            engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
+        except:
+            print("Table already deleted.")
         engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
@@ -253,12 +274,16 @@ class TestEngineSync:
         stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         engine._execute(stmt)
 
-    def test_fetch(self, engine):
         results = engine._fetch(f"SELECT * FROM {DEFAULT_TABLE}")
         assert len(results) > 0
         engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
 
     def test_init_table_custom(self, engine):
+        try:
+            engine._execute(f"DROP TABLE {CUSTOM_TABLE}")
+        except:
+            print("Table already deleted.")
+
         engine.init_vectorstore_table(
             CUSTOM_TABLE,
             VECTOR_SIZE,

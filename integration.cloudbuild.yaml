@@ -47,5 +47,5 @@ substitutions:
 
 options:
   pool:
-    name: "projects/langchain-alloydb-testing/locations/us-central1/workerPools/my-pool"
+    name: "projects/langchain-alloydb-testing/locations/us-central1/workerPools/my-pool2"
   dynamicSubstitutions: true
