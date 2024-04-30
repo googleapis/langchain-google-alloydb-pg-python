@@ -27,7 +27,7 @@ python3 -m nox --version
 # build docs
 nox -s docs
 
-VERSION=$(python -c "import langchain_google_alloydb_pg;print(langchain_google_alloydb_pg.__version__)")
+VERSION=$(python3 -c "import langchain_google_alloydb_pg;print(langchain_google_alloydb_pg.__version__)")
 
 # create metadata
 python3 -m docuploader create-metadata \
