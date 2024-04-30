@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.2.1...v0.2.2) (2024-04-30)
+
+
+### Bug Fixes
+
+* Missing quote from table name ([#118](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/118)) ([b1d80f2](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/b1d80f28411f64cbe7437d960715dc4a8f8d0b8e))
+
 ## [0.2.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.2.0...v0.2.1) (2024-04-30)
 
 
