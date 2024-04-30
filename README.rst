@@ -1,11 +1,10 @@
 AlloyDB for PostgreSQL for LangChain
 ==================================================
 
-- |preview| |pypi| |versions|
+|preview| |pypi| |versions|
 
 - `Client Library Documentation`_
 - `Product Documentation`_
-- `API Reference`_
 
 .. |preview| image:: https://img.shields.io/badge/support-preview-orange.svg
    :target: https://github.com/googleapis/google-cloud-python/blob/main/README.rst#stability-levels
@@ -13,9 +12,8 @@ AlloyDB for PostgreSQL for LangChain
    :target: https://pypi.org/project/langchain-google-alloydb-pg/
 .. |versions| image:: https://img.shields.io/pypi/pyversions/langchain-google-alloydb-pg.svg
    :target: https://pypi.org/project/langchain-google-alloydb-pg/
-.. _Client Library Documentation: https://github.com/googleapis/langchain-google-alloydb-pg-python
+.. _Client Library Documentation: https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest
 .. _Product Documentation: https://cloud.google.com/alloydb
-.. _API Reference: https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest
 
 
 Quick Start
@@ -26,7 +24,7 @@ steps:
 
 1. `Select or create a Cloud Platform project.`_
 2. `Enable billing for your project.`_
-3. `Enable the Google Cloud AlloyDB API.`_
+3. `Enable the AlloyDB API.`_
 4. `Setup Authentication.`_
 
 .. _Select or create a Cloud Platform project.: https://console.cloud.google.com/project
@@ -92,11 +90,11 @@ Use a vector store to store embedded data and perform vector search.
 
 
    engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
-   embeddings_service = VertexAIEmbeddings()
-   vectorstore = AlloyDBVectorStore(
+   embeddings_service = VertexAIEmbeddings(model_name="textembedding-gecko@003")
+   vectorstore = AlloyDBVectorStore.create_sync(
        engine,
        table_name="my-table",
-       embeddings=embedding_service
+       embedding_service=embedding_service
    )
 
 See the full `Vector Store`_ tutorial.
@@ -114,7 +112,7 @@ Use a document loader to load data as LangChain ``Document``\ s.
 
 
    engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
-   loader = PostgresSQLLoader(
+   loader = AlloyDBLoader.create_sync(
        engine,
        table_name="my-table-name"
    )
@@ -136,7 +134,7 @@ history to LLMs.
 
 
    engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
-   history = AlloyDBChatMessageHistory(
+   history = AlloyDBChatMessageHistory.create_sync(
        engine,
        table_name="my-message-store",
        session_id="my-session-id"
