@@ -18,6 +18,18 @@ dependencies = [
     "SQLAlchemy[asyncio]>=2.0.25, <3.0.0"
 ]
 
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
 [tool.setuptools.dynamic]
 version = {attr = "langchain_google_alloydb_pg.version.__version__"}
 
@@ -44,5 +56,10 @@ build-backend = "setuptools.build_meta"
 profile = "black"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.8"
 warn_unused_configs = true
+
+exclude = [
+    'docs/*',
+    'noxfile.py'
+]
