@@ -95,16 +95,14 @@ class AlloyDBVectorStore(VectorStore):
     ):
         """Constructor for AlloyDBVectorStore.
         Args:
-            engine (AlloyDBEngine): AsyncEngine with pool connection to the postgres database. Required.
+            engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
-            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
-            embedding_column (str): Column for embedding vectors.
-                              The embedding is generated from the document value. Defaults to "embedding".
+            embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document’s metadata.
-                                     Can not be used with metadata_columns. Defaults to None.
+            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
         """
         if metadata_columns and ignore_metadata_columns:
