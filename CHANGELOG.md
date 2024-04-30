@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.2.0...v0.2.1) (2024-04-30)
+
+
+### Bug Fixes
+
+* Delete for vector store document ([#71](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/71)) ([34885d0](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/34885d0df9c7ba03ebbdac34e95a050cf6f9f8a7))
+* Update required dependencies to use SQLAlchemy[asyncio] ([#116](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/116)) ([1c51033](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/1c51033961bb9840ec389da2ef1dc2237dd5e63f))
+
 ## [0.2.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.1.0...v0.2.0) (2024-03-25)
 
 
