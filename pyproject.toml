@@ -2,7 +2,7 @@
 name = "langchain-google-alloydb-pg"
 dynamic = ["version"]
 description = "LangChain integrations for Google Cloud AlloyDB for PostgreSQL"
-readme = "README.md"
+readme = "README.rst"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
 authors = [
@@ -16,6 +16,18 @@ dependencies = [
     "numpy>=1.24.4, <2.0.0; python_version>'3.8'",
     "pgvector>=0.2.5, <1.0.0",
     "SQLAlchemy[asyncio]>=2.0.25, <3.0.0"
+]
+
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [tool.setuptools.dynamic]
@@ -44,5 +56,10 @@ build-backend = "setuptools.build_meta"
 profile = "black"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.8"
 warn_unused_configs = true
+
+exclude = [
+    'docs/*',
+    'noxfile.py'
+]
