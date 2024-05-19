@@ -94,7 +94,7 @@ Use a vector store to store embedded data and perform vector search.
    vectorstore = AlloyDBVectorStore.create_sync(
        engine,
        table_name="my-table",
-       embedding_service=embedding_service
+       embedding_service=embeddings_service
    )
 
 See the full `Vector Store`_ tutorial.
