@@ -8,7 +8,7 @@ AlloyDB for PostgreSQL for LangChain
 
 .. |preview| image:: https://img.shields.io/badge/support-preview-orange.svg
    :target: https://github.com/googleapis/google-cloud-python/blob/main/README.rst#stability-levels
-.. |pypi| image:: https://img.shields.io/pypi/v/langchain-google-alloydb-pg.svg  
+.. |pypi| image:: https://img.shields.io/pypi/v/langchain-google-alloydb-pg.svg
    :target: https://pypi.org/project/langchain-google-alloydb-pg/
 .. |versions| image:: https://img.shields.io/pypi/pyversions/langchain-google-alloydb-pg.svg
    :target: https://pypi.org/project/langchain-google-alloydb-pg/
