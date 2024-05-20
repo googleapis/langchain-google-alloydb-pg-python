@@ -8,7 +8,7 @@ AlloyDB for PostgreSQL for LangChain
 
 .. |preview| image:: https://img.shields.io/badge/support-preview-orange.svg
    :target: https://github.com/googleapis/google-cloud-python/blob/main/README.rst#stability-levels
-.. |pypi| image:: https://img.shields.io/pypi/v/langchain-google-alloydb-pg.svg  
+.. |pypi| image:: https://img.shields.io/pypi/v/langchain-google-alloydb-pg.svg
    :target: https://pypi.org/project/langchain-google-alloydb-pg/
 .. |versions| image:: https://img.shields.io/pypi/pyversions/langchain-google-alloydb-pg.svg
    :target: https://pypi.org/project/langchain-google-alloydb-pg/
@@ -94,7 +94,7 @@ Use a vector store to store embedded data and perform vector search.
    vectorstore = AlloyDBVectorStore.create_sync(
        engine,
        table_name="my-table",
-       embedding_service=embedding_service
+       embedding_service=embeddings_service
    )
 
 See the full `Vector Store`_ tutorial.
