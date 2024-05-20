@@ -11,13 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Awaitable, Dict, List, Optional, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Dict,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import aiohttp
 import google.auth  # type: ignore
@@ -81,7 +90,7 @@ class Column:
     data_type: str
     nullable: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str):
             raise ValueError("Column name must be type string")
         if not isinstance(self.data_type, str):
@@ -98,14 +107,14 @@ class AlloyDBEngine:
         engine: AsyncEngine,
         loop: Optional[asyncio.AbstractEventLoop],
         thread: Optional[Thread],
-    ):
+    ) -> None:
         self._engine = engine
         self._loop = loop
         self._thread = thread
 
     @classmethod
     def from_instance(
-        cls,
+        cls: Type[AlloyDBEngine],
         project_id: str,
         region: str,
         cluster: str,
@@ -136,7 +145,7 @@ class AlloyDBEngine:
 
     @classmethod
     async def _create(
-        cls,
+        cls: Type[AlloyDBEngine],
         project_id: str,
         region: str,
         cluster: str,
@@ -193,7 +202,7 @@ class AlloyDBEngine:
 
     @classmethod
     async def afrom_instance(
-        cls,
+        cls: Type[AlloyDBEngine],
         project_id: str,
         region: str,
         cluster: str,
@@ -215,7 +224,7 @@ class AlloyDBEngine:
         )
 
     @classmethod
-    def from_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
+    def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
         return cls(engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
@@ -342,7 +351,6 @@ class AlloyDBEngine:
             store_metadata (bool): Whether to store extra metadata in a metadata column
                 if not described in 'metadata' field list (Default: True).
         """
-
         query = f"""CREATE TABLE "{table_name}"(
             {content_column} TEXT NOT NULL
             """

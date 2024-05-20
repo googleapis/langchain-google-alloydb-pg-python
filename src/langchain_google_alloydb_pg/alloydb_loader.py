@@ -37,22 +37,22 @@ DEFAULT_CONTENT_COL = "page_content"
 DEFAULT_METADATA_COL = "langchain_metadata"
 
 
-def text_formatter(row, content_columns: Iterable[str]) -> str:
+def text_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
     return " ".join(str(row[column]) for column in content_columns if column in row)
 
 
-def csv_formatter(row, content_columns: Iterable[str]) -> str:
+def csv_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
     return ", ".join(str(row[column]) for column in content_columns if column in row)
 
 
-def yaml_formatter(row, content_columns: Iterable[str]) -> str:
+def yaml_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
     return "\n".join(
         f"{column}: {str(row[column])}" for column in content_columns if column in row
     )
 
 
-def json_formatter(row, content_columns: Iterable[str]) -> str:
-    dictionary = {}
+def json_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
+    dictionary: Dict[str, Any] = {}
     for column in content_columns:
         if column in row:
             dictionary[column] = row[column]
@@ -62,9 +62,9 @@ def json_formatter(row, content_columns: Iterable[str]) -> str:
 def _parse_doc_from_row(
     content_columns: Iterable[str],
     metadata_columns: Iterable[str],
-    row: dict,
+    row: Dict[str, Any],
     metadata_json_column: Optional[str] = DEFAULT_METADATA_COL,
-    formatter: Callable = text_formatter,
+    formatter: Callable[[Dict[str, Any], Iterable[str]], str] = text_formatter,
 ) -> Document:
     page_content = formatter(row, content_columns)
     metadata: Dict[str, Any] = {}
@@ -85,7 +85,7 @@ def _parse_row_from_doc(
     column_names: Iterable[str],
     content_column: str = DEFAULT_CONTENT_COL,
     metadata_json_column: Optional[str] = DEFAULT_METADATA_COL,
-) -> Dict:
+) -> Dict[str, Any]:
     doc_metadata = doc.metadata.copy()
     row: Dict[str, Any] = {content_column: doc.page_content}
     for entry in doc.metadata:
@@ -99,10 +99,10 @@ def _parse_row_from_doc(
 
 
 class AlloyDBLoader(BaseLoader):
-    """Load documents from Alloydb`.
+    """Load documents from AlloyDB`.
 
     Each document represents one row of the result. The `content_columns` are
-    written into the `content_columns`of the document. The `metadata_columns` are written
+    written into the `content_columns` of the document. The `metadata_columns` are written
     into the `metadata_columns` of the document. By default, first columns is written into
     the `page_content` and everything else into the `metadata`.
     """
@@ -116,7 +116,7 @@ class AlloyDBLoader(BaseLoader):
         query: str,
         content_columns: List[str],
         metadata_columns: List[str],
-        formatter: Callable,
+        formatter: Callable[[Dict[str, Any], Iterable[str]], str],
         metadata_json_column: Optional[str] = None,
     ) -> None:
         if key != AlloyDBLoader.__create_key:
@@ -248,18 +248,20 @@ class AlloyDBLoader(BaseLoader):
         )
         return engine._run_as_sync(coro)
 
-    async def _collect_async_items(self, docs_generator):
+    async def _collect_async_items(
+        self, docs_generator: AsyncIterator[Document]
+    ) -> List[Document]:
         return [doc async for doc in docs_generator]
 
     def load(self) -> List[Document]:
-        """Load Alloydb data into Document objects."""
+        """Load AlloyDB data into Document objects."""
         documents = self.engine._run_as_sync(
             self._collect_async_items(self.alazy_load())
         )
         return documents
 
     async def aload(self) -> List[Document]:
-        """Load Alloydb data into Document objects."""
+        """Load AlloyDB data into Document objects."""
         return [doc async for doc in self.alazy_load()]
 
     def lazy_load(self) -> Iterator[Document]:
@@ -310,7 +312,7 @@ class AlloyDBDocumentSaver:
         content_column: str,
         metadata_columns: List[str] = [],
         metadata_json_column: Optional[str] = None,
-    ):
+    ) -> None:
         if key != AlloyDBDocumentSaver.__create_key:
             raise Exception(
                 "Only create class through 'create' or 'create_sync' methods!"
@@ -329,7 +331,7 @@ class AlloyDBDocumentSaver:
         content_column: str = DEFAULT_CONTENT_COL,
         metadata_columns: List[str] = [],
         metadata_json_column: Optional[str] = DEFAULT_METADATA_COL,
-    ):
+    ) -> AlloyDBDocumentSaver:
         table_schema = await engine._aload_table_schema(table_name)
         column_names = table_schema.columns.keys()
         if content_column not in column_names:

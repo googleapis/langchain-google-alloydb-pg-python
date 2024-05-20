@@ -15,7 +15,7 @@
 import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Type, TypeVar
 
 
 @dataclass
@@ -33,8 +33,8 @@ class DistanceStrategy(StrategyMixin, enum.Enum):
     INNER_PRODUCT = "<#>", "ip_distance", "vector_ip_ops"
 
 
-DEFAULT_DISTANCE_STRATEGY = DistanceStrategy.COSINE_DISTANCE
-DEFAULT_INDEX_NAME = "langchainvectorindex"
+DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.COSINE_DISTANCE
+DEFAULT_INDEX_NAME: str = "langchainvectorindex"
 
 
 @dataclass
@@ -70,6 +70,7 @@ class HNSWIndex(BaseIndex):
 
 @dataclass
 class QueryOptions(ABC):
+    @abstractmethod
     def to_string(self) -> str:
         raise NotImplementedError("to_string method must be implemented by subclass")
 
@@ -78,7 +79,7 @@ class QueryOptions(ABC):
 class HNSWQueryOptions(QueryOptions):
     ef_search: int = 40
 
-    def to_string(self):
+    def to_string(self) -> str:
         return f"hnsw.ef_search = {self.ef_search}"
 
 
@@ -95,5 +96,5 @@ class IVFFlatIndex(BaseIndex):
 class IVFFlatQueryOptions(QueryOptions):
     probes: int = 1
 
-    def to_string(self):
-        return f"ivflfat.probes = {self.probes}"
+    def to_string(self) -> str:
+        return f"ivfflat.probes = {self.probes}"
