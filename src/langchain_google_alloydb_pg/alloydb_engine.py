@@ -23,6 +23,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Sequence,
     Type,
     TypeVar,
     Union,
@@ -32,7 +33,7 @@ import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
-from sqlalchemy import MetaData, Table, text
+from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -241,7 +242,7 @@ class AlloyDBEngine:
 
     async def _afetch(
         self, query: str, params: Optional[dict] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> Sequence[RowMapping]:
         async with self._engine.connect() as conn:
             """Fetch results from a SQL query."""
             result = await conn.execute(text(query), params)
@@ -253,7 +254,7 @@ class AlloyDBEngine:
     def _execute(self, query: str, params: Optional[dict] = None) -> None:
         return self._run_as_sync(self._aexecute(query, params))
 
-    def _fetch(self, query: str, params: Optional[dict] = None) -> List[Dict[str, Any]]:
+    def _fetch(self, query: str, params: Optional[dict] = None) -> Sequence[RowMapping]:
         return self._run_as_sync(self._afetch(query, params))
 
     def _run_as_sync(self, coro: Awaitable[T]) -> T:
