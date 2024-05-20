@@ -1,6 +1,4 @@
 assign_issues:
   - googleapis/langchain-alloydb
-ignore_authors:
-  - dependabot
-  - renovate
-  
+assign_prs:
+  - googleapis/langchain-alloydb
