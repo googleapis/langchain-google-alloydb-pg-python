@@ -3,3 +3,4 @@ assign_issues:
 ignore_authors:
   - dependabot
   - renovate
+  
