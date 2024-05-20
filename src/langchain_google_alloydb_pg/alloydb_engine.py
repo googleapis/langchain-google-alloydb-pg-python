@@ -230,7 +230,9 @@ class AlloyDBEngine:
             await conn.execute(text("COMMIT"))
             await conn.execute(text(query))
 
-    async def _afetch(self, query: str, params: Optional[dict] = None) -> List[Dict[str, Any]]:
+    async def _afetch(
+        self, query: str, params: Optional[dict] = None
+    ) -> List[Dict[str, Any]]:
         async with self._engine.connect() as conn:
             """Fetch results from a SQL query."""
             result = await conn.execute(text(query), params)
