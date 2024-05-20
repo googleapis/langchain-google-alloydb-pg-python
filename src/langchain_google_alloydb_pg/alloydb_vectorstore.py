@@ -41,7 +41,7 @@ class AlloyDBVectorStore(VectorStore):
 
     def __init__(
         self,
-        key,
+        key: object,
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
@@ -77,7 +77,7 @@ class AlloyDBVectorStore(VectorStore):
 
     @classmethod
     async def create(
-        cls,
+        cls: AlloyDBVectorStore,
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
@@ -92,7 +92,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
-    ):
+    ) -> AlloyDBVectorStore:
         """Constructor for AlloyDBVectorStore.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
