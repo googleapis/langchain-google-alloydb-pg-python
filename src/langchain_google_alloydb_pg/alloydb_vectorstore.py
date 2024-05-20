@@ -16,12 +16,13 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+from sqlalchemy import RowMapping
 
 from .alloydb_engine import AlloyDBEngine
 from .indexes import (
@@ -455,7 +456,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: List[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
-    ) -> List[Any]:
+    ) -> Sequence[RowMapping]:
         k = k if k else self.k
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function
