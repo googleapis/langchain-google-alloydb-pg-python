@@ -24,6 +24,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Type,
 )
 
 import sqlalchemy
@@ -36,21 +37,21 @@ DEFAULT_CONTENT_COL = "page_content"
 DEFAULT_METADATA_COL = "langchain_metadata"
 
 
-def text_formatter(row, content_columns) -> str:
+def text_formatter(row, content_columns: Iterable[str]) -> str:
     return " ".join(str(row[column]) for column in content_columns if column in row)
 
 
-def csv_formatter(row, content_columns) -> str:
+def csv_formatter(row, content_columns: Iterable[str]) -> str:
     return ", ".join(str(row[column]) for column in content_columns if column in row)
 
 
-def yaml_formatter(row, content_columns) -> str:
+def yaml_formatter(row, content_columns: Iterable[str]) -> str:
     return "\n".join(
         f"{column}: {str(row[column])}" for column in content_columns if column in row
     )
 
 
-def json_formatter(row, content_columns) -> str:
+def json_formatter(row, content_columns: Iterable[str]) -> str:
     dictionary = {}
     for column in content_columns:
         if column in row:
@@ -110,7 +111,7 @@ class AlloyDBLoader(BaseLoader):
 
     def __init__(
         self,
-        key,
+        key: object,
         engine: AlloyDBEngine,
         query: str,
         content_columns: List[str],
@@ -132,7 +133,7 @@ class AlloyDBLoader(BaseLoader):
 
     @classmethod
     async def create(
-        cls,
+        cls: Type[AlloyDBLoader],
         engine: AlloyDBEngine,
         query: Optional[str] = None,
         table_name: Optional[str] = None,
@@ -141,7 +142,7 @@ class AlloyDBLoader(BaseLoader):
         metadata_json_column: Optional[str] = None,
         format: Optional[str] = None,
         formatter: Optional[Callable] = None,
-    ):
+    ) -> AlloyDBLoader:
         """Constructor for AlloyDBLoader
 
         Args:
@@ -225,7 +226,7 @@ class AlloyDBLoader(BaseLoader):
 
     @classmethod
     def create_sync(
-        cls,
+        cls: Type[AlloyDBLoader],
         engine: AlloyDBEngine,
         query: Optional[str] = None,
         table_name: Optional[str] = None,
@@ -234,7 +235,7 @@ class AlloyDBLoader(BaseLoader):
         metadata_json_column: Optional[str] = None,
         format: Optional[str] = None,
         formatter: Optional[Callable] = None,
-    ):
+    ) -> AlloyDBLoader:
         coro = cls.create(
             engine,
             query,
@@ -303,7 +304,7 @@ class AlloyDBDocumentSaver:
 
     def __init__(
         self,
-        key,
+        key: object,
         engine: AlloyDBEngine,
         table_name: str,
         content_column: str,
@@ -322,7 +323,7 @@ class AlloyDBDocumentSaver:
 
     @classmethod
     async def create(
-        cls,
+        cls: Type[AlloyDBDocumentSaver],
         engine: AlloyDBEngine,
         table_name: str,
         content_column: str = DEFAULT_CONTENT_COL,
@@ -367,13 +368,13 @@ class AlloyDBDocumentSaver:
 
     @classmethod
     def create_sync(
-        cls,
+        cls: Type[AlloyDBDocumentSaver],
         engine: AlloyDBEngine,
         table_name: str,
         content_column: str = DEFAULT_CONTENT_COL,
         metadata_columns: List[str] = [],
         metadata_json_column: str = DEFAULT_METADATA_COL,
-    ):
+    ) -> AlloyDBDocumentSaver:
         coro = cls.create(
             engine,
             table_name,

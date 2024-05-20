@@ -45,7 +45,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
 
     def __init__(
         self,
-        key,
+        key: object,
         engine: AlloyDBEngine,
         session_id: str,
         table_name: str,
@@ -66,7 +66,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         engine: AlloyDBEngine,
         session_id: str,
         table_name: str,
-    ):
+    ) -> AlloyDBChatMessageHistory:
         table_schema = await engine._aload_table_schema(table_name)
         column_names = table_schema.columns.keys()
 
@@ -93,7 +93,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         engine: AlloyDBEngine,
         session_id: str,
         table_name: str,
-    ):
+    ) -> AlloyDBChatMessageHistory:
         coro = cls.create(engine, session_id, table_name)
         return engine._run_as_sync(coro)
 

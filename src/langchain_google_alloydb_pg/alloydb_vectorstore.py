@@ -77,7 +77,7 @@ class AlloyDBVectorStore(VectorStore):
 
     @classmethod
     async def create(
-        cls: AlloyDBVectorStore,
+        cls: Type[AlloyDBVectorStore],
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
@@ -187,7 +187,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
-    ):
+    ) -> AlloyDBVectorStore:
         coro = cls.create(
             engine,
             embedding_service,
@@ -400,7 +400,7 @@ class AlloyDBVectorStore(VectorStore):
         id_column: str = "langchain_id",
         metadata_json_column: str = "langchain_metadata",
         **kwargs: Any,
-    ):
+    ) -> AlloyDBVectorStore:
         coro = cls.afrom_texts(
             texts,
             embedding,
