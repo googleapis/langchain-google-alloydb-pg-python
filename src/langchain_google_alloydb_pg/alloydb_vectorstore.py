@@ -16,12 +16,13 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+from sqlalchemy import RowMapping
 
 from .alloydb_engine import AlloyDBEngine
 from .indexes import (
@@ -41,7 +42,7 @@ class AlloyDBVectorStore(VectorStore):
 
     def __init__(
         self,
-        key,
+        key: object,
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
@@ -77,7 +78,7 @@ class AlloyDBVectorStore(VectorStore):
 
     @classmethod
     async def create(
-        cls,
+        cls: Type[AlloyDBVectorStore],
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
@@ -92,7 +93,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
-    ):
+    ) -> AlloyDBVectorStore:
         """Constructor for AlloyDBVectorStore.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
@@ -187,7 +188,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
-    ):
+    ) -> AlloyDBVectorStore:
         coro = cls.create(
             engine,
             embedding_service,
@@ -400,7 +401,7 @@ class AlloyDBVectorStore(VectorStore):
         id_column: str = "langchain_id",
         metadata_json_column: str = "langchain_metadata",
         **kwargs: Any,
-    ):
+    ) -> AlloyDBVectorStore:
         coro = cls.afrom_texts(
             texts,
             embedding,
@@ -455,7 +456,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: List[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
-    ) -> List[Any]:
+    ) -> Sequence[RowMapping]:
         k = k if k else self.k
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function

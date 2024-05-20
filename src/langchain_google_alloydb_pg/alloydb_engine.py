@@ -11,19 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
 from threading import Thread
-from typing import TYPE_CHECKING, Awaitable, Dict, List, Optional, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
-from sqlalchemy import MetaData, Table, text
+from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -81,7 +91,7 @@ class Column:
     data_type: str
     nullable: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str):
             raise ValueError("Column name must be type string")
         if not isinstance(self.data_type, str):
@@ -98,14 +108,14 @@ class AlloyDBEngine:
         engine: AsyncEngine,
         loop: Optional[asyncio.AbstractEventLoop],
         thread: Optional[Thread],
-    ):
+    ) -> None:
         self._engine = engine
         self._loop = loop
         self._thread = thread
 
     @classmethod
     def from_instance(
-        cls,
+        cls: Type[AlloyDBEngine],
         project_id: str,
         region: str,
         cluster: str,
@@ -136,7 +146,7 @@ class AlloyDBEngine:
 
     @classmethod
     async def _create(
-        cls,
+        cls: Type[AlloyDBEngine],
         project_id: str,
         region: str,
         cluster: str,
@@ -193,7 +203,7 @@ class AlloyDBEngine:
 
     @classmethod
     async def afrom_instance(
-        cls,
+        cls: Type[AlloyDBEngine],
         project_id: str,
         region: str,
         cluster: str,
@@ -215,22 +225,24 @@ class AlloyDBEngine:
         )
 
     @classmethod
-    def from_engine(cls, engine: AsyncEngine) -> AlloyDBEngine:
+    def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
         return cls(engine, None, None)
 
-    async def _aexecute(self, query: str, params: Optional[dict] = None):
+    async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
         """Execute a SQL query."""
         async with self._engine.connect() as conn:
             await conn.execute(text(query), params)
             await conn.commit()
 
-    async def _aexecute_outside_tx(self, query: str):
+    async def _aexecute_outside_tx(self, query: str) -> None:
         """Execute a SQL query."""
         async with self._engine.connect() as conn:
             await conn.execute(text("COMMIT"))
             await conn.execute(text(query))
 
-    async def _afetch(self, query: str, params: Optional[dict] = None):
+    async def _afetch(
+        self, query: str, params: Optional[dict] = None
+    ) -> Sequence[RowMapping]:
         async with self._engine.connect() as conn:
             """Fetch results from a SQL query."""
             result = await conn.execute(text(query), params)
@@ -239,10 +251,10 @@ class AlloyDBEngine:
 
         return result_fetch
 
-    def _execute(self, query: str, params: Optional[dict] = None):
+    def _execute(self, query: str, params: Optional[dict] = None) -> None:
         return self._run_as_sync(self._aexecute(query, params))
 
-    def _fetch(self, query: str, params: Optional[dict] = None):
+    def _fetch(self, query: str, params: Optional[dict] = None) -> Sequence[RowMapping]:
         return self._run_as_sync(self._afetch(query, params))
 
     def _run_as_sync(self, coro: Awaitable[T]) -> T:
@@ -306,7 +318,7 @@ class AlloyDBEngine:
             )
         )
 
-    async def ainit_chat_history_table(self, table_name) -> None:
+    async def ainit_chat_history_table(self, table_name: str) -> None:
         create_table_query = f"""CREATE TABLE IF NOT EXISTS "{table_name}"(
             id SERIAL PRIMARY KEY,
             session_id TEXT NOT NULL,
@@ -315,7 +327,7 @@ class AlloyDBEngine:
         );"""
         await self._aexecute(create_table_query)
 
-    def init_chat_history_table(self, table_name) -> None:
+    def init_chat_history_table(self, table_name: str) -> None:
         return self._run_as_sync(
             self.ainit_chat_history_table(
                 table_name,
@@ -340,7 +352,6 @@ class AlloyDBEngine:
             store_metadata (bool): Whether to store extra metadata in a metadata column
                 if not described in 'metadata' field list (Default: True).
         """
-
         query = f"""CREATE TABLE "{table_name}"(
             {content_column} TEXT NOT NULL
             """
