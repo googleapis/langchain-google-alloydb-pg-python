@@ -27,6 +27,8 @@ from langchain_google_alloydb_pg.indexes import (
     DistanceStrategy,
     HNSWIndex,
     IVFFlatIndex,
+    IVFIndex,
+    SCANNIndex,
 )
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
@@ -127,6 +129,30 @@ class TestIndex:
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFFlatIndex(
+            name="secondindex",
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+        )
+        await vs.aapply_vector_index(index)
+        assert await vs.is_valid_index("secondindex")
+        await vs.adrop_vector_index("secondindex")
+
+    async def test_aapply_vector_index_ivf(self, vs):
+        index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        await vs.aapply_vector_index(index, concurrently=True)
+        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        index = IVFIndex(
+            name="secondindex",
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+        )
+        await vs.aapply_vector_index(index)
+        assert await vs.is_valid_index("secondindex")
+        await vs.adrop_vector_index("secondindex")
+
+    async def test_aapply_postgres_ann_index_scann(self, vs):
+        index = SCANNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        await vs.aapply_vector_index(index, concurrently=True)
+        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        index = SCANNIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
         )

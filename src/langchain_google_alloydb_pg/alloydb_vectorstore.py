@@ -32,6 +32,7 @@ from .indexes import (
     DistanceStrategy,
     ExactNearestNeighbor,
     QueryOptions,
+    SCANNIndex,
 )
 
 
@@ -738,6 +739,10 @@ class AlloyDBVectorStore(VectorStore):
         if isinstance(index, ExactNearestNeighbor):
             await self.adrop_vector_index()
             return
+
+        # Create `postgres_ann` extension when a `scann` index is applied
+        if isinstance(index, SCANNIndex):
+            await self._aexecute("CREATE EXTENSION IF NOT EXISTS posrgres_ann")
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()

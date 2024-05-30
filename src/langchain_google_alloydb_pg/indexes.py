@@ -98,3 +98,35 @@ class IVFFlatQueryOptions(QueryOptions):
 
     def to_string(self) -> str:
         return f"ivfflat.probes = {self.probes}"
+
+
+@dataclass
+class IVFIndex(BaseIndex):
+    index_type: str = "ivf"
+    lists: int = 100
+    quantizer: str = field(
+        default="sq8", init=False
+    )  # Disable `quantizer` initialization currently only supports the value "sq8"
+
+    def index_options(self) -> str:
+        return f"(lists = {self.lists}, quantizer = {self.quantizer})"
+
+
+@dataclass
+class IVFQueryOptions(QueryOptions):
+    probes: int = 1
+
+    def to_string(self) -> str:
+        return f"ivf.probes = {self.probes}"
+
+
+@dataclass
+class SCANNIndex(BaseIndex):
+    index_type: str = "scann"
+    num_leaves: int = 5
+    quantizer = field(
+        default="sq8", init=False
+    )  # Excludes `quantizer` from initialization currently only supports the value "sq8"
+
+    def index_options(self) -> str:
+        return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
