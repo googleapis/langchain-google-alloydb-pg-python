@@ -7,11 +7,6 @@
 
 * Support LangChain v0.2 ([#138](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/138)) ([2d2d119](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2d2d1190975da805d43e9eae843f504dc323d82c))
 
-
-### Documentation
-
-* Fix publish-docs.sh ([#124](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/124)) ([922f2f9](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/922f2f9659bc3e1339664a3c8092882b8e981d1b))
-
 ## [0.2.2](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.2.1...v0.2.2) (2024-04-30)
 
 
