@@ -730,6 +730,16 @@ class AlloyDBVectorStore(VectorStore):
         )
         return self.engine._run_as_sync(coro)
 
+    async def set_maintenance_work_mem(self, num_leaves: int) -> None:
+        result = await self.engine._afetch(
+            f"SELECT {self.embedding_column} FROM {self.table_name} LIMIT 1;"
+        )
+        vector_size = result[0][self.embedding_column]
+        index_memory_required = 50 * num_leaves * vector_size * 4
+        await self.engine._aexecute(
+            f"SET maintenance_work_mem = {index_memory_required};"
+        )
+
     async def aapply_vector_index(
         self,
         index: BaseIndex,
@@ -743,6 +753,7 @@ class AlloyDBVectorStore(VectorStore):
         # Create `postgres_ann` extension when a `scann` index is applied
         if isinstance(index, SCANNIndex):
             await self._aexecute("CREATE EXTENSION IF NOT EXISTS posrgres_ann")
+            await self.set_maintenance_work_mem(index.num_leaves)
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
