@@ -752,7 +752,7 @@ class AlloyDBVectorStore(VectorStore):
 
         # Create `postgres_ann` extension when a `scann` index is applied
         if isinstance(index, SCANNIndex):
-            await self._aexecute("CREATE EXTENSION IF NOT EXISTS posrgres_ann")
+            await self.engine._aexecute("CREATE EXTENSION IF NOT EXISTS posrgres_ann")
             await self.set_maintenance_work_mem(index.num_leaves)
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""

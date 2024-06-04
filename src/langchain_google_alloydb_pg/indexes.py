@@ -124,7 +124,7 @@ class IVFQueryOptions(QueryOptions):
 class SCANNIndex(BaseIndex):
     index_type: str = "scann"
     num_leaves: int = 5
-    quantizer = field(
+    quantizer: str = field(
         default="sq8", init=False
     )  # Excludes `quantizer` from initialization currently only supports the value "sq8"
 
