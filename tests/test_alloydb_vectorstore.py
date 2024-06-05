@@ -161,7 +161,7 @@ class TestVectorStore:
             table_name=CUSTOM_TABLE,
             ignore_metadata_columns=[column_to_ignore],
             id_column="myid",
-            content_column="my_content",
+            content_column="mycontent",
             embedding_column="myembedding",
             metadata_json_column="mymeta",
         )
