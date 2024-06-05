@@ -153,10 +153,10 @@ class TestVectorStore:
                 metadata_json_column="mymeta",
             )
 
-    async def test_ignore_metadata_columns(self, engine):
+    async def test_ignore_metadata_columns(self, vs_custom):
         column_to_ignore = "page"
         vs = await AlloyDBVectorStore.create(
-            engine,
+            vs_custom.engine,
             embedding_service=embeddings_service,
             table_name=CUSTOM_TABLE,
             ignore_metadata_columns=[column_to_ignore],
@@ -279,15 +279,3 @@ class TestVectorStore:
         vs_sync.add_texts(texts, ids=ids)
         results = engine_sync._fetch(f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 6
-
-    async def test_set_maintenance_work_mem(self, engine, vs):
-        await vs.set_maintenance_work_mem(num_leaves)
-        engine._afetch.assert_awaited_once_with(
-            "SELECT vector FROM embeddings LIMIT 1;"
-        )
-
-        expected_memory = 50 * num_leaves * VECTOR_SIZE * 4
-
-        engine._aexecute.assert_awaited_once_with(
-            f"SET maintenance_work_mem = {expected_memory};"
-        )

@@ -130,10 +130,10 @@ class TestIndex:
         connstring = f"postgresql+asyncpg://{omni_user}:{omni_password}@{omni_host}:5432/{omni_database_name}"
         print(f"Connecting to AlloyDB Omni with {connstring}")
 
-        async with sqlalchemy.ext.asyncio.create_async_engine(
+        omni_engine = sqlalchemy.ext.asyncio.create_async_engine(
             connstring, isolation_level="AUTOCOMMIT"
-        ) as omni_engine:
-            yield omni_engine
+        )
+        yield omni_engine
 
     @pytest_asyncio.fixture(scope="class")
     async def omni_vs(self, omni_engine):
