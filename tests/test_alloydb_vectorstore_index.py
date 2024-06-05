@@ -124,13 +124,16 @@ class TestIndex:
         return get_env_var("OMNI_DATABASE_ID", "AlloyDB Omni database name")
 
     @pytest.fixture(scope="module")
-    def omni_engine(self, omni_host, omni_user, omni_password, omni_database_name):
+    async def omni_engine(
+        self, omni_host, omni_user, omni_password, omni_database_name
+    ):
         connstring = f"postgresql+asyncpg://{omni_user}:{omni_password}@{omni_host}:5432/{omni_database_name}"
         print(f"Connecting to AlloyDB Omni with {connstring}")
 
-        return sqlalchemy.ext.asyncio.create_async_engine(
+        omni_engine = await sqlalchemy.ext.asyncio.create_async_engine(
             connstring, isolation_level="AUTOCOMMIT"
         )
+        yield omni_engine
 
     @pytest_asyncio.fixture(scope="class")
     async def omni_vs(self, omni_engine):
@@ -173,6 +176,7 @@ class TestIndex:
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
+        await vs.adrop_vector_index()
 
     async def test_aapply_vector_index_ivf(self, vs):
         index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
@@ -185,6 +189,7 @@ class TestIndex:
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
+        await vs.adrop_vector_index()
 
     async def test_aapply_postgres_ann_index_scann(self, omni_vs):
         index = SCANNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
@@ -197,3 +202,4 @@ class TestIndex:
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.is_valid_index("secondindex")
         await omni_vs.adrop_vector_index("secondindex")
+        await omni_vs.adrop_vector_index()
