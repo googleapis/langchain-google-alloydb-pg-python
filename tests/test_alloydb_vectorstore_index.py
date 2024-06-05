@@ -123,7 +123,7 @@ class TestIndex:
     def omni_database_name(self) -> str:
         return get_env_var("OMNI_DATABASE_ID", "AlloyDB Omni database name")
 
-    @pytest.fixture(scope="module")
+    @pytest_asyncio.fixture(scope="class")
     async def omni_engine(
         self, omni_host, omni_user, omni_password, omni_database_name
     ):
