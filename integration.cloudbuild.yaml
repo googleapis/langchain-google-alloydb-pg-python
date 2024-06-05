@@ -33,7 +33,8 @@ steps:
       - "CLUSTER_ID=$_CLUSTER_ID"
       - "DATABASE_ID=$_DATABASE_ID"
       - "REGION=$_REGION"
-    secretEnv: ["DB_USER", "DB_PASSWORD"]
+      - "OMNI_DATABASE_ID=$_OMNI_DATABASE_ID"
+    secretEnv: ["DB_USER", "DB_PASSWORD", "OMNI_HOST", "OMNI_USER", "OMNI_PASSWORD"]
 
 availableSecrets:
   secretManager:

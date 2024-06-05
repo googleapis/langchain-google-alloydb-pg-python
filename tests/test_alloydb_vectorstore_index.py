@@ -18,6 +18,7 @@ import uuid
 
 import pytest
 import pytest_asyncio
+import sqlalchemy
 from langchain_community.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
 
@@ -106,6 +107,43 @@ class TestIndex:
         await engine._aexecute(f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
         await engine._engine.dispose()
 
+    @pytest.fixture(scope="module")
+    def omni_host(self) -> str:
+        return get_env_var("OMNI_HOST", "AlloyDB Omni host address")
+
+    @pytest.fixture(scope="module")
+    def omni_user(self) -> str:
+        return get_env_var("OMNI_USER", "AlloyDB Omni user name")
+
+    @pytest.fixture(scope="module")
+    def omni_password(self) -> str:
+        return get_env_var("OMNI_PASSWORD", "AlloyDB Omni password")
+
+    @pytest.fixture(scope="module")
+    def omni_database_name(self) -> str:
+        return get_env_var("OMNI_DATABASE_ID", "AlloyDB Omni database name")
+
+    @pytest.fixture(scope="module")
+    def omni_engine(self, omni_host, omni_user, omni_password, omni_database_name):
+        connstring = f"postgresql+asyncpg://{omni_user}:{omni_password}@{omni_host}:5432/{omni_database_name}"
+        print(f"Connecting to AlloyDB Omni with {connstring}")
+
+        return sqlalchemy.ext.asyncio.create_async_engine(
+            connstring, isolation_level="AUTOCOMMIT"
+        )
+
+    @pytest_asyncio.fixture(scope="class")
+    async def omni_vs(self, omni_engine):
+        await omni_engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        vs = await AlloyDBVectorStore.create(
+            omni_engine,
+            embedding_service=embeddings_service,
+            table_name=DEFAULT_TABLE,
+        )
+        yield vs
+        await omni_engine._aexecute(f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
+        await omni_engine._engine.dispose()
+
     async def test_aapply_vector_index(self, vs):
         index = HNSWIndex()
         await vs.aapply_vector_index(index)
@@ -148,14 +186,14 @@ class TestIndex:
         assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
 
-    async def test_aapply_postgres_ann_index_scann(self, vs):
+    async def test_aapply_postgres_ann_index_scann(self, omni_vs):
         index = SCANNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
-        await vs.aapply_vector_index(index, concurrently=True)
-        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        await omni_vs.aapply_vector_index(index, concurrently=True)
+        assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = SCANNIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
         )
-        await vs.aapply_vector_index(index)
-        assert await vs.is_valid_index("secondindex")
-        await vs.adrop_vector_index("secondindex")
+        await omni_vs.aapply_vector_index(index)
+        assert await omni_vs.is_valid_index("secondindex")
+        await omni_vs.adrop_vector_index("secondindex")
