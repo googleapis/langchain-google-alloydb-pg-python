@@ -193,7 +193,7 @@ class TestIndex:
         await vs.adrop_vector_index()
 
     async def test_aapply_postgres_ann_index_scann(self, omni_vs):
-        index = SCANNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = SCANNIndex(distance_strategy="l2")
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
         assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME)
