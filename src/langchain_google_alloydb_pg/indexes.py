@@ -62,7 +62,9 @@ class ExactNearestNeighbor(BaseIndex):
 @dataclass
 class HNSWIndex(BaseIndex):
     index_type: str = "hnsw"
-    distance_strategy = field(default_factory=DEFAULT_DISTANCE_STRATEGY)
+    distance_strategy = field(
+        default_factory=lambda: DistanceStrategy.PGVECTOR_COSINE_DISTANCE
+    )
     m: int = 16
     ef_construction: int = 64
 
@@ -88,7 +90,9 @@ class HNSWQueryOptions(QueryOptions):
 @dataclass
 class IVFFlatIndex(BaseIndex):
     index_type: str = "ivfflat"
-    distance_strategy = field(default_factory=DEFAULT_DISTANCE_STRATEGY)
+    distance_strategy = field(
+        default_factory=lambda: DistanceStrategy.PGVECTOR_COSINE_DISTANCE
+    )
     lists: int = 1
 
     def index_options(self) -> str:
@@ -106,7 +110,9 @@ class IVFFlatQueryOptions(QueryOptions):
 @dataclass
 class IVFIndex(BaseIndex):
     index_type: str = "ivf"
-    distance_strategy = field(default_factory=DEFAULT_DISTANCE_STRATEGY)
+    distance_strategy = field(
+        default_factory=lambda: DistanceStrategy.PGVECTOR_COSINE_DISTANCE
+    )
     lists: int = 100
     quantizer: str = field(
         default="sq8", init=False
