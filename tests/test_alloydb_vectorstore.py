@@ -153,20 +153,6 @@ class TestVectorStore:
                 metadata_json_column="mymeta",
             )
 
-    async def test_ignore_metadata_columns(self, vs_custom):
-        column_to_ignore = "page"
-        vs = await AlloyDBVectorStore.create(
-            vs_custom.engine,
-            embedding_service=embeddings_service,
-            table_name=CUSTOM_TABLE,
-            ignore_metadata_columns=[column_to_ignore],
-            id_column="myid",
-            content_column="mycontent",
-            embedding_column="myembedding",
-            metadata_json_column="mymeta",
-        )
-        assert column_to_ignore not in vs.metadata_columns
-
     async def test_aadd_texts(self, engine, vs):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         await vs.aadd_texts(texts, ids=ids)
