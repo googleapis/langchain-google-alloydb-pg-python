@@ -25,21 +25,19 @@ class StrategyMixin:
     index_function: str
 
 
-class DistanceStrategy(StrategyMixin, enum.Enum):
+class DistanceStrategy:
     """Enumerator of the Distance strategies."""
 
-    EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops"
-    COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops"
-    INNER_PRODUCT = "<#>", "ip_distance", "vector_ip_ops"
+    PGVECTOR_EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops"
+    PGVECTOR_COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops"
+    PGVECTOR_INNER_PRODUCT = "<#>", "ip_distance", "vector_ip_ops"
+    # For SCANN index only
+    SCANN_EUCLIDEAN = "<->", "l2_distance", "l2"
+    SCANN_COSINE_DISTANCE = "<=>", "cosine_distance", "cosine"
+    SCANN_INNER_PRODUCT = "<#>", "ip_distance", "dot_product"
 
 
-class ScannDistanceStrategy(DistanceStrategy):
-    EUCLIDEAN = "<->", "l2_distance", "l2"
-    COSINE_DISTANCE = "<=>", "cosine_distance", "cosine"
-    INNER_PRODUCT = "<#>", "ip_distance", "dot_product"
-
-
-DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.COSINE_DISTANCE
+DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.PGVECTOR_COSINE_DISTANCE
 DEFAULT_INDEX_NAME: str = "langchainvectorindex"
 
 
@@ -47,9 +45,6 @@ DEFAULT_INDEX_NAME: str = "langchainvectorindex"
 class BaseIndex(ABC):
     name: str = DEFAULT_INDEX_NAME
     index_type: str = "base"
-    distance_strategy: DistanceStrategy = field(
-        default_factory=lambda: DistanceStrategy.COSINE_DISTANCE
-    )
     partial_indexes: Optional[List[str]] = None
 
     @abstractmethod
@@ -67,6 +62,7 @@ class ExactNearestNeighbor(BaseIndex):
 @dataclass
 class HNSWIndex(BaseIndex):
     index_type: str = "hnsw"
+    distance_strategy = field(default_factory=DEFAULT_DISTANCE_STRATEGY)
     m: int = 16
     ef_construction: int = 64
 
@@ -92,6 +88,7 @@ class HNSWQueryOptions(QueryOptions):
 @dataclass
 class IVFFlatIndex(BaseIndex):
     index_type: str = "ivfflat"
+    distance_strategy = field(default_factory=DEFAULT_DISTANCE_STRATEGY)
     lists: int = 1
 
     def index_options(self) -> str:
@@ -109,6 +106,7 @@ class IVFFlatQueryOptions(QueryOptions):
 @dataclass
 class IVFIndex(BaseIndex):
     index_type: str = "ivf"
+    distance_strategy = field(default_factory=DEFAULT_DISTANCE_STRATEGY)
     lists: int = 100
     quantizer: str = field(
         default="sq8", init=False
@@ -129,7 +127,7 @@ class IVFQueryOptions(QueryOptions):
 @dataclass
 class SCANNIndex(BaseIndex):
     distance_strategy = field(
-        default_factory=lambda: ScannDistanceStrategy.COSINE_DISTANCE
+        default_factory=lambda: DistanceStrategy.SCANN_COSINE_DISTANCE
     )
     index_type: str = "scann"
     num_leaves: int = 5

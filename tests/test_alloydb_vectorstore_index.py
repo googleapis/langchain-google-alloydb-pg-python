@@ -29,7 +29,6 @@ from langchain_google_alloydb_pg.indexes import (
     HNSWIndex,
     IVFFlatIndex,
     IVFIndex,
-    ScannDistanceStrategy,
     SCANNIndex,
 )
 
@@ -168,12 +167,12 @@ class TestIndex:
         assert not result
 
     async def test_aapply_vector_index_ivfflat(self, vs):
-        index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = IVFFlatIndex(distance_strategy=DistanceStrategy.PGVECTOR_EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFFlatIndex(
             name="secondindex",
-            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+            distance_strategy=DistanceStrategy.PGVECTOR_INNER_PRODUCT,
         )
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
@@ -181,12 +180,12 @@ class TestIndex:
         await vs.adrop_vector_index()
 
     async def test_aapply_vector_index_ivf(self, vs):
-        index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = IVFIndex(distance_strategy=DistanceStrategy.PGVECTOR_EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFIndex(
             name="secondindex",
-            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+            distance_strategy=DistanceStrategy.PGVECTOR_INNER_PRODUCT,
         )
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
@@ -194,13 +193,13 @@ class TestIndex:
         await vs.adrop_vector_index()
 
     async def test_aapply_postgres_ann_index_scann(self, omni_vs):
-        index = SCANNIndex(distance_strategy=ScannDistanceStrategy.EUCLIDEAN)
+        index = SCANNIndex(distance_strategy=DistanceStrategy.SCANN_EUCLIDEAN)
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
         assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = SCANNIndex(
             name="secondindex",
-            distance_strategy=ScannDistanceStrategy.COSINE_DISTANCE,
+            distance_strategy=DistanceStrategy.SCANN_COSINE_DISTANCE,
         )
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.is_valid_index("secondindex")
