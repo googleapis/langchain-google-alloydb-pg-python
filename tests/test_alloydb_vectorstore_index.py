@@ -199,7 +199,7 @@ class TestIndex:
         assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = SCANNIndex(
             name="secondindex",
-            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+            distance_strategy="dot_product",
         )
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.is_valid_index("secondindex")
