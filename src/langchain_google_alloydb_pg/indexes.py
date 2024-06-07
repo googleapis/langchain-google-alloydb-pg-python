@@ -25,7 +25,7 @@ class StrategyMixin:
     index_function: str
 
 
-class DistanceStrategy:
+class DistanceStrategy(StrategyMixin, enum.Enum):
     """Enumerator of the Distance strategies."""
 
     PGVECTOR_EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops"
@@ -45,6 +45,9 @@ DEFAULT_INDEX_NAME: str = "langchainvectorindex"
 class BaseIndex(ABC):
     name: str = DEFAULT_INDEX_NAME
     index_type: str = "base"
+    distance_strategy: DistanceStrategy = field(
+        default_factory=lambda: DistanceStrategy.PGVECTOR_COSINE_DISTANCE
+    )
     partial_indexes: Optional[List[str]] = None
 
     @abstractmethod
@@ -62,9 +65,6 @@ class ExactNearestNeighbor(BaseIndex):
 @dataclass
 class HNSWIndex(BaseIndex):
     index_type: str = "hnsw"
-    distance_strategy: DistanceStrategy = field(
-        default_factory=lambda: DistanceStrategy.PGVECTOR_COSINE_DISTANCE
-    )
     m: int = 16
     ef_construction: int = 64
 
@@ -90,9 +90,6 @@ class HNSWQueryOptions(QueryOptions):
 @dataclass
 class IVFFlatIndex(BaseIndex):
     index_type: str = "ivfflat"
-    distance_strategy: DistanceStrategy = field(
-        default_factory=lambda: DistanceStrategy.PGVECTOR_COSINE_DISTANCE
-    )
     lists: int = 1
 
     def index_options(self) -> str:
@@ -110,9 +107,6 @@ class IVFFlatQueryOptions(QueryOptions):
 @dataclass
 class IVFIndex(BaseIndex):
     index_type: str = "ivf"
-    distance_strategy: DistanceStrategy = field(
-        default_factory=lambda: DistanceStrategy.PGVECTOR_COSINE_DISTANCE
-    )
     lists: int = 100
     quantizer: str = field(
         default="sq8", init=False
