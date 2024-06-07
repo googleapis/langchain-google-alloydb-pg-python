@@ -33,6 +33,12 @@ class DistanceStrategy(StrategyMixin, enum.Enum):
     INNER_PRODUCT = "<#>", "ip_distance", "vector_ip_ops"
 
 
+class ScannDistanceStrategy(DistanceStrategy):
+    EUCLIDEAN = "<->", "l2_distance", "l2"
+    COSINE_DISTANCE = "<=>", "cosine_distance", "cosine"
+    INNER_PRODUCT = "<#>", "ip_distance", "dot_product"
+
+
 DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.COSINE_DISTANCE
 DEFAULT_INDEX_NAME: str = "langchainvectorindex"
 
@@ -122,6 +128,9 @@ class IVFQueryOptions(QueryOptions):
 
 @dataclass
 class SCANNIndex(BaseIndex):
+    distance_strategy = field(
+        default_factory=lambda: ScannDistanceStrategy.COSINE_DISTANCE
+    )
     index_type: str = "scann"
     num_leaves: int = 5
     quantizer: str = field(
