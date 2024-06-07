@@ -26,10 +26,10 @@ from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
     DEFAULT_INDEX_NAME,
     DistanceStrategy,
-    ScannDistanceStrategy,
     HNSWIndex,
     IVFFlatIndex,
     IVFIndex,
+    ScannDistanceStrategy,
     SCANNIndex,
 )
 
