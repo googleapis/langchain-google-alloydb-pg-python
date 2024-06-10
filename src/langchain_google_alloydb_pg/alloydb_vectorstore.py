@@ -731,9 +731,13 @@ class AlloyDBVectorStore(VectorStore):
         return self.engine._run_as_sync(coro)
 
     async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
-        index_memory_required = 50 * num_leaves * vector_size * 4
+        # Required index memory in MB
+        buffer = 1
+        index_memory_required = (
+            round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
+        )
         await self.engine._aexecute(
-            f"SET maintenance_work_mem = {index_memory_required};"
+            f"SET maintenance_work_mem TO {index_memory_required} MB;"
         )
 
     async def aapply_vector_index(

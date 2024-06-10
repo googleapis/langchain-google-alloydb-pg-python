@@ -177,7 +177,6 @@ class TestIndex:
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
-        await vs.adrop_vector_index()
 
     async def test_aapply_vector_index_ivf(self, vs):
         index = IVFIndex(distance_strategy=DistanceStrategy.PGVECTOR_EUCLIDEAN)
@@ -190,7 +189,6 @@ class TestIndex:
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
-        await vs.adrop_vector_index()
 
     async def test_aapply_postgres_ann_index_scann(self, omni_vs):
         index = SCANNIndex(distance_strategy=DistanceStrategy.SCANN_EUCLIDEAN)
@@ -204,4 +202,3 @@ class TestIndex:
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.is_valid_index("secondindex")
         await omni_vs.adrop_vector_index("secondindex")
-        await omni_vs.adrop_vector_index()

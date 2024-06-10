@@ -36,7 +36,6 @@ docs = [
 ]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
-num_leaves = 100
 
 
 def get_env_var(key: str, desc: str) -> str:
