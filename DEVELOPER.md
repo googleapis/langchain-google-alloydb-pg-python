@@ -28,7 +28,7 @@ Learn more by reading [How should I write my commits?](https://github.com/google
 
 
 ### AlloyDB Omni Testing
-The `ScaNN` index is an AlloyDB Omni preview and is not available on Cloud AlloyDB. To test for the `ScaNN` index integration, an AlloyDB Omni instance is set up and run on a GCE VM instance. The Omni instance is listening on input traffic on the private IP address of the VM. Integration tests related to the `ScaNN` index are only run against this Omni instance, while all other indexes are run against the Cloud AlloyDB testing instance.
+The `ScaNN` index is an AlloyDB Omni preview and is not available on Cloud AlloyDB. To test for the `ScaNN` index integration, an AlloyDB Omni instance is set up and run on a GCE VM instance. The Omni instance is listening on input traffic on the private IP address of the VM. Integration tests related to the `ScaNN` index are only run against this Omni instance, while all other index tests are run against the Cloud AlloyDB testing instance.
 
 For more information, refer to the instruction on [AlloyDB Omni setup][alloydb-omni].
 
