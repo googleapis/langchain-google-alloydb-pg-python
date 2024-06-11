@@ -737,7 +737,7 @@ class AlloyDBVectorStore(VectorStore):
             round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
         )
         await self.engine._aexecute(
-            f"SET maintenance_work_mem TO {index_memory_required} MB;"
+            f"SET maintenance_work_mem TO '{index_memory_required} MB';"
         )
 
     async def aapply_vector_index(
