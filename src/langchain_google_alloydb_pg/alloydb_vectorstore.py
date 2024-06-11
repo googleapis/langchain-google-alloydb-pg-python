@@ -32,7 +32,7 @@ from .indexes import (
     DistanceStrategy,
     ExactNearestNeighbor,
     QueryOptions,
-    SCANNIndex,
+    ScaNNIndex,
 )
 
 
@@ -750,13 +750,15 @@ class AlloyDBVectorStore(VectorStore):
             await self.adrop_vector_index()
             return
 
-        # Create `postgres_ann` extension when a `scann` index is applied
-        if isinstance(index, SCANNIndex):
+        # Create `postgres_ann` extension when a `ScaNN` index is applied
+        if isinstance(index, ScaNNIndex):
             await self.engine._aexecute("CREATE EXTENSION IF NOT EXISTS postgres_ann")
+            function = index.distance_strategy.scann_index_function
+        else:
+            function = index.distance_strategy.index_function
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
-        function = index.distance_strategy.index_function
         name = name or index.name
         stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
         if concurrently:
