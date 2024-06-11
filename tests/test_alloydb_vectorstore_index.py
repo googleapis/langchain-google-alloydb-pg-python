@@ -167,37 +167,37 @@ class TestIndex:
         assert not result
 
     async def test_aapply_vector_index_ivfflat(self, vs):
-        index = IVFFlatIndex(distance_strategy=DistanceStrategy.PGVECTOR_EUCLIDEAN)
+        index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFFlatIndex(
             name="secondindex",
-            distance_strategy=DistanceStrategy.PGVECTOR_INNER_PRODUCT,
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
         )
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
 
     async def test_aapply_vector_index_ivf(self, vs):
-        index = IVFIndex(distance_strategy=DistanceStrategy.PGVECTOR_EUCLIDEAN)
+        index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFIndex(
             name="secondindex",
-            distance_strategy=DistanceStrategy.PGVECTOR_INNER_PRODUCT,
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
         )
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
 
     async def test_aapply_postgres_ann_index_ScaNN(self, omni_vs):
-        index = ScaNNIndex(distance_strategy=DistanceStrategy.ScaNN_EUCLIDEAN)
+        index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
         assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = ScaNNIndex(
             name="secondindex",
-            distance_strategy=DistanceStrategy.ScaNN_COSINE_DISTANCE,
+            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.is_valid_index("secondindex")
