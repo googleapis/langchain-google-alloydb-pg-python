@@ -23,14 +23,15 @@ class StrategyMixin:
     operator: str
     search_function: str
     index_function: str
+    scann_index_function: str
 
 
 class DistanceStrategy(StrategyMixin, enum.Enum):
     """Enumerator of the Distance strategies."""
 
-    EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops"
-    COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops"
-    INNER_PRODUCT = "<#>", "ip_distance", "vector_ip_ops"
+    EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops", "l2"
+    COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops", "cosine"
+    INNER_PRODUCT = "<#>", "ip_distance", "vector_ip_ops", "dot_product"
 
 
 DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.COSINE_DISTANCE
@@ -98,3 +99,35 @@ class IVFFlatQueryOptions(QueryOptions):
 
     def to_string(self) -> str:
         return f"ivfflat.probes = {self.probes}"
+
+
+@dataclass
+class IVFIndex(BaseIndex):
+    index_type: str = "ivf"
+    lists: int = 100
+    quantizer: str = field(
+        default="sq8", init=False
+    )  # Disable `quantizer` initialization currently only supports the value "sq8"
+
+    def index_options(self) -> str:
+        return f"(lists = {self.lists}, quantizer = {self.quantizer})"
+
+
+@dataclass
+class IVFQueryOptions(QueryOptions):
+    probes: int = 1
+
+    def to_string(self) -> str:
+        return f"ivf.probes = {self.probes}"
+
+
+@dataclass
+class ScaNNIndex(BaseIndex):
+    index_type: str = "ScaNN"
+    num_leaves: int = 5
+    quantizer: str = field(
+        default="sq8", init=False
+    )  # Excludes `quantizer` from initialization currently only supports the value "sq8"
+
+    def index_options(self) -> str:
+        return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"

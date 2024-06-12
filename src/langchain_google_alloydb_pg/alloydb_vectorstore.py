@@ -32,6 +32,7 @@ from .indexes import (
     DistanceStrategy,
     ExactNearestNeighbor,
     QueryOptions,
+    ScaNNIndex,
 )
 
 
@@ -729,6 +730,16 @@ class AlloyDBVectorStore(VectorStore):
         )
         return self.engine._run_as_sync(coro)
 
+    async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
+        # Required index memory in MB
+        buffer = 1
+        index_memory_required = (
+            round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
+        )  # Convert bytes to MB
+        await self.engine._aexecute(
+            f"SET maintenance_work_mem TO '{index_memory_required} MB';"
+        )
+
     async def aapply_vector_index(
         self,
         index: BaseIndex,
@@ -739,9 +750,15 @@ class AlloyDBVectorStore(VectorStore):
             await self.adrop_vector_index()
             return
 
+        # Create `postgres_ann` extension when a `ScaNN` index is applied
+        if isinstance(index, ScaNNIndex):
+            await self.engine._aexecute("CREATE EXTENSION IF NOT EXISTS postgres_ann")
+            function = index.distance_strategy.scann_index_function
+        else:
+            function = index.distance_strategy.index_function
+
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
-        function = index.distance_strategy.index_function
         name = name or index.name
         stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
         if concurrently:

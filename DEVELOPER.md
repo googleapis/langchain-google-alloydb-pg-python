@@ -18,7 +18,7 @@ Learn more by reading [How should I write my commits?](https://github.com/google
 
 ### Run tests locally
 
-1. Set environment variables for `INSTANCE_ID`, `CLUSTER_ID`, `DATABASE_ID`, `DB_USER`, `DB_PASSWORD`
+1. Set environment variables for `INSTANCE_ID`, `CLUSTER_ID`, `DATABASE_ID`, `DB_USER`, `DB_PASSWORD`, `OMNI_HOST`, `OMNI_USER`, `OMNI_PASSWORD`.
 
 1. Run pytest to automatically run all tests:
 
@@ -26,11 +26,19 @@ Learn more by reading [How should I write my commits?](https://github.com/google
     pytest
     ```
 
+
+### AlloyDB Omni Testing
+The `ScaNN` index is an AlloyDB Omni preview and is not available on Cloud AlloyDB. To test for the `ScaNN` index integration, an AlloyDB Omni instance is set up and run on a GCE VM instance. The Omni instance is listening on input traffic on the private IP address of the VM. Integration tests related to the `ScaNN` index are only run against this Omni instance, while all other index tests are run against the Cloud AlloyDB testing instance.
+
+For more information, refer to the instruction on [AlloyDB Omni setup][alloydb-omni].
+
+
 ### CI Platform Setup
 
 Cloud Build is used to run tests against Google Cloud resources in test project: langchain-alloydb-testing.
 Each test has a corresponding Cloud Build trigger, see [all triggers][triggers].
 These tests are registered as required tests in `.github/sync-repo-settings.yaml`.
+
 
 #### Trigger Setup
 
@@ -66,6 +74,7 @@ Use `gcloud builds triggers import --source=trigger.yaml` to create triggers via
 1. Create an AlloyDB cluster, instance, and database
 1. Setup Cloud Build triggers (above)
 
+
 #### Run tests with Cloud Build
 
 * Run integration test:
@@ -93,3 +102,4 @@ Here is a breakdown of the report:
 
 
 [triggers]: https://console.cloud.google.com/cloud-build/triggers?e=13802955&project=langchain-alloydb-testing
+[alloydb-omni]: https://cloud.google.com/alloydb/docs/omni/quickstart
