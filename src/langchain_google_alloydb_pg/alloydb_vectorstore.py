@@ -735,7 +735,7 @@ class AlloyDBVectorStore(VectorStore):
         buffer = 1
         index_memory_required = (
             round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
-        )
+        )  # Convert bytes to MB
         await self.engine._aexecute(
             f"SET maintenance_work_mem TO '{index_memory_required} MB';"
         )
