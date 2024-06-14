@@ -1,6 +1,6 @@
-google-cloud-alloydb-connector[asyncpg]==1.1.1
-langchain-core==0.2.5
-langchain-community==0.2.4
+google-cloud-alloydb-connector[asyncpg]==1.1.2
+langchain-core==0.2.7
+langchain-community==0.2.5
 numpy===1.24.4; python_version <= "3.8"
 numpy==1.26.4; python_version > "3.8"
 pgvector==0.2.5
