@@ -248,6 +248,7 @@ class AlloyDBEngine:
             result = await conn.execute(text(query), params)
             result_map = result.mappings()
             result_fetch = result_map.fetchall()
+            print(result_fetch)
 
         return result_fetch
 

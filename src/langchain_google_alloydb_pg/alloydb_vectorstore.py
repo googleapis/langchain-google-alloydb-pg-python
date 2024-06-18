@@ -461,9 +461,9 @@ class AlloyDBVectorStore(VectorStore):
         k = k if k else self.k
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function
-
         filter = f"WHERE {filter}" if filter else ""
-        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
+        stmt = f"EXPLAIN SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
+
         if self.index_query_options:
             await self.engine._aexecute(
                 f"SET LOCAL {self.index_query_options.to_string()};"
@@ -518,7 +518,7 @@ class AlloyDBVectorStore(VectorStore):
         docs_and_scores = await self.asimilarity_search_with_score_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
         )
-
+        return docs_and_scores
         return [doc for doc, _ in docs_and_scores]
 
     async def asimilarity_search_with_score_by_vector(
@@ -531,6 +531,7 @@ class AlloyDBVectorStore(VectorStore):
         results = await self.__query_collection(
             embedding=embedding, k=k, filter=filter, **kwargs
         )
+        return results
 
         documents_with_scores = []
         for row in results:
