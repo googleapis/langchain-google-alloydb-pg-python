@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.3.0...v0.4.0) (2024-06-18)
+
+
+### Features
+
+* Add IVF and ScaNN Indexes ([#139](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/139)) ([f9d70f1](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f9d70f16aa699012d79068a0870f475d35b7ad94))
+
 ## [0.3.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.2.2...v0.3.0) (2024-05-30)
 
 
