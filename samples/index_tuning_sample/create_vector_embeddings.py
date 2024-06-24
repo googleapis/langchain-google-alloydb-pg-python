@@ -25,13 +25,13 @@ from sqlalchemy.ext.asyncio import create_async_engine
 EMBEDDING_COUNT = 100
 
 # AlloyDB info
-PROJECT_ID = "duwenxin-space"
-REGION = "us-central1"  # @param {type:"string"}
-CLUSTER_NAME = "my-alloydb-cluster"  # @param {type:"string"}
-INSTANCE_NAME = "my-alloydb-instance"  # @param {type:"string"}
-DATABASE_NAME = "netflix"  # @param {type:"string"}
-USER = "postgres"  # @param {type:"string"}
-PASSWORD = "postgres"  # @param {type:"string"}
+PROJECT_ID = ""
+REGION = ""  # @param {type:"string"}
+CLUSTER_NAME = ""  # @param {type:"string"}
+INSTANCE_NAME = ""  # @param {type:"string"}
+DATABASE_NAME = ""  # @param {type:"string"}
+USER = ""  # @param {type:"string"}
+PASSWORD = ""  # @param {type:"string"}
 
 vector_table_name = "wine_reviews_vector"
 
