@@ -1,0 +1,4 @@
+langchain-google-alloydb-pg
+langchain
+langchain-google-vertexai
+google-cloud-alloydb-connector[pg8000]
