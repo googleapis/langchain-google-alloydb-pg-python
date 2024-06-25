@@ -25,12 +25,12 @@ EMBEDDING_COUNT = 100
 
 # AlloyDB info
 PROJECT_ID = ""
-REGION = ""  # @param {type:"string"}
-CLUSTER_NAME = ""  # @param {type:"string"}
-INSTANCE_NAME = ""  # @param {type:"string"}
-DATABASE_NAME = ""  # @param {type:"string"}
-USER = ""  # @param {type:"string"}
-PASSWORD = ""  # @param {type:"string"}
+REGION = ""
+CLUSTER_NAME = ""
+INSTANCE_NAME = ""
+DATABASE_NAME = ""
+USER = ""
+PASSWORD = ""
 
 vector_table_name = "wine_reviews_vector"
 
@@ -58,12 +58,6 @@ async def load_csv_documents(dataset_path=DATASET_PATH):
 
     loader = CSVLoader(file_path=dataset_path)
     documents = loader.load()
-
-    documents = [
-        Document(page_content=str(doc.dict()), metadata=doc.metadata)
-        for doc in documents
-    ]
-
     return documents
 
 

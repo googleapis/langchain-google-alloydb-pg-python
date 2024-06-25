@@ -33,14 +33,12 @@ on:
       - "*.md"
       - ".kokoro/**"
       - ".github/**"
-      - "./samples/index_tuning_sample/**"
   pull_request_target:
     types: [labeled]
     paths-ignore:
       - "*.md"
       - ".kokoro/**"
       - ".github/**"
-      - "./samples/index_tuning_sample/**"
 
 jobs:
   lint:
@@ -88,6 +86,9 @@ jobs:
 
       - name: Install module (and test requirements)
         run: pip install -e .[test]
+      
+      - name: Install sample requirements
+        run: pip install -r samples/index_tuning_sample/requirements.txt
 
       - name: Run linters
         run: |
