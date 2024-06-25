@@ -18,9 +18,10 @@ import uuid
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from langchain.docstore.document import Document
 from langchain_community.document_loaders import CSVLoader
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_vertexai import VertexAIEmbeddings
 from sqlalchemy.ext.asyncio import create_async_engine
+
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
 EMBEDDING_COUNT = 100
 

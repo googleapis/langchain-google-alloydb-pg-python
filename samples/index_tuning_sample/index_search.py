@@ -26,6 +26,8 @@ from create_vector_embeddings import (
     USER,
     vector_table_name,
 )
+from langchain_google_vertexai import VertexAIEmbeddings
+
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
     DistanceStrategy,
@@ -33,7 +35,6 @@ from langchain_google_alloydb_pg.indexes import (
     HNSWQueryOptions,
     IVFFlatIndex,
 )
-from langchain_google_vertexai import VertexAIEmbeddings
 
 DISTANCE_STRATEGY = DistanceStrategy.COSINE_DISTANCE
 
