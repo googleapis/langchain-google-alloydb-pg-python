@@ -287,15 +287,15 @@ Our default values for `lists` is 100. Modify your code to increase `lists` to 2
 
 1. Now let us modify the vector store initialization to add a query parameter `probes`, which determines the number of lists searched during query:
 
-```python
-    vector_store = await AlloyDBVectorStore.create(
-            engine=engine,
-            distance_strategy=DISTANCE_STRATEGY,
-            table_name=vector_table_name,
-            embedding_service=embedding,
-            index_query_options=IVFFLATQueryOptions(probes=50),
-        )
-```
+    ```python
+        vector_store = await AlloyDBVectorStore.create(
+                engine=engine,
+                distance_strategy=DISTANCE_STRATEGY,
+                table_name=vector_table_name,
+                embedding_service=embedding,
+                index_query_options=IVFFLATQueryOptions(probes=50),
+            )
+    ```
 
 1. Re-run this command to see the difference in recall and latency:
 
