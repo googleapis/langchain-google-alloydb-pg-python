@@ -55,7 +55,6 @@ pip3 install -r requirements.txt
 Enter your database information and credentials in `create_vector_embeddings.py`:
 
 ```python
-AlloyDB info
 PROJECT_ID = ""
 REGION = ""
 CLUSTER_NAME = ""
