@@ -10,6 +10,7 @@ sourceFileExtensions:
   - "Dockerfile"
   - "py"
   - "text"
+
 ignoreFiles:
   - ".github/blunderbuss.yml"
   - ".github/release-please.yml"
@@ -20,4 +21,3 @@ ignoreFiles:
   - ".kokoro/**"
   - "**/requirements.txt"
   - "**/requirements*.txt"
-   - "./samples/index_tuning_sample**"
