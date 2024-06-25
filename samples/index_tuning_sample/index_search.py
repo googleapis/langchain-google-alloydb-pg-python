@@ -87,7 +87,6 @@ async def hnsw_search(vector_store, knn_docs):
     hnsw_index = HNSWIndex(
         name="hnsw", distance_strategy=DISTANCE_STRATEGY, m=36, ef_construction=96
     )
-    # hnsw_index = HNSWIndex(name="hnsw", distance_strategy=DISTANCE_STRATEGY)
     await vector_store.aapply_vector_index(hnsw_index)
     assert await vector_store.is_valid_index(hnsw_index.name)
     print("HNSW index created.")
