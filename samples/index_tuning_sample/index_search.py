@@ -35,7 +35,8 @@ from langchain_google_alloydb_pg.indexes import (
 )
 from langchain_google_vertexai import VertexAIEmbeddings
 
-DISTANCE_STRATEGY = DistanceStrategy.EUCLIDEAN
+DISTANCE_STRATEGY = DistanceStrategy.COSINE_DISTANCE
+
 k = 10
 query_1 = "Brooding aromas of barrel spice."
 query_2 = "Aromas include tropical fruit, broom, brimstone and dried herb."

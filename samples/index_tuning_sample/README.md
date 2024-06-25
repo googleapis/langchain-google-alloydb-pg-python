@@ -1,38 +1,59 @@
+
 # Guide for Index Tuning
+
 ## Introduction
-This guide walks through the process of fine-tuning your LangChain PostgreSQL index for better vector similarity search results. Every dataset has different data types, distribution, and structure, thus needs its own index configuration for the best indexing performance. Start by assessing how well your index works with your dataset, focusing on recall (accuracy) and latency (speed). Then, experiment with different parameters to see which ones work best for your dataset. We will lead you step by step using a sample code repository. 
+
+This guide walks through the process of fine-tuning your LangChain PostgreSQL index for better vector similarity search results. Every dataset has different data types, distribution, and structure, thus needs its own index configuration for the best indexing performance. Start by assessing how well your index works with your dataset, focusing on recall (accuracy) and latency (speed). Then, experiment with different parameters to see which ones work best for your dataset. We will lead you step by step using a sample code repository.
 
 This tutorial is hosted on [LangChain AlloyDB integration library](https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/samples/index_tuning_guide) in Markdown format, accompanied by Python code sample files.
 
-
 ## Before You Begin
-Make sure you have a Google Cloud project and billing is enabled.
-Install the gcloud CLI.
-Set gcloud project:
 
-gcloud config set project $PROJECT_ID
+1. Make sure you have a Google Cloud project and billing is enabled.
+1. Install the gcloud CLI.
+
+    Set gcloud project:
+
+    ```bash
+    gcloud config set project $PROJECT_ID
+    ```
+
 Enable APIs:
-```bash
-gcloud services enable alloydb.googleapis.com \
-                       cloudresourcemanager.googleapis.com \
-                       compute.googleapis.com \
-```
-If you haven't already, create an AlloyDB database cluster and instance following this guide. 
 
+```bash
+gcloud services enable alloydb.googleapis.com
+gcloud services enable compute.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
+```
+
+1. If you haven't already, create an AlloyDB database cluster and instance following this [guide](https://www.google.com/url?q=https://cloud.google.com/alloydb/docs/quickstart/create-and-connect&sa=D&source=docs&ust=1719329998287572&usg=AOvVaw0wZYIMI4to2KljZjjDnsdv).
 
 ## Step 1: Clone sample code
+
 Run `git clone` command in your local directory to pull the sample code:
-git clone https://github.com/googleapis/langchain-google-alloydb-pg-python
+    ```bash
+    git clone <https://github.com/googleapis/langchain-google-alloydb-pg-python>
+    ````
 
-## Step 2: Move into your local sample directory:
+## Step 2: Move into your local sample directory
+
 Move into the sample directory:
-cd samples/langchain-vector-search-index-optimization
-Step 3:  Install Dependencies
-In your local sample code directory, run this command to install required dependencies:
-pip3 install -r requirements.txt
 
-## Step 3: Fill In Database Info
-Enter your database information and credentials in `create_vector_embeddings.py`
+```bash
+cd samples/index_tuning_sample
+```
+
+## Step 3:  Install Dependencies
+
+In your local sample code directory, run this command to install required dependencies:
+
+```bash
+pip3 install -r requirements.txt
+```
+
+## Step 4: Fill In Database Info
+
+Enter your database information and credentials in `create_vector_embeddings.py`:
 
 ```python
 AlloyDB info
@@ -45,16 +66,19 @@ USER = "postgres"  # @param {type:"string"}
 PASSWORD = "postgres"  # @param {type:"string"}
 ```
 
-## Step 4: Generate Embeddings
+## Step 5: Generate Embeddings
+
 If you already have vector embeddings ready in your database, you can skip this step.
 Otherwise, create embeddings from the sample dataset `wine_reviews_dataset.csv` by running this command in your sample code directory:
 
 ```bash
 python3 create_vector_embeddings.py
 ```
+
 Now your database is populated with 100k vector embeddings.
 
-## Step 5 : Create Database Vector Store
+## Step 6: Create a Database Vector Store
+
 we create a database engine from the information you input previously, and create a vector store from that engine:
 
 ```python
@@ -62,6 +86,10 @@ from langchain_google_alloydb_pg import (
     AlloyDBEngine,
     AlloyDBVectorStore,
 )
+
+from langchain_google_alloydb_pg.indexes import DistanceStrategy
+
+DISTANCE_STRATEGY = DistanceStrategy.COSINE_DISTANCE
 
 async def get_vector_store():
     engine = await AlloyDBEngine.afrom_instance(
@@ -83,18 +111,22 @@ async def get_vector_store():
     return vector_store
 ```
 
-## Step 5:  Learn About Index Benchmarking Metrics
-It is time to measure the performance of this index on your dataset. Recall and latency are key metrics for assessing the performance of vector similarity search indexing. 
+## Step 7: Learn About Index Benchmarking Metrics
+
+It is time to measure the performance of this index on your dataset. Recall and latency are key metrics for assessing the performance of vector similarity search indexing.
 
 ### What is latency and how to measure it?
+
 Latency refers to the time it takes for the system to complete a search query and return results. Lower latency means faster search results and is crucial for user experience.
 
-To measure the query latency of an index, we measure how long it takes to perform a similarity search query against the index. After creating and applying the index, we put a timer around the similarity search statement, with the time difference being the query latency. 
+To measure the query latency of an index, we measure how long it takes to perform a similarity search query against the index. After creating and applying the index, we put a timer around the similarity search statement, with the time difference being the query latency.
 
-### What is recall and how to measure it? 
-In the context of ANN indexing (If you don’t know what ANN and KNN are, refer to this guide), index recall is determined by the proportion of accurate results to the total results returned. Accurate results are identified by the overlap between the current index's results and those obtained through brute force iteration (KNN). By dividing the count of accurate results by the total results returned, we obtain the recall of the index, indicating the index's search accuracy.
+### What is recall and how to measure it?
 
-## Step 6:  Index Benchmarking
+In the context of ANN indexing, index recall is determined by the proportion of accurate results to the total results returned. Accurate results are identified by the overlap between the current index's results and those obtained through brute force iteration (KNN). By dividing the count of accurate results by the total results returned, we obtain the recall of the index, indicating the index's search accuracy.
+
+## Step 8: Index Benchmarking
+
 Run this command to get an index performance report printed out on your terminal:
 
 ```bash
@@ -103,7 +135,7 @@ python3 index_search.py
 
 The sample code tested the recall and latency of both HNSW and IVFFlat on the current dataset. Let us understand how each measurement is implemented, so you could customize your own benchmarking script.
 
-We usually calculate the average latency of multiple queries to have a better understanding of the system's performance under different conditions and to reduce the impact of outliers and variability in individual measurements.
+We will calculate the average latency of multiple queries to have a better understanding of the system's performance under different conditions and to reduce the impact of outliers and variability in individual measurements.
 
 1. First we create some sample query vectors. Using more sample queries will increase the benchmark accuracy when calculating average latency:
 
@@ -169,7 +201,7 @@ We usually calculate the average latency of multiple queries to have a better un
         return average_latency, average_recall
     ```
 
-## Step 7:  Index Tuning
+## Step 9: Index Tuning
 
 ### HNSW
 
@@ -189,11 +221,13 @@ class HNSWQueryOptions(QueryOptions):
 ```
 
 For HNSW index, there are several parameters that impact search recalls and latency:
+
 - `m`: controls the number of bi-directional links created for each element in the space. A higher m value increases the index size but can increase search recall and reduce latency.
 - `ef_construction`: indicates how many entry points will be explored when building the HNSW index. Increasing `ef_construction` increases the index construction time and improves the quality of the constructed graph. At a certain threshold, increasing ef_construction does not improve the quality of the index. If your recall is lower than 0.9, try increasing `ef_construction` to improve search accuracy.
 - `ef_search`: determines the size of the dynamic candidate list during the search process. Higher `ef_search` increases both recall and latency.
 
 ### HNSW Index Tuning
+
 1. Let us try changing several parameters of the HNSW index aiming for a better performance.
 Our default values for `m` is 16 and `ef_construction` is 64. Modify your code to increase `m` to 64 and `ef_construciton` to 128. This will increase the node number of the graph and improve the index quality, while also increasing the index creation time:
 
@@ -215,11 +249,13 @@ Our default values for `m` is 16 and `ef_construction` is 64. Modify your code t
     ```
 
 1. Re-run this command to see the difference in recall and latency:
+
     ```bash
     python3 index_search.py
     ```
 
 ### IVFFlat
+
 ```python
 class IVFFlatIndex(
     name: str = DEFAULT_INDEX_NAME,
@@ -234,12 +270,13 @@ class IVFFlatQueryOptions(QueryOptions):
     probes: int = 1
 ```
 
-
 IVFFlat index-specific parameter:
+
 - `lists`: the number of clusters into which the dataset is divided. Increasing `lists` generally improves recall but may increase latency as well. Tune `lists` to find the balance between recall and latency that is most suitable for your application.
 - `probes`: the number of inverted lists (clusters) to examine during similarity search. A higher number of `probes` increases both recall and latency.
 
 ### IVF Index Tuning
+
 1. Let us try changing several parameters of the IVF index aiming for a better performance.
 Our default values for `lists` is 100. Modify your code to increase `lists` to 200.
 
@@ -248,6 +285,7 @@ Our default values for `lists` is 100. Modify your code to increase `lists` to 2
     ```
 
 1. Now let us modify the vector store initialization to add a query parameter `probes`, which determines the number of lists searched during query:
+
 ```python
     vector_store = await AlloyDBVectorStore.create(
             engine=engine,
@@ -259,14 +297,15 @@ Our default values for `lists` is 100. Modify your code to increase `lists` to 2
 ```
 
 1. Re-run this command to see the difference in recall and latency:
+
     ```bash
     python3 index_search.py
     ```
 
-
 ### Partial_indexes (Optional)
-A partial index involves creating indexes on subsets of the entire dataset based on certain criteria or conditions, rather than indexing the entire dataset at once. This approach can be particularly beneficial in scenarios where searches are often targeted towards specific segments of data. 
 
-To create a partial index, first determine the basis on which your dataset will be segmented for partial indexing. This could be based on features like timestamps (e.g., indexing data from different time periods separately), categories (e.g., products in an e-commerce setting), or any division in your dataset. 
+A partial index involves creating indexes on subsets of the entire dataset based on certain criteria or conditions, rather than indexing the entire dataset at once. This approach can be particularly beneficial in scenarios where searches are often targeted towards specific segments of data.
+
+To create a partial index, first determine the basis on which your dataset will be segmented for partial indexing. This could be based on features like timestamps (e.g., indexing data from different time periods separately), categories (e.g., products in an e-commerce setting), or any division in your dataset.
 
 For each segment identified, create a separate vector index. This process involves selecting a subset of your dataset based on the segmentation criteria and then applying your chosen indexing algorithm (e.g., HNSW, IVFFlat) to this subset. This step is repeated for each segment, resulting in multiple partial indexes.
