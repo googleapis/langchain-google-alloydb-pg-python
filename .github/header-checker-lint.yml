@@ -20,3 +20,4 @@ ignoreFiles:
   - ".kokoro/**"
   - "**/requirements.txt"
   - "**/requirements*.txt"
+   - "./samples/index_tuning_sample**"

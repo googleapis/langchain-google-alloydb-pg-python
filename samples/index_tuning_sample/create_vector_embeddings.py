@@ -15,11 +15,9 @@
 import asyncio
 import uuid
 
-from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from langchain.docstore.document import Document
 from langchain_community.document_loaders import CSVLoader
 from langchain_google_vertexai import VertexAIEmbeddings
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
@@ -53,29 +51,6 @@ dataset_columns = [
     "variety",
     "winery",
 ]
-
-connection_string = f"projects/{PROJECT_ID}/locations/{REGION}/clusters/{CLUSTER_NAME}/instances/{INSTANCE_NAME}"
-# initialize Connector object
-connector = AsyncConnector()
-
-
-async def getconn():
-    conn = await connector.connect(
-        connection_string,
-        "asyncpg",
-        user=USER,
-        password=PASSWORD,
-        db=DATABASE_NAME,
-        enable_iam_auth=False,
-        ip_type=IPTypes.PUBLIC,
-    )
-    return conn
-
-
-# create connection pool
-pool = create_async_engine(
-    "postgresql+asyncpg://", async_creator=getconn, isolation_level="AUTOCOMMIT"
-)
 
 
 async def load_csv_documents(dataset_path=DATASET_PATH):
