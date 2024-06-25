@@ -8,6 +8,7 @@ This guide walks through the process of fine-tuning your LangChain PostgreSQL in
 ## Before You Begin
 
 1. Make sure you have a [Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) and [billing is enabled](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled#console).
+
 1. [Install the gcloud CLI](https://cloud.google.com/sdk/docs/install).
 
 1. Set gcloud project:
@@ -75,36 +76,7 @@ python3 create_vector_embeddings.py
 
 Now your database is populated with 100k vector embeddings.
 
-## Step 6: Create a Database Vector Store
-
-First, create a connection to your AlloyDB for PostgreSQL instance using the `AlloyDBEngine` class. Next, create an `AlloyDBVectorStore` object that connects to the new AlloyDB database table:
-
-```python
-from langchain_google_alloydb_pg import (
-    AlloyDBEngine,
-    AlloyDBVectorStore,
-)
-
-async def get_vector_store():
-    engine = await AlloyDBEngine.afrom_instance(
-        project_id=PROJECT_ID,
-        region=REGION,
-        cluster=CLUSTER_NAME,
-        instance=INSTANCE_NAME,
-        database=DATABASE_NAME,
-        user=USER,
-        password=PASSWORD,
-    )
-
-    vector_store = await AlloyDBVectorStore.create(
-        engine=engine,
-        table_name=vector_table_name,
-        embedding_service=embedding,
-    )
-    return vector_store
-```
-
-## Step 7: Learn About Index Benchmarking Metrics
+## Step 6: Learn About Index Benchmarking Metrics
 
 It is time to measure the performance of this index on your dataset. Recall and latency are key metrics for assessing the performance of vector similarity search indexing.
 
@@ -118,7 +90,7 @@ To measure the query latency of an index, we measure how long it takes to perfor
 
 In the context of ANN indexing, index recall is determined by the proportion of accurate results to the total results returned. Accurate results are identified by the overlap between the current index's results and those obtained through brute force iteration (KNN). By dividing the count of accurate results by the total results returned, we obtain the recall of the index, indicating the index's search accuracy.
 
-## Step 8: Index Benchmarking
+## Step 7: Index Benchmarking
 
 Run this command to get an index performance report printed out on your terminal:
 
@@ -194,7 +166,7 @@ We will calculate the average latency of multiple queries to have a better under
         return average_latency, average_recall
     ```
 
-## Step 9: Index Tuning
+## Step 8: Index Tuning
 
 ### HNSW
 
