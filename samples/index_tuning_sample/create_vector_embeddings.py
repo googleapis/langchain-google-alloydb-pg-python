@@ -15,7 +15,6 @@
 import asyncio
 import uuid
 
-from langchain.docstore.document import Document
 from langchain_community.document_loaders import CSVLoader
 from langchain_google_vertexai import VertexAIEmbeddings
 

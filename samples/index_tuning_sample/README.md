@@ -10,7 +10,7 @@ This guide walks through the process of fine-tuning your LangChain PostgreSQL in
 1. Make sure you have a [Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) and [billing is enabled](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled#console).
 1. [Install the gcloud CLI](https://cloud.google.com/sdk/docs/install).
 
-    Set gcloud project:
+1. Set gcloud project:
 
     ```bash
     gcloud config set project $PROJECT_ID
