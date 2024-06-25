@@ -31,7 +31,7 @@ This guide walks through the process of fine-tuning your LangChain PostgreSQL in
 Run `git clone` command in your local directory to pull the sample code:
 
 ```bash
-git clone <https://github.com/googleapis/langchain-google-alloydb-pg-python>
+git clone https://github.com/googleapis/langchain-google-alloydb-pg-python.git
 ```
 
 ## Step 2: Move into your local sample directory
