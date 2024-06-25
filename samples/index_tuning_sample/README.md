@@ -24,7 +24,7 @@ This guide walks through the process of fine-tuning your LangChain PostgreSQL in
     gcloud services enable cloudresourcemanager.googleapis.com
     ```
 
-1. If you haven't already, create an AlloyDB database cluster and instance following this [guide](https://www.google.com/url?q=https://cloud.google.com/alloydb/docs/quickstart/create-and-connect&sa=D&source=docs&ust=1719329998287572&usg=AOvVaw0wZYIMI4to2KljZjjDnsdv).
+1. If you haven't already, create an AlloyDB cluster and instance following this [guide](https://www.google.com/url?q=https://cloud.google.com/alloydb/docs/quickstart/create-and-connect&sa=D&source=docs&ust=1719329998287572&usg=AOvVaw0wZYIMI4to2KljZjjDnsdv).
 
 ## Step 1: Clone sample code
 
