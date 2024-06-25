@@ -25,19 +25,6 @@ on:
       - "*.md"
       - ".kokoro/**"
       - ".github/**"
-      name: Lint
-on:
-  pull_request:
-    paths-ignore: # Changes to the paths list need to be reflected in lint_fallback.yml
-      - "*.md"
-      - ".kokoro/**"
-      - ".github/**"
-  pull_request_target:
-    types: [labeled]
-    paths-ignore:
-      - "*.md"
-      - ".kokoro/**"
-      - ".github/**"
 
 jobs:
   lint:
