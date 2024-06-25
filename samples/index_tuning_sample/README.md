@@ -18,22 +18,23 @@ This tutorial is hosted on [LangChain AlloyDB integration library](https://githu
     gcloud config set project $PROJECT_ID
     ```
 
-Enable APIs:
+1. Enable APIs:
 
-```bash
-gcloud services enable alloydb.googleapis.com
-gcloud services enable compute.googleapis.com
-gcloud services enable cloudresourcemanager.googleapis.com
-```
+    ```bash
+    gcloud services enable alloydb.googleapis.com
+    gcloud services enable compute.googleapis.com
+    gcloud services enable cloudresourcemanager.googleapis.com
+    ```
 
 1. If you haven't already, create an AlloyDB database cluster and instance following this [guide](https://www.google.com/url?q=https://cloud.google.com/alloydb/docs/quickstart/create-and-connect&sa=D&source=docs&ust=1719329998287572&usg=AOvVaw0wZYIMI4to2KljZjjDnsdv).
 
 ## Step 1: Clone sample code
 
 Run `git clone` command in your local directory to pull the sample code:
-    ```bash
-    git clone <https://github.com/googleapis/langchain-google-alloydb-pg-python>
-    ````
+
+```bash
+git clone <https://github.com/googleapis/langchain-google-alloydb-pg-python>
+```
 
 ## Step 2: Move into your local sample directory
 
@@ -57,13 +58,13 @@ Enter your database information and credentials in `create_vector_embeddings.py`
 
 ```python
 AlloyDB info
-PROJECT_ID = "duwenxin-space"
-REGION = "us-central1"  # @param {type:"string"}
-CLUSTER_NAME = "my-alloydb-cluster"  # @param {type:"string"}
-INSTANCE_NAME = "my-alloydb-instance"  # @param {type:"string"}
-DATABASE_NAME = "netflix"  # @param {type:"string"}
-USER = "postgres"  # @param {type:"string"}
-PASSWORD = "postgres"  # @param {type:"string"}
+PROJECT_ID = ""
+REGION = ""  # @param {type:"string"}
+CLUSTER_NAME = ""  # @param {type:"string"}
+INSTANCE_NAME = ""  # @param {type:"string"}
+DATABASE_NAME = ""  # @param {type:"string"}
+USER = ""  # @param {type:"string"}
+PASSWORD = ""  # @param {type:"string"}
 ```
 
 ## Step 5: Generate Embeddings
