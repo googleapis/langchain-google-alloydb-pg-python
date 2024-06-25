@@ -5,8 +5,6 @@
 
 This guide walks through the process of fine-tuning your LangChain PostgreSQL index for better vector similarity search results. Every dataset has different data types, distribution, and structure, thus needs its own index configuration for the best indexing performance. Start by assessing how well your index works with your dataset, focusing on recall (accuracy) and latency (speed). Then, experiment with different parameters to see which ones work best for your dataset. We will lead you step by step using a sample code repository.
 
-This tutorial is hosted on [LangChain AlloyDB integration library](https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/samples/index_tuning_guide) in Markdown format, accompanied by Python code sample files.
-
 ## Before You Begin
 
 1. Make sure you have a Google Cloud project and billing is enabled.
@@ -59,12 +57,12 @@ Enter your database information and credentials in `create_vector_embeddings.py`
 ```python
 AlloyDB info
 PROJECT_ID = ""
-REGION = ""  # @param {type:"string"}
-CLUSTER_NAME = ""  # @param {type:"string"}
-INSTANCE_NAME = ""  # @param {type:"string"}
-DATABASE_NAME = ""  # @param {type:"string"}
-USER = ""  # @param {type:"string"}
-PASSWORD = ""  # @param {type:"string"}
+REGION = ""
+CLUSTER_NAME = ""
+INSTANCE_NAME = ""
+DATABASE_NAME = ""
+USER = "" # Use your super user `postgres`
+PASSWORD = ""
 ```
 
 ## Step 5: Generate Embeddings
@@ -80,17 +78,13 @@ Now your database is populated with 100k vector embeddings.
 
 ## Step 6: Create a Database Vector Store
 
-we create a database engine from the information you input previously, and create a vector store from that engine:
+First, create a connection to your AlloyDB for PostgreSQL instance using the `AlloyDBEngine` class. Next, create an `AlloyDBVectorStore` object that connects to the new AlloyDB database table:
 
 ```python
 from langchain_google_alloydb_pg import (
     AlloyDBEngine,
     AlloyDBVectorStore,
 )
-
-from langchain_google_alloydb_pg.indexes import DistanceStrategy
-
-DISTANCE_STRATEGY = DistanceStrategy.COSINE_DISTANCE
 
 async def get_vector_store():
     engine = await AlloyDBEngine.afrom_instance(
@@ -105,7 +99,6 @@ async def get_vector_store():
 
     vector_store = await AlloyDBVectorStore.create(
         engine=engine,
-        distance_strategy=DISTANCE_STRATEGY,
         table_name=vector_table_name,
         embedding_service=embedding,
     )
@@ -261,7 +254,6 @@ Our default values for `m` is 16 and `ef_construction` is 64. Modify your code t
 class IVFFlatIndex(
     name: str = DEFAULT_INDEX_NAME,
     index_type: str = "ivfflat",
-    # Distance strategy does not affect recall and has minimal little on latency; refer to this guide to learn more https://cloud.google.com/spanner/docs/choose-vector-distance-function
     distance_strategy: DistanceStrategy = lambda : DistanceStrategy.COSINE_DISTANCE,
     partial_indexes: List[str] | None = None,
     lists: int = 1
@@ -303,7 +295,11 @@ Our default values for `lists` is 100. Modify your code to increase `lists` to 2
     python3 index_search.py
     ```
 
-### Partial_indexes (Optional)
+### Distance Strategy (Optional)
+
+The default distance strategy for vector store and indexes is `DistanceStrategy.COSINE_DISTANCE`. We recommend you to keep using the default because it is the best strategy for our sample use case. If you wish to [change this parameter](https://cloud.google.com/spanner/docs/choose-vector-distance-function), remember to change both the vector store and the index initilization because the `distance_strategy` parameter needs to match in two places for the index to be used.
+
+### Partial Indexes (Optional)
 
 A partial index involves creating indexes on subsets of the entire dataset based on certain criteria or conditions, rather than indexing the entire dataset at once. This approach can be particularly beneficial in scenarios where searches are often targeted towards specific segments of data.
 

@@ -29,7 +29,7 @@ REGION = ""
 CLUSTER_NAME = ""
 INSTANCE_NAME = ""
 DATABASE_NAME = ""
-USER = ""
+USER = ""  # Use your super user `postgres`
 PASSWORD = ""
 
 vector_table_name = "wine_reviews_vector"

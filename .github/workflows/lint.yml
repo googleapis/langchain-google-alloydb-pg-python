@@ -19,7 +19,6 @@ on:
       - "*.md"
       - ".kokoro/**"
       - ".github/**"
-      - "./samples/index_tuning_sample/**"
   pull_request_target:
     types: [labeled]
     paths-ignore:

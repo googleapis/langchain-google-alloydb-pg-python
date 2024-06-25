@@ -10,7 +10,6 @@ sourceFileExtensions:
   - "Dockerfile"
   - "py"
   - "text"
-
 ignoreFiles:
   - ".github/blunderbuss.yml"
   - ".github/release-please.yml"
