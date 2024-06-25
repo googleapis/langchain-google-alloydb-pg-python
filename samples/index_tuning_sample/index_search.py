@@ -138,7 +138,7 @@ async def knn_search(vector_store):
     return knn_docs, average_latency
 
 
-def calculate_recall(base, target) -> float:
+def calculate_recall(base, target):
     # size of intersection / total number of times
     base = {doc.metadata["id"] for doc in base}
     target = {doc.metadata["id"] for doc in target}
