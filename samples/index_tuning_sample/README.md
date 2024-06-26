@@ -155,15 +155,15 @@ We will calculate the average latency of multiple queries to have a better under
     latencies = []
     recalls = []
     for i in range(len(queries)):
-            hnsw_docs, latency = await query_vector_with_timing(vector_store, queries[i])
-            latencies.append(latency)
-            recalls.append(calculate_recall(knn_docs[i], hnsw_docs))
+        hnsw_docs, latency = await query_vector_with_timing(vector_store, queries[i])
+        latencies.append(latency)
+        recalls.append(calculate_recall(knn_docs[i], hnsw_docs))
 
-        await vector_store.adrop_vector_index(hnsw_index.name)
-        # calculate average recall & latency
-        average_latency = sum(latencies) / len(latencies)
-        average_recall = sum(recalls) / len(recalls)
-        return average_latency, average_recall
+    await vector_store.adrop_vector_index(hnsw_index.name)
+    # calculate average recall & latency
+    average_latency = sum(latencies) / len(latencies)
+    average_recall = sum(recalls) / len(recalls)
+    return average_latency, average_recall
     ```
 
 ## Step 8: Index Tuning
@@ -205,12 +205,12 @@ Our default values for `m` is 16 and `ef_construction` is 64. Modify your code t
 
     ```python
     vector_store = await AlloyDBVectorStore.create(
-            engine=engine,
-            distance_strategy=DISTANCE_STRATEGY,
-            table_name=vector_table_name,
-            embedding_service=embedding,
-            index_query_options=HNSWQueryOptions(ef_search=256),
-        )
+        engine=engine,
+        distance_strategy=DISTANCE_STRATEGY,
+        table_name=vector_table_name,
+        embedding_service=embedding,
+        index_query_options=HNSWQueryOptions(ef_search=256),
+    )
     ```
 
 1. Re-run this command to see the difference in recall and latency:
@@ -251,13 +251,13 @@ Our default values for `lists` is 100. Modify your code to increase `lists` to 2
 1. Now let us modify the vector store initialization to add a query parameter `probes`, which determines the number of lists searched during query:
 
     ```python
-        vector_store = await AlloyDBVectorStore.create(
-                engine=engine,
-                distance_strategy=DISTANCE_STRATEGY,
-                table_name=vector_table_name,
-                embedding_service=embedding,
-                index_query_options=IVFFLATQueryOptions(probes=50),
-            )
+    vector_store = await AlloyDBVectorStore.create(
+        engine=engine,
+        distance_strategy=DISTANCE_STRATEGY,
+        table_name=vector_table_name,
+        embedding_service=embedding,
+        index_query_options=IVFFLATQueryOptions(probes=50),
+    )
     ```
 
 1. Re-run this command to see the difference in recall and latency:
