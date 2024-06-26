@@ -32,7 +32,7 @@ from typing import (
 import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
-from google.cloud.alloydb.connector import AsyncConnector, IPTypes
+from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrategy
 from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -167,7 +167,9 @@ class AlloyDBEngine:
             )
 
         if cls._connector is None:
-            cls._connector = AsyncConnector(user_agent=USER_AGENT)
+            cls._connector = AsyncConnector(
+                user_agent=USER_AGENT, refresh_strategy=RefreshStrategy.LAZY
+            )
 
         # if user and password are given, use basic auth
         if user and password:
