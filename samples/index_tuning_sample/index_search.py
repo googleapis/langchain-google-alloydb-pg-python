@@ -26,8 +26,6 @@ from create_vector_embeddings import (
     USER,
     vector_table_name,
 )
-from langchain_google_vertexai import VertexAIEmbeddings
-
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
     DistanceStrategy,
@@ -35,9 +33,9 @@ from langchain_google_alloydb_pg.indexes import (
     HNSWQueryOptions,
     IVFFlatIndex,
 )
+from langchain_google_vertexai import VertexAIEmbeddings
 
 DISTANCE_STRATEGY = DistanceStrategy.COSINE_DISTANCE
-
 k = 10
 query_1 = "Brooding aromas of barrel spice."
 query_2 = "Aromas include tropical fruit, broom, brimstone and dried herb."
@@ -87,6 +85,7 @@ async def hnsw_search(vector_store, knn_docs):
     hnsw_index = HNSWIndex(
         name="hnsw", distance_strategy=DISTANCE_STRATEGY, m=36, ef_construction=96
     )
+    # hnsw_index = HNSWIndex(name="hnsw", distance_strategy=DISTANCE_STRATEGY)
     await vector_store.aapply_vector_index(hnsw_index)
     assert await vector_store.is_valid_index(hnsw_index.name)
     print("HNSW index created.")
@@ -97,7 +96,6 @@ async def hnsw_search(vector_store, knn_docs):
         hnsw_docs, latency = await query_vector_with_timing(vector_store, queries[i])
         latencies.append(latency)
         recalls.append(calculate_recall(knn_docs[i], hnsw_docs))
-    print(recalls)
 
     await vector_store.adrop_vector_index(hnsw_index.name)
     # calculate average recall & latency
@@ -137,10 +135,10 @@ async def knn_search(vector_store):
     return knn_docs, average_latency
 
 
-def calculate_recall(base, target):
+def calculate_recall(base, target) -> float:
     # size of intersection / total number of times
-    base = {doc.metadata["id"] for doc in base}
-    target = {doc.metadata["id"] for doc in target}
+    base = {doc.metadata["row"] for doc in base}
+    target = {doc.metadata["row"] for doc in target}
     return len(base & target) / len(base)
 
 
