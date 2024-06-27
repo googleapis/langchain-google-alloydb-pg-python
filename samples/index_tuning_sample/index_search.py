@@ -15,7 +15,6 @@
 import asyncio
 import time
 
-import numpy as np
 from create_vector_embeddings import (
     CLUSTER_NAME,
     DATABASE_NAME,
