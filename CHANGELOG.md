@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.4.0...v0.4.1) (2024-06-27)
+
+
+### Bug Fixes
+
+* Change IVFFlat `list` default to 100 ([#165](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/165)) ([f4d9b42](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f4d9b4204a465ef10d5cc23d1fd6ce349fb22a21))
+* Use lazy refresh for AlloyDB Connector ([#162](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/162)) ([3a9c6ac](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/3a9c6acb2e368a099267c9e45acb86ef38195f7a))
+
 ## [0.4.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.3.0...v0.4.0) (2024-06-18)
 
 
