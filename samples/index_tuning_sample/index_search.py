@@ -29,13 +29,11 @@ from langchain_google_vertexai import VertexAIEmbeddings
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
-    DistanceStrategy,
     HNSWIndex,
     HNSWQueryOptions,
     IVFFlatIndex,
 )
 
-DISTANCE_STRATEGY = DistanceStrategy.COSINE_DISTANCE
 k = 10
 query_1 = "Brooding aromas of barrel spice."
 query_2 = "Aromas include tropical fruit, broom, brimstone and dried herb."
@@ -65,7 +63,6 @@ async def get_vector_store():
 
     vector_store = await AlloyDBVectorStore.create(
         engine=engine,
-        distance_strategy=DISTANCE_STRATEGY,
         table_name=vector_table_name,
         embedding_service=embedding,
         index_query_options=HNSWQueryOptions(ef_search=256),
@@ -82,9 +79,7 @@ async def query_vector_with_timing(vector_store, query):
 
 
 async def hnsw_search(vector_store, knn_docs):
-    hnsw_index = HNSWIndex(
-        name="hnsw", distance_strategy=DISTANCE_STRATEGY, m=36, ef_construction=96
-    )
+    hnsw_index = HNSWIndex(name="hnsw", m=36, ef_construction=96)
     await vector_store.aapply_vector_index(hnsw_index)
     assert await vector_store.is_valid_index(hnsw_index.name)
     print("HNSW index created.")
@@ -104,7 +99,7 @@ async def hnsw_search(vector_store, knn_docs):
 
 
 async def ivfflat_search(vector_store, knn_docs):
-    ivfflat_index = IVFFlatIndex(name="ivfflat", distance_strategy=DISTANCE_STRATEGY)
+    ivfflat_index = IVFFlatIndex(name="ivfflat")
     await vector_store.aapply_vector_index(ivfflat_index)
     assert await vector_store.is_valid_index(ivfflat_index.name)
     print("IVFFLAT index created.")

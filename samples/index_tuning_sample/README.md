@@ -143,7 +143,7 @@ We will calculate the average latency of multiple queries to have a better under
     ```python
     from langchain_google_alloydb_pg.indexes import HNSWIndex
 
-    hnsw_index = HNSWIndex(name="hnsw", distance_strategy=DISTANCE_STRATEGY)
+    hnsw_index = HNSWIndex(name="hnsw")
     await vector_store.aapply_vector_index(hnsw_index)
     assert await vector_store.is_valid_index(hnsw_index.name)
     print("HNSW index created.")
@@ -198,7 +198,7 @@ Our default values for `m` is 16 and `ef_construction` is 64. Modify your code t
 
     ```python
     hnsw_index = HNSWIndex(
-            name="hnsw", distance_strategy=DISTANCE_STRATEGY, m=64, ef_construction=128)
+            name="hnsw", m=64, ef_construction=128)
     ```
 
 1. Now let us modify the vector store initialization to add a query parameter `ef_search`, which determines the size of the search candidate list, leading to an increase in recall but also a higher search latency:
@@ -206,7 +206,6 @@ Our default values for `m` is 16 and `ef_construction` is 64. Modify your code t
     ```python
     vector_store = await AlloyDBVectorStore.create(
         engine=engine,
-        distance_strategy=DISTANCE_STRATEGY,
         table_name=vector_table_name,
         embedding_service=embedding,
         index_query_options=HNSWQueryOptions(ef_search=256),
@@ -245,7 +244,7 @@ IVFFlat index-specific parameter:
 Our default values for `lists` is 100. Modify your code to increase `lists` to 200.
 
     ```python
-    ivfflat_index = IVFFlatIndex(name="ivfflat", lists = 200, distance_strategy=DISTANCE_STRATEGY)
+    ivfflat_index = IVFFlatIndex(name="ivfflat", lists = 200)
     ```
 
 1. Now let us modify the vector store initialization to add a query parameter `probes`, which determines the number of lists searched during query:
@@ -253,7 +252,6 @@ Our default values for `lists` is 100. Modify your code to increase `lists` to 2
     ```python
     vector_store = await AlloyDBVectorStore.create(
         engine=engine,
-        distance_strategy=DISTANCE_STRATEGY,
         table_name=vector_table_name,
         embedding_service=embedding,
         index_query_options=IVFFLATQueryOptions(probes=50),
