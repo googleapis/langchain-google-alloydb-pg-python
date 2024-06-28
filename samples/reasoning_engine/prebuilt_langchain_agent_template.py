@@ -93,7 +93,11 @@ remote_app = reasoning_engines.ReasoningEngine.create(
             "temperature": 0.1,
         },
     ),
-    requirements="requirements.txt",
+    requirements=[
+        "google-cloud-aiplatform[reasoningengine,langchain]==1.57.0",
+        "langchain-google-alloydb-pg==0.4.1",
+        "langchain-google-vertexai==1.0.4",
+    ],
     display_name="PrebuiltAgent",
     sys_version="3.11",
 )
