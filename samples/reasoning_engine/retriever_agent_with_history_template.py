@@ -45,7 +45,7 @@ USER = os.getenv("DB_USER") or "postgres"
 PASSWORD = os.getenv("DB_PASSWORD") or "password"
 
 
-class AlloyDBAgent:
+class AlloyDBAgent(reasoning_engines.Queryable):
     def __init__(
         self,
         model: str,
@@ -134,7 +134,7 @@ class AlloyDBAgent:
             history_messages_key="chat_history",
         )
 
-    def query(self, input: str, session_id: str):
+    def query(self, input: str, session_id: str) -> str:
         """Query the application.
 
         Args:

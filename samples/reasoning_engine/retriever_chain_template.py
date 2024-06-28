@@ -38,7 +38,7 @@ USER = os.getenv("DB_USER") or "postgres"
 PASSWORD = os.getenv("DB_PASSWORD") or "password"
 
 
-class AlloyDBRetriever:
+class AlloyDBRetriever(reasoning_engines.Queryable):
     def __init__(
         self,
         model: str,
@@ -108,7 +108,7 @@ class AlloyDBRetriever:
         # an LLM to generate a response
         self.chain = create_retrieval_chain(retriever, combine_docs_chain)
 
-    def query(self, input: str):
+    def query(self, input: str) -> str:
         """Query the application.
 
         Args:

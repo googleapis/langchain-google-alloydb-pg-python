@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from typing import TYPE_CHECKING, List
 
 import vertexai  # type: ignore
-from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
+from langchain_google_vertexai import VertexAIEmbeddings
 from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+
+if TYPE_CHECKING:
+    from langchain_core.documents import Document
 
 # This sample requires a vector store table
 # Create these tables using `AlloyDBEngine`` method: init_vectorstore_table()
@@ -34,7 +38,7 @@ USER = os.getenv("DB_USER") or "postgres"
 PASSWORD = os.getenv("DB_PASSWORD") or "password"
 
 
-def similarity_search(query: str):
+def similarity_search(query: str) -> List[Document]:
     """Searches and returns movies.
 
     Args:
