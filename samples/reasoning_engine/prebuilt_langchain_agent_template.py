@@ -36,8 +36,11 @@ def similarity_search(query: str):
         CLUSTER,
         INSTANCE,
         DATABASE,
-        # user="postgres",
-        # password=PASSWORD,
+        # To use IAM authentication, remove user and password and ensure
+        # the Reasoning Engine Agent service account is a database user
+        # with access to the vector store table
+        user="postgres",
+        password=PASSWORD,
     )
 
     vector_store = AlloyDBVectorStore.create_sync(
