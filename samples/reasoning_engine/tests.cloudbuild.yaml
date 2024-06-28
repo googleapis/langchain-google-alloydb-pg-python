@@ -21,6 +21,7 @@ steps:
   - id: Setup up
     name: python:${_VERSION}
     entrypoint: python
+    dir: samples/reasoning_engine
     args: ["create_embeddings.py"]
     env:
       - PROJECT_ID=$PROJECT_ID
@@ -35,6 +36,7 @@ steps:
   - id: Run integration tests - PrebuiltAgent
     name: python:${_VERSION}
     entrypoint: python
+    dir: samples/reasoning_engine
     args: ["prebuilt_langchain_agent_template.py"]
     env:
       - PROJECT_ID=$PROJECT_ID
@@ -50,6 +52,7 @@ steps:
   - id: Run integration tests - Chain
     name: python:${_VERSION}
     entrypoint: python
+    dir: samples/reasoning_engine
     args: ["retriever_chain_template.py"]
     env:
       - PROJECT_ID=$PROJECT_ID
@@ -65,6 +68,7 @@ steps:
   - id: Run integration tests - Agent
     name: python:${_VERSION}
     entrypoint: python
+    dir: samples/reasoning_engine
     args: ["retriever_agent_with_history_template.py"]
     env:
       - PROJECT_ID=$PROJECT_ID
@@ -81,6 +85,7 @@ steps:
   - id: Clean up
     name: python:${_VERSION}
     entrypoint: python
+    dir: samples/reasoning_engine
     args: ["clean_up.py"]
     env:
       - PROJECT_ID=$PROJECT_ID
