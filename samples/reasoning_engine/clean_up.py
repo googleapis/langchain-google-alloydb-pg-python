@@ -14,7 +14,7 @@
 import asyncio
 import os
 
-from vertexai.preview import reasoning_engines
+from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import AlloyDBEngine
 
@@ -46,7 +46,9 @@ async def delete_databases():
 
 
 def delete_engines():
-    apps = reasoning_engines.ReasoningEngine.list(filter=f'display_name="{TEST_NAME}"')
+    apps = reasoning_engines.ReasoningEngine.list(
+        filter=f'display_name="{TEST_NAME}"'
+    )
     for app in apps:
         app.delete()
 

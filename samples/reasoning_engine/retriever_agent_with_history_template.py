@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from typing import Optional
 
-import vertexai
+import vertexai  # type: ignore
 from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools.retriever import create_retriever_tool
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
-from vertexai.preview import reasoning_engines
+from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import (
     AlloyDBChatMessageHistory,
@@ -55,8 +56,8 @@ class AlloyDBAgent:
         database: str,
         table: str,
         chat_table: str,
-        user: str = None,
-        password: str = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
         tool_name: str = "search_movies",
         tool_description: str = "Searches and returns movies.",
     ):
@@ -168,7 +169,9 @@ class AlloyDBAgent:
 # print(app.query(input="What movies are about engineers?", session_id="abc123"))
 
 # Initialize VertexAI
-vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
+vertexai.init(
+    project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET
+)
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBAgent"

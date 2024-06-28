@@ -67,7 +67,9 @@ async def create_vectorstore():
 
     rm = resourcemanager_v3.ProjectsClient()
     res = rm.get_project(
-        request=resourcemanager_v3.GetProjectRequest(name=f"projects/{PROJECT_ID}")
+        request=resourcemanager_v3.GetProjectRequest(
+            name=f"projects/{PROJECT_ID}"
+        )
     )
     project_number = res.name.split("/")[1]
     IAM_USER = f"service-{project_number}@gcp-sa-aiplatform-re.iam"

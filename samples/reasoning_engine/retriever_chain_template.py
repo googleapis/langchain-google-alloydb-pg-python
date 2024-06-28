@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from typing import Optional
 
-import vertexai
+import vertexai  # type: ignore
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_vertexai import VertexAI, VertexAIEmbeddings
-from vertexai.preview import reasoning_engines
+from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
@@ -47,8 +48,8 @@ class AlloyDBRetriever:
         instance: str,
         database: str,
         table: str,
-        user: str = None,
-        password: str = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
     ):
         self.model_name = model
         self.project = project
@@ -138,7 +139,9 @@ class AlloyDBRetriever:
 # print(app.query(input="movies about engineers"))
 
 # Initialize VertexAI
-vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
+vertexai.init(
+    project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET
+)
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBRetriever"
