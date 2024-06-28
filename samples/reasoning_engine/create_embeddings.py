@@ -15,7 +15,7 @@ import asyncio
 import os
 import uuid
 
-from google.cloud import resourcemanager_v3
+from google.cloud import resourcemanager_v3  # type: ignore
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_google_vertexai import VertexAIEmbeddings
 
