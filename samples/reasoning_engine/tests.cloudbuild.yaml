@@ -16,6 +16,7 @@ steps:
   - id: Install dependencies
     name: python:${_VERSION}
     entrypoint: pip
+    dir: samples/reasoning_engine
     args: ["install", "--user", "-r", "requirements.txt"]
 
   - id: Setup up
