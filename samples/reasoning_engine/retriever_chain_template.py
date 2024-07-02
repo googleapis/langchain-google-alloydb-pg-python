@@ -125,7 +125,7 @@ class AlloyDBRetriever(reasoning_engines.Queryable):
 # Uncomment to test locally
 
 # app = AlloyDBRetriever(
-#     model="gemini-1.0-pro",
+#     model="gemini-pro",
 #     project=PROJECT_ID,
 #     region=REGION,
 #     cluster=CLUSTER,
@@ -146,7 +146,7 @@ DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBRetriever"
 
 remote_app = reasoning_engines.ReasoningEngine.create(
     AlloyDBRetriever(
-        model="gemini-1.0-pro",
+        model="gemini-pro",
         project=PROJECT_ID,
         region=REGION,
         cluster=CLUSTER,
