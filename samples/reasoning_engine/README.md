@@ -26,20 +26,10 @@ Build and deploy an Agent with RAG tool and Memory | [retriever_agent_with_histo
 1. [Create a AlloyDB database.](https://cloud.google.com/alloydb/docs/quickstart/create-and-connect)
 1. Create a [vector store table](https://github.com/googleapis/langchain-google-alloydb-pg-python/blob/main/docs/vector_store.ipynb) and [chat message history table](https://github.com/googleapis/langchain-google-alloydb-pg-python/blob/main/docs/chat_message_history.ipynb).
 1. Grant IAM permissions, `roles/alloydb.client`, `roles/aiplatform.user`, and `serviceusage.serviceUsageConsumer` to the AI Platform Reasoning Engine Service Agent service account: `service-PROJECT_NUMBER@gcp-sa-aiplatform-re.iam.gserviceaccount.com` to connect to the AlloyDB instance.
+1. (Optional) [Add an IAM user or service account to a database instance](https://cloud.google.com/alloydb/docs/manage-iam-authn#create-user) and
+[grant database privileges to the IAM user](https://cloud.google.com/alloydb/docs/manage-iam-authn#grant-privileges).
+1. Add your project's values to [`config.py`](config.py).
 1. Use `create_embeddings.py` to add data to your vector store.
-1. Open the template and add your project's values:
-    ```
-    PROJECT_ID = os.getenv("PROJECT_ID") or "my-project-id"
-    STAGING_BUCKET = os.getenv("STAGING_BUCKET") or "gs://my-bucket"
-    REGION = os.getenv("REGION") or "us-central1"
-    CLUSTER = os.getenv("CLUSTER") or "my-alloy-db"
-    INSTANCE = os.getenv("INSTANCE") or "my-primary"
-    DATABASE = os.getenv("DATABASE") or "my_database"
-    TABLE_NAME = os.getenv("TABLE_NAME") or "my_test_table"
-    CHAT_TABLE_NAME = os.getenv("CHAT_TABLE_NAME") or "my_chat_table"
-    USER = os.getenv("DB_USER") or "postgres"
-    PASSWORD = os.getenv("DB_PASSWORD") or "password"
-    ```
 
 Learn more at [Deploying a RAG Application with AlloyDB with Reasoning Engine on Vertex AI](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/reasoning-engine/tutorial_alloydb_rag_agent.ipynb).
 

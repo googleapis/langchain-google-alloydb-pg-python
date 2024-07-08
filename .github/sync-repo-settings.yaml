@@ -31,6 +31,8 @@ branchProtectionRules:
       - "integration-test-pr-py39 (langchain-alloydb-testing)"
       - "integration-test-pr-py310 (langchain-alloydb-testing)"
       - "integration-test-pr-py311 (langchain-alloydb-testing)"
+      - "integration-test-pr-py312 (langchain-alloydb-testing)"
+      - "reasoning-engine-integration-test-pr (langchain-alloydb-testing)"
       - "conventionalcommits.org"
       - "header-check"
     # - Add required status checks like presubmit tests

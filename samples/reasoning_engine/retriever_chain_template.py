@@ -15,6 +15,17 @@ import os
 from typing import Optional
 
 import vertexai  # type: ignore
+from config import (
+    CLUSTER,
+    DATABASE,
+    INSTANCE,
+    PASSWORD,
+    PROJECT_ID,
+    REGION,
+    STAGING_BUCKET,
+    TABLE_NAME,
+    USER,
+)
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
@@ -24,18 +35,8 @@ from vertexai.preview import reasoning_engines  # type: ignore
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
 # This sample requires a vector store table
-# Create these tables using `AlloyDBEngine`` method: init_vectorstore_table()
-
-# Replace the following variables with your values
-PROJECT_ID = os.getenv("PROJECT_ID") or "my-project-id"
-STAGING_BUCKET = os.getenv("STAGING_BUCKET") or "gs://my-bucket"
-REGION = os.getenv("REGION") or "us-central1"
-CLUSTER = os.getenv("CLUSTER") or "my-alloy-db"
-INSTANCE = os.getenv("INSTANCE") or "my-primary"
-DATABASE = os.getenv("DATABASE") or "my_database"
-TABLE_NAME = os.getenv("TABLE_NAME") or "my_test_table"
-USER = os.getenv("DB_USER") or "postgres"
-PASSWORD = os.getenv("DB_PASSWORD") or "password"
+# Create these tables using `AlloyDBEngine` method `init_vectorstore_table()`
+# or create and load the table using `create_embeddings.py`
 
 
 class AlloyDBRetriever(reasoning_engines.Queryable):
@@ -166,6 +167,7 @@ remote_app = reasoning_engines.ReasoningEngine.create(
     ],
     display_name=DISPLAY_NAME,
     sys_version="3.11",
+    extra_packages=["config.py"],
 )
 
 print(remote_app.query(input="movies about engineers"))
