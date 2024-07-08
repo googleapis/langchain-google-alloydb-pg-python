@@ -45,7 +45,7 @@ async def delete_databases():
 
     await engine._aexecute_outside_tx(f"DROP TABLE IF EXISTS {TABLE_NAME}")
     await engine._aexecute_outside_tx(f"DROP TABLE IF EXISTS {CHAT_TABLE_NAME}")
-    await engine._connector.close_async()
+    await engine._connector.close()
     await engine._engine.dispose()
 
 

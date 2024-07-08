@@ -45,7 +45,7 @@ async def create_databases():
     )
     await engine._aexecute_outside_tx(f'DROP DATABASE IF EXISTS "{DATABASE}"')
     await engine._aexecute_outside_tx(f'CREATE DATABASE "{DATABASE}"')
-    await engine._connector.close_async()
+    await engine._connector.close()
     await engine._engine.dispose()
 
 
