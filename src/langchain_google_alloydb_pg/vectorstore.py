@@ -24,7 +24,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from sqlalchemy import RowMapping
 
-from .alloydb_engine import AlloyDBEngine
+from .engine import AlloyDBEngine
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DEFAULT_INDEX_NAME,
