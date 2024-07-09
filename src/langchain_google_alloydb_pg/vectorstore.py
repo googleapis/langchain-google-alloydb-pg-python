@@ -45,7 +45,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         key: object,
         engine: AlloyDBEngine,
-        embedding_service: Embeddings,
+        embeddings: Embeddings,
         table_name: str,
         content_column: str = "content",
         embedding_column: str = "embedding",
@@ -64,7 +64,7 @@ class AlloyDBVectorStore(VectorStore):
             )
 
         self.engine = engine
-        self.embedding_service = embedding_service
+        self.embeddings = embeddings
         self.table_name = table_name
         self.content_column = content_column
         self.embedding_column = embedding_column
@@ -81,7 +81,7 @@ class AlloyDBVectorStore(VectorStore):
     async def create(
         cls: Type[AlloyDBVectorStore],
         engine: AlloyDBEngine,
-        embedding_service: Embeddings,
+        embeddings: Embeddings,
         table_name: str,
         content_column: str = "content",
         embedding_column: str = "embedding",
@@ -98,7 +98,7 @@ class AlloyDBVectorStore(VectorStore):
         """Constructor for AlloyDBVectorStore.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            embedding_service (Embeddings): Text embedding model to use.
+            embeddings (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
@@ -158,7 +158,7 @@ class AlloyDBVectorStore(VectorStore):
         return cls(
             cls.__create_key,
             engine,
-            embedding_service,
+            embeddings,
             table_name,
             content_column,
             embedding_column,
@@ -176,7 +176,7 @@ class AlloyDBVectorStore(VectorStore):
     def create_sync(
         cls,
         engine: AlloyDBEngine,
-        embedding_service: Embeddings,
+        embeddings: Embeddings,
         table_name: str,
         content_column: str = "content",
         embedding_column: str = "embedding",
@@ -192,7 +192,7 @@ class AlloyDBVectorStore(VectorStore):
     ) -> AlloyDBVectorStore:
         coro = cls.create(
             engine,
-            embedding_service,
+            embeddings,
             table_name,
             content_column,
             embedding_column,
@@ -210,7 +210,7 @@ class AlloyDBVectorStore(VectorStore):
 
     @property
     def embeddings(self) -> Embeddings:
-        return self.embedding_service
+        return self.embeddings
 
     async def _aadd_embeddings(
         self,
@@ -267,7 +267,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        embeddings = self.embedding_service.embed_documents(list(texts))
+        embeddings = self.embeddings.embed_documents(list(texts))
         ids = await self._aadd_embeddings(
             texts, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
@@ -489,7 +489,7 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Document]:
-        embedding = self.embedding_service.embed_query(text=query)
+        embedding = self.embeddings.embed_query(text=query)
 
         return await self.asimilarity_search_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
@@ -502,7 +502,7 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
-        embedding = self.embedding_service.embed_query(query)
+        embedding = self.embeddings.embed_query(query)
         docs = await self.asimilarity_search_with_score_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
         )
@@ -562,7 +562,7 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Document]:
-        embedding = self.embedding_service.embed_query(text=query)
+        embedding = self.embeddings.embed_query(text=query)
 
         return await self.amax_marginal_relevance_search_by_vector(
             embedding=embedding,

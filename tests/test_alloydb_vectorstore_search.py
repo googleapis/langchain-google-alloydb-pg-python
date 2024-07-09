@@ -86,7 +86,7 @@ class TestVectorStoreSearch:
         )
         vs = await AlloyDBVectorStore.create(
             engine,
-            embedding_service=embeddings_service,
+            embeddings=embeddings_service,
             table_name=DEFAULT_TABLE,
         )
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -123,7 +123,7 @@ class TestVectorStoreSearch:
 
         vs_custom = AlloyDBVectorStore.create_sync(
             engine_sync,
-            embedding_service=embeddings_service,
+            embeddings=embeddings_service,
             table_name=CUSTOM_TABLE,
             id_column="myid",
             content_column="mycontent",

@@ -97,7 +97,7 @@ class TestIndex:
         await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             engine,
-            embedding_service=embeddings_service,
+            embeddings=embeddings_service,
             table_name=DEFAULT_TABLE,
         )
 
@@ -139,7 +139,7 @@ class TestIndex:
         await omni_engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             omni_engine,
-            embedding_service=embeddings_service,
+            embeddings=embeddings_service,
             table_name=DEFAULT_TABLE,
         )
         yield vs

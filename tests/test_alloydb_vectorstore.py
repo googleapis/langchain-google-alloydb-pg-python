@@ -95,7 +95,7 @@ class TestVectorStore:
         engine_sync.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
         vs = AlloyDBVectorStore.create_sync(
             engine_sync,
-            embedding_service=embeddings_service,
+            embeddings=embeddings_service,
             table_name=DEFAULT_TABLE_SYNC,
         )
         yield vs
@@ -108,7 +108,7 @@ class TestVectorStore:
         await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             engine,
-            embedding_service=embeddings_service,
+            embeddings=embeddings_service,
             table_name=DEFAULT_TABLE,
         )
         yield vs
@@ -128,7 +128,7 @@ class TestVectorStore:
         )
         vs = await AlloyDBVectorStore.create(
             engine,
-            embedding_service=embeddings_service,
+            embeddings=embeddings_service,
             table_name=CUSTOM_TABLE,
             id_column="myid",
             content_column="mycontent",
@@ -143,7 +143,7 @@ class TestVectorStore:
         with pytest.raises(ValueError):
             await AlloyDBVectorStore.create(
                 engine,
-                embedding_service=embeddings_service,
+                embeddings=embeddings_service,
                 table_name=CUSTOM_TABLE,
                 id_column="myid",
                 content_column="noname",

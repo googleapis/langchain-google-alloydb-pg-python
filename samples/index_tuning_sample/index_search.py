@@ -64,7 +64,7 @@ async def get_vector_store():
     vector_store = await AlloyDBVectorStore.create(
         engine=engine,
         table_name=vector_table_name,
-        embedding_service=embedding,
+        embeddings=embedding,
         index_query_options=HNSWQueryOptions(ef_search=256),
     )
     return vector_store
