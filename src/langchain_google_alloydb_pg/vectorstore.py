@@ -64,7 +64,7 @@ class AlloyDBVectorStore(VectorStore):
             )
 
         self.engine = engine
-        self.embeddings = embeddings
+        self._embeddings = embeddings
         self.table_name = table_name
         self.content_column = content_column
         self.embedding_column = embedding_column
@@ -76,10 +76,6 @@ class AlloyDBVectorStore(VectorStore):
         self.fetch_k = fetch_k
         self.lambda_mult = lambda_mult
         self.index_query_options = index_query_options
-
-    @embeddings.setter
-    def embeddings(self, new_embeddings):
-        self.embeddings = new_embeddings
 
     @classmethod
     async def create(
@@ -215,10 +211,6 @@ class AlloyDBVectorStore(VectorStore):
     @property
     def embeddings(self) -> Embeddings:
         return self._embeddings
-
-    @embeddings.setter
-    def embeddings(self, new_embeddings):
-        self._embeddings = new_embeddings
 
     async def _aadd_embeddings(
         self,
