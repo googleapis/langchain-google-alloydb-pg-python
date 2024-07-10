@@ -17,8 +17,8 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from langchain_core.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
+from langchain_core.embeddings import DeterministicFakeEmbedding
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.indexes import HNSWQueryOptions
