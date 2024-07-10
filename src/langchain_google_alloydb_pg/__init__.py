@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .alloydb_chat_message_history import AlloyDBChatMessageHistory
-from .alloydb_engine import AlloyDBEngine, Column
-from .alloydb_loader import AlloyDBDocumentSaver, AlloyDBLoader
-from .alloydb_vectorstore import AlloyDBVectorStore
+from .chat_message_history import AlloyDBChatMessageHistory
+from .engine import AlloyDBEngine, Column
+from .loader import AlloyDBDocumentSaver, AlloyDBLoader
+from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
 __all__ = [
