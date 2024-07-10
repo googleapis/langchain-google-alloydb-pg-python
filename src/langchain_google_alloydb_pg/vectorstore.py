@@ -40,6 +40,7 @@ class AlloyDBVectorStore(VectorStore):
     """Google AlloyDB Vector Store class"""
 
     __create_key = object()
+    embeddings = None
 
     def __init__(
         self,
