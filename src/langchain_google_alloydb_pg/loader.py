@@ -31,7 +31,7 @@ import sqlalchemy
 from langchain_community.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
-from .alloydb_engine import AlloyDBEngine
+from .engine import AlloyDBEngine
 
 DEFAULT_CONTENT_COL = "page_content"
 DEFAULT_METADATA_COL = "langchain_metadata"
