@@ -15,7 +15,7 @@
 import asyncio
 import uuid
 
-from langchain_core.document_loaders import CSVLoader
+from langchain_community.document_loaders import CSVLoader
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
