@@ -40,7 +40,6 @@ class AlloyDBVectorStore(VectorStore):
     """Google AlloyDB Vector Store class"""
 
     __create_key = object()
-    embeddings = None
 
     def __init__(
         self,
@@ -77,6 +76,10 @@ class AlloyDBVectorStore(VectorStore):
         self.fetch_k = fetch_k
         self.lambda_mult = lambda_mult
         self.index_query_options = index_query_options
+
+    @embeddings.setter
+    def embeddings(self, new_embeddings):
+        self.embeddings = new_embeddings
 
     @classmethod
     async def create(
@@ -211,7 +214,11 @@ class AlloyDBVectorStore(VectorStore):
 
     @property
     def embeddings(self) -> Embeddings:
-        return self.embeddings
+        return self._embeddings
+
+    @embeddings.setter
+    def embeddings(self, new_embeddings):
+        self._embeddings = new_embeddings
 
     async def _aadd_embeddings(
         self,
