@@ -24,7 +24,7 @@ from langchain_core.embeddings import DeterministicFakeEmbedding
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
-    DEFAULT_INDEX_NAME,
+    DEFAULT_INDEX_NAME_SUFFIX,
     DistanceStrategy,
     HNSWIndex,
     IVFFlatIndex,
@@ -35,6 +35,7 @@ from langchain_google_alloydb_pg.indexes import (
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
+DEFAULT_INDEX_NAME = None
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
@@ -100,7 +101,8 @@ class TestIndex:
             embedding_service=embeddings_service,
             table_name=DEFAULT_TABLE,
         )
-
+        global DEFAULT_INDEX_NAME
+        DEFAULT_INDEX_NAME = vs.table_name + DEFAULT_INDEX_NAME_SUFFIX
         await vs.aadd_texts(texts, ids=ids)
         await vs.adrop_vector_index()
         yield vs
@@ -194,7 +196,9 @@ class TestIndex:
         index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
-        assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert await omni_vs.is_valid_index(
+            omni_vs.table_name + DEFAULT_INDEX_NAME_SUFFIX
+        )
         index = ScaNNIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,

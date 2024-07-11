@@ -27,7 +27,7 @@ from sqlalchemy import RowMapping
 from .engine import AlloyDBEngine
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
-    DEFAULT_INDEX_NAME,
+    DEFAULT_INDEX_NAME_SUFFIX,
     BaseIndex,
     DistanceStrategy,
     ExactNearestNeighbor,
@@ -759,28 +759,35 @@ class AlloyDBVectorStore(VectorStore):
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
-        name = name or index.name
+        index_name = name
+        if index_name is None:
+            if index.name == DEFAULT_INDEX_NAME_SUFFIX:
+                index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
+            index_name = index.name
         stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
         if concurrently:
             await self.engine._aexecute_outside_tx(stmt)
         else:
             await self.engine._aexecute(stmt)
 
-    async def areindex(self, index_name: str = DEFAULT_INDEX_NAME) -> None:
+    async def areindex(self, index_name: str = None) -> None:
+        index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"REINDEX INDEX {index_name};"
         await self.engine._aexecute(query)
 
     async def adrop_vector_index(
         self,
-        index_name: str = DEFAULT_INDEX_NAME,
+        index_name: str = None,
     ) -> None:
+        index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"DROP INDEX IF EXISTS {index_name};"
         await self.engine._aexecute(query)
 
     async def is_valid_index(
         self,
-        index_name: str = DEFAULT_INDEX_NAME,
+        index_name: str = None,
     ) -> bool:
+        index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"""
         SELECT tablename, indexname
         FROM pg_indexes
