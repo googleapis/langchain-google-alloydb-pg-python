@@ -235,7 +235,7 @@ class AlloyDBEngine:
 
     @classmethod
     def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
-        return cls(engine, None, None)
+        return cls(cls.__create_key, engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
         """Execute a SQL query."""
