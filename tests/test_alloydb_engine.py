@@ -16,7 +16,6 @@ import os
 import uuid
 from typing import List
 
-import asyncpg  # type: ignore
 import pytest
 import pytest_asyncio
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
@@ -107,7 +106,7 @@ class TestEngineAsync:
     async def test_execute(self, engine):
         engine._execute("SELECT 1")
 
-    async def test_init_table(self, engine):
+    async def test_ainit_table(self, engine):
         try:
             await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
         except:
@@ -199,7 +198,7 @@ class TestEngineAsync:
                     password=password,
                     db=db_name,
                     enable_iam_auth=False,
-                    ip_type=IPTypes.PRIVATE,
+                    ip_type=IPTypes.PUBLIC,
                 )
                 return conn
 
@@ -213,7 +212,7 @@ class TestEngineAsync:
         pool = await init_connection_pool(connector)
         engine = AlloyDBEngine.from_engine(pool)
         await engine._aexecute("SELECT 1")
-        # engine._execute("SELECT 1")
+        engine._execute("SELECT 1")
 
         await pool.dispose()
         await connector.close()
@@ -317,7 +316,7 @@ class TestEngineSync:
 
         engine._execute(f"DROP TABLE {CUSTOM_TABLE}")
 
-    async def test_password(
+    def test_password(
         self,
         db_project,
         db_region,

@@ -106,7 +106,7 @@ class AlloyDBEngine:
     def __init__(
         self,
         engine: AsyncEngine,
-        loop: asyncio.AbstractEventLoop,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         thread: Optional[Thread] = None,
     ) -> None:
         self._engine = engine
@@ -139,8 +139,6 @@ class AlloyDBEngine:
             ip_type,
             user,
             password,
-            # loop=loop,
-            # thread=thread,
         )
         engine = asyncio.run_coroutine_threadsafe(coro, loop).result()
         return cls(engine, loop, thread)
@@ -156,8 +154,6 @@ class AlloyDBEngine:
         ip_type: Union[str, IPTypes],
         user: Optional[str] = None,
         password: Optional[str] = None,
-        # loop: Optional[asyncio.AbstractEventLoop] = None,
-        # thread: Optional[Thread] = None,
     ) -> AsyncEngine:
         # error if only one of user or password is set, must be both or neither
         if bool(user) ^ bool(password):
@@ -202,7 +198,6 @@ class AlloyDBEngine:
             "postgresql+asyncpg://",
             async_creator=getconn,
         )
-        # return cls(engine, loop, thread)
         return engine
 
     @classmethod
@@ -217,6 +212,8 @@ class AlloyDBEngine:
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
     ) -> AlloyDBEngine:
+        # Running a loop in a background thread allows us to support
+        # async methods from non-async environments
         loop = asyncio.new_event_loop()
         thread = Thread(target=loop.run_forever, daemon=True)
         thread.start()
@@ -234,10 +231,7 @@ class AlloyDBEngine:
 
     @classmethod
     def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
-        loop = asyncio.new_event_loop()
-        thread = Thread(target=loop.run_forever, daemon=True)
-        thread.start()
-        return cls(engine, loop, thread)
+        return cls(engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
         """Execute a SQL query."""
@@ -270,7 +264,9 @@ class AlloyDBEngine:
 
     def _run_as_sync(self, coro: Awaitable[T]) -> T:
         if not self._loop:
-            raise Exception("Engine was initialized async.")
+            # Run coroutine on current loop
+            event_loop = asyncio.get_event_loop()
+            return asyncio.ensure_future(coro, loop=event_loop)
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
     async def ainit_vectorstore_table(

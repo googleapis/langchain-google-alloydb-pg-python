@@ -143,6 +143,10 @@ class TestVectorStoreSearch:
         results = await vs.asimilarity_search("foo", k=1, filter="content = 'bar'")
         assert results == [Document(page_content="bar")]
 
+    def test_cross_env(self, vs):
+        results = vs.similarity_search("foo", k=1, filter="content = 'bar'")
+        assert results == [Document(page_content="bar")]
+
     async def test_asimilarity_search_score(self, vs):
         results = await vs.asimilarity_search_with_score("foo")
         assert len(results) == 4
@@ -189,6 +193,10 @@ class TestVectorStoreSearch:
         assert results == [Document(page_content="foo")]
         results = vs_custom.similarity_search("foo", k=1, filter="mycontent = 'bar'")
         assert results == [Document(page_content="bar")]
+
+    async def test_similarity_search_cross_env(self, vs_custom):
+        results = await vs_custom.asimilarity_search("foo", k=1)
+        assert len(results) == 1
 
     def test_similarity_search_score(self, vs_custom):
         results = vs_custom.similarity_search_with_score("foo")
