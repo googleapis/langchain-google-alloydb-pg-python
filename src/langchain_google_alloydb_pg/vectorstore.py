@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 from langchain_core.documents import Document
@@ -57,6 +57,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        relevence_score_fn = Optional[Callable[[float], float]] = None,
     ):
         if key != AlloyDBVectorStore.__create_key:
             raise Exception(
@@ -76,6 +77,7 @@ class AlloyDBVectorStore(VectorStore):
         self.fetch_k = fetch_k
         self.lambda_mult = lambda_mult
         self.index_query_options = index_query_options
+        self.relevence_score_fn = relevence_score_fn
 
     @classmethod
     async def create(
@@ -494,6 +496,23 @@ class AlloyDBVectorStore(VectorStore):
         return await self.asimilarity_search_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
         )
+
+    def _select_relevance_score_fn(self) -> Callable[[float], float]:
+        """
+        Select a relevance function based on distance strategy
+        """
+        if self.relevance_score_fn is not None:
+            return self.relevance_score_fn
+
+        # Calculate distance strategy provided in
+        # vectorstore constructor
+        if self.distance_strategy == DistanceStrategy.COSINE_DISTANCE:
+            return self._cosine_relevance_score_fn
+        if self.distance_strategy == DistanceStrategy.INNER_PRODUCT:
+            return self._max_inner_product_relevance_score_fn
+        elif self.distance_strategy == DistanceStrategy.EUCLIDEAN:
+            return self._euclidean_relevance_score_fn
+
 
     async def asimilarity_search_with_score(
         self,
