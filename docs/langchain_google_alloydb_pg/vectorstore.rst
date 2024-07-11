@@ -1,7 +1,7 @@
 Vector Store
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: langchain_google_alloydb_pg.alloydb_vectorstore
+.. automodule:: langchain_google_alloydb_pg.vectorstore
   :members:
   :private-members:
   :noindex:
