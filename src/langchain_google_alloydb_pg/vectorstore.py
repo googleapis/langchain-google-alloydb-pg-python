@@ -57,7 +57,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
-        relevence_score_fn: Optional[Callable[[float], float]] = None,
+        relevance_score_fn: Optional[Callable[[float], float]] = None,
     ):
         if key != AlloyDBVectorStore.__create_key:
             raise Exception(
@@ -77,7 +77,7 @@ class AlloyDBVectorStore(VectorStore):
         self.fetch_k = fetch_k
         self.lambda_mult = lambda_mult
         self.index_query_options = index_query_options
-        self.relevence_score_fn = relevence_score_fn
+        self.relevance_score_fn = relevance_score_fn
 
     @classmethod
     async def create(
