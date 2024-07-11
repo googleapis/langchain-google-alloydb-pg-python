@@ -101,7 +101,7 @@ async def create_vector_store_table(documents):
     vector_store = await AlloyDBVectorStore.create(
         engine=engine,
         table_name=vector_table_name,
-        embedding_service=embedding,
+        embeddings=embedding,
         metadata_columns=dataset_columns,
     )
 
