@@ -459,6 +459,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: List[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        **kwargs: Any,
     ) -> Sequence[RowMapping]:
         k = k if k else self.k
         operator = self.distance_strategy.operator
