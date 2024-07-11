@@ -134,6 +134,10 @@ class TestIndex:
         omni_engine = AlloyDBEngine.from_engine(async_engine)
         yield omni_engine
 
+    async def test_async_sync_from_engine(self, omni_engine):
+        await omni_engine._aexecute("SELECT 1")
+        omni_engine._execute("SELECT 1")
+
     @pytest_asyncio.fixture(scope="class")
     async def omni_vs(self, omni_engine):
         await omni_engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)

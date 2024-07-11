@@ -106,8 +106,8 @@ class AlloyDBEngine:
     def __init__(
         self,
         engine: AsyncEngine,
-        loop: Optional[asyncio.AbstractEventLoop],
-        thread: Optional[Thread],
+        loop: asyncio.AbstractEventLoop,
+        thread: Optional[Thread] = None,
     ) -> None:
         self._engine = engine
         self._loop = loop
@@ -139,10 +139,11 @@ class AlloyDBEngine:
             ip_type,
             user,
             password,
-            loop=loop,
-            thread=thread,
+            # loop=loop,
+            # thread=thread,
         )
-        return asyncio.run_coroutine_threadsafe(coro, loop).result()
+        engine = asyncio.run_coroutine_threadsafe(coro, loop).result()
+        return cls(engine, loop, thread)
 
     @classmethod
     async def _create(
@@ -155,9 +156,9 @@ class AlloyDBEngine:
         ip_type: Union[str, IPTypes],
         user: Optional[str] = None,
         password: Optional[str] = None,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        thread: Optional[Thread] = None,
-    ) -> AlloyDBEngine:
+        # loop: Optional[asyncio.AbstractEventLoop] = None,
+        # thread: Optional[Thread] = None,
+    ) -> AsyncEngine:
         # error if only one of user or password is set, must be both or neither
         if bool(user) ^ bool(password):
             raise ValueError(
@@ -201,7 +202,8 @@ class AlloyDBEngine:
             "postgresql+asyncpg://",
             async_creator=getconn,
         )
-        return cls(engine, loop, thread)
+        # return cls(engine, loop, thread)
+        return engine
 
     @classmethod
     async def afrom_instance(
@@ -215,7 +217,10 @@ class AlloyDBEngine:
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
     ) -> AlloyDBEngine:
-        return await cls._create(
+        loop = asyncio.new_event_loop()
+        thread = Thread(target=loop.run_forever, daemon=True)
+        thread.start()
+        engine = await cls._create(
             project_id,
             region,
             cluster,
@@ -225,10 +230,14 @@ class AlloyDBEngine:
             user,
             password,
         )
+        return cls(engine, loop, thread)
 
     @classmethod
     def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
-        return cls(engine, None, None)
+        loop = asyncio.new_event_loop()
+        thread = Thread(target=loop.run_forever, daemon=True)
+        thread.start()
+        return cls(engine, loop, thread)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
         """Execute a SQL query."""

@@ -101,8 +101,11 @@ class TestEngineAsync:
         )
         yield engine
 
-    async def test_execute(self, engine):
+    async def test_aexecute(self, engine):
         await engine._aexecute("SELECT 1")
+
+    async def test_execute(self, engine):
+        engine._execute("SELECT 1")
 
     async def test_init_table(self, engine):
         try:
@@ -177,7 +180,7 @@ class TestEngineAsync:
         assert engine
         await engine._aexecute("SELECT 1")
 
-    async def test_from_engine(
+    async def test_from_engine_with_connector(
         self,
         db_project,
         db_region,
@@ -206,11 +209,14 @@ class TestEngineAsync:
             )
             return pool
 
-        async with AsyncConnector() as connector:
-            pool = await init_connection_pool(connector)
+        connector = AsyncConnector()
+        pool = await init_connection_pool(connector)
+        engine = AlloyDBEngine.from_engine(pool)
+        await engine._aexecute("SELECT 1")
+        # engine._execute("SELECT 1")
 
-            engine = AlloyDBEngine.from_engine(pool)
-            await engine._aexecute("SELECT 1")
+        await pool.dispose()
+        await connector.close()
 
     async def test_column(self, engine):
         with pytest.raises(ValueError):
@@ -262,7 +268,10 @@ class TestEngineSync:
     def test_execute(self, engine):
         engine._execute("SELECT 1")
 
-    async def test_init_table(self, engine):
+    async def test_aexecute(self, engine):
+        await engine._aexecute("SELECT 1")
+
+    def test_init_table(self, engine):
         try:
             engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
         except:
@@ -270,7 +279,7 @@ class TestEngineSync:
         engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
-        embedding = await embeddings_service.aembed_query(content)
+        embedding = embeddings_service.embed_query(content)
         stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         engine._execute(stmt)
 
