@@ -57,7 +57,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
-        relevence_score_fn = Optional[Callable[[float], float]] = None,
+        relevence_score_fn: Optional[Callable[[float], float]] = None,
     ):
         if key != AlloyDBVectorStore.__create_key:
             raise Exception(
@@ -512,7 +512,6 @@ class AlloyDBVectorStore(VectorStore):
             return self._max_inner_product_relevance_score_fn
         elif self.distance_strategy == DistanceStrategy.EUCLIDEAN:
             return self._euclidean_relevance_score_fn
-
 
     async def asimilarity_search_with_score(
         self,
