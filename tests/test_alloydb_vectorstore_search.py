@@ -154,7 +154,6 @@ class TestVectorStoreSearch:
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
         )
-        print(results)
         assert len(results) == 1
         assert results[0][0] == Document(page_content="foo")
 

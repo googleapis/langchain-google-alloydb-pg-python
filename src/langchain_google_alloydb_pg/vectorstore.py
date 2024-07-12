@@ -96,6 +96,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        relevance_score_fn: Optional[Callable[[float], float]] = None,
     ) -> AlloyDBVectorStore:
         """Constructor for AlloyDBVectorStore.
         Args:
@@ -172,6 +173,7 @@ class AlloyDBVectorStore(VectorStore):
             fetch_k,
             lambda_mult,
             index_query_options,
+            relevance_score_fn,
         )
 
     @classmethod
@@ -191,6 +193,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        relevance_score_fn: Optional[Callable[[float], float]] = None,
     ) -> AlloyDBVectorStore:
         coro = cls.create(
             engine,
@@ -207,6 +210,7 @@ class AlloyDBVectorStore(VectorStore):
             fetch_k,
             lambda_mult,
             index_query_options,
+            relevance_score_fn,
         )
         return engine._run_as_sync(coro)
 
