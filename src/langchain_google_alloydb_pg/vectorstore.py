@@ -221,7 +221,7 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[str]:
         if not ids:
-            ids = [i for i, _ in enumerate(texts)]
+            ids = [str(i) for i, _ in enumerate(texts)]
         if not metadatas:
             metadatas = [{} for _ in texts]
         # Insert embeddings
