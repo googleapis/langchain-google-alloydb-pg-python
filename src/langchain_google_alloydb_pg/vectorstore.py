@@ -759,11 +759,10 @@ class AlloyDBVectorStore(VectorStore):
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
-        index_name = name
-        if index_name is None:
-            if index.name == DEFAULT_INDEX_NAME_SUFFIX:
+        if name is None:
+            if index.name == None:
                 index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
-            index_name = index.name
+            name = index.name
         stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
         if concurrently:
             await self.engine._aexecute_outside_tx(stmt)
