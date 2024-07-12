@@ -267,8 +267,7 @@ class AlloyDBEngine:
     def _run_as_sync(self, coro: Awaitable[T]) -> T:
         if not self._loop:
             # Run coroutine on current loop
-            event_loop = asyncio.get_event_loop()
-            return asyncio.ensure_future(coro, loop=event_loop).result()
+            raise Exception("Engine was initialized async.")
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
     async def ainit_vectorstore_table(
