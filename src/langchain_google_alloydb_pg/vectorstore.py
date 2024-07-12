@@ -109,6 +109,7 @@ class AlloyDBVectorStore(VectorStore):
             ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
             id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            relevance_score_fn (Callable): custom function to overrides default relevance score calculation functions.
         """
         if metadata_columns and ignore_metadata_columns:
             raise ValueError(
