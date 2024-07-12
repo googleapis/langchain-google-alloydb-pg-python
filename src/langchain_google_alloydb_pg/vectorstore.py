@@ -770,14 +770,14 @@ class AlloyDBVectorStore(VectorStore):
         else:
             await self.engine._aexecute(stmt)
 
-    async def areindex(self, index_name: str = None) -> None:
+    async def areindex(self, index_name: Optional[str] = None) -> None:
         index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"REINDEX INDEX {index_name};"
         await self.engine._aexecute(query)
 
     async def adrop_vector_index(
         self,
-        index_name: str = None,
+        index_name: Optional[str] = None,
     ) -> None:
         index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"DROP INDEX IF EXISTS {index_name};"
@@ -785,7 +785,7 @@ class AlloyDBVectorStore(VectorStore):
 
     async def is_valid_index(
         self,
-        index_name: str = None,
+        index_name: Optional[str] = None,
     ) -> bool:
         index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"""
