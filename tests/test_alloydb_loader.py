@@ -717,6 +717,9 @@ class TestAlloyDBLoader:
 
         docs = await loader.aload()
         assert len(docs) == 2
+        # Cross environment
+        docs = loader.load()
+        assert len(docs) == 2
 
         await saver.adelete(docs[:1])
         docs = await loader.aload()
@@ -760,6 +763,9 @@ class TestAlloyDBLoader:
                 query=f'SELECT * FROM "{table_name}";',
             )
             documents = loader.load()
+            assert documents == test_docs
+            # Cross environment
+            documents = await loader.aload()
             assert documents == test_docs
 
             saver.delete(test_docs)

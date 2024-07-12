@@ -36,6 +36,7 @@ from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrat
 from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from .version import __version__
 
@@ -197,6 +198,7 @@ class AlloyDBEngine:
         engine = create_async_engine(
             "postgresql+asyncpg://",
             async_creator=getconn,
+            poolclass=NullPool,
         )
         return engine
 
@@ -217,6 +219,8 @@ class AlloyDBEngine:
         loop = asyncio.new_event_loop()
         thread = Thread(target=loop.run_forever, daemon=True)
         thread.start()
+        # loop = None
+        # thread = None
         engine = await cls._create(
             project_id,
             region,

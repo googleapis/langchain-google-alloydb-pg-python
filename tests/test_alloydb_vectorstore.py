@@ -179,6 +179,12 @@ class TestVectorStore:
         assert len(results) == 3
         await engine._aexecute(f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
 
+        # cross environment
+        vs.add_documents(docs, ids=ids)
+        results = await engine._afetch(f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 3
+        await engine._aexecute(f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
+
     async def test_aadd_embedding(self, engine, vs):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         await vs._aadd_embeddings(texts, embeddings, metadatas, ids)
@@ -253,14 +259,21 @@ class TestVectorStore:
         assert len(results) == 3
         await engine._aexecute(f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
 
-    def test_add_docs(self, engine_sync, vs_sync):
+    async def test_add_docs(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         vs_sync.add_documents(docs, ids=ids)
         results = engine_sync._fetch(f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
+        engine_sync._execute(f'TRUNCATE TABLE "{DEFAULT_TABLE_SYNC}"')
+
+        # Cross environment
+        await vs_sync.aadd_documents(docs, ids=ids)
+        results = engine_sync._fetch(f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
+        assert len(results) == 3
+        engine_sync._execute(f'TRUNCATE TABLE "{DEFAULT_TABLE_SYNC}"')
 
     def test_add_texts(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         vs_sync.add_texts(texts, ids=ids)
         results = engine_sync._fetch(f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
-        assert len(results) == 6
+        assert len(results) == 3

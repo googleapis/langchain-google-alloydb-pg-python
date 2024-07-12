@@ -86,7 +86,7 @@ class TestEngineAsync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
-    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
+    @pytest_asyncio.fixture(params=["PUBLIC", "public"])
     async def engine(
         self, request, db_project, db_region, db_cluster, db_instance, db_name
     ):
@@ -174,7 +174,7 @@ class TestEngineAsync:
             database=db_name,
             user=user,
             password=password,
-            ip_type="PRIVATE",
+            ip_type="public",
         )
         assert engine
         await engine._aexecute("SELECT 1")
@@ -252,7 +252,7 @@ class TestEngineSync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
-    @pytest.fixture(params=["PUBLIC", "PRIVATE"])
+    @pytest.fixture(params=["PUBLIC", "public"])
     def engine(self, request, db_project, db_region, db_cluster, db_instance, db_name):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,

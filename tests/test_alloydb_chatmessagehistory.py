@@ -63,7 +63,8 @@ async def async_engine():
     await engine._aexecute(query)
 
 
-def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
+@pytest.mark.asyncio
+async def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
     history = AlloyDBChatMessageHistory.create_sync(
         engine=memory_engine, session_id="test", table_name=table_name
     )
@@ -80,6 +81,11 @@ def test_chat_message_history(memory_engine: AlloyDBEngine) -> None:
     # verify clear() clears message history
     history.clear()
     assert len(history.messages) == 0
+
+    # cross env
+    await history.aadd_message(HumanMessage(content="hi!"))
+    messages = await history.aget_messages()
+    assert len(messages) == 1
 
 
 def test_chat_table(memory_engine):
