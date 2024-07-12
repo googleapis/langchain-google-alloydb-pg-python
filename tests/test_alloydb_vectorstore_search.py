@@ -149,9 +149,11 @@ class TestVectorStoreSearch:
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
 
-    async def test_asimilarity_search_score_with_threshold(self, vs):
+    async def test_similarity_search_with_relevance_scores_threshold(self, vs):
         score_threshold = {"score_threshold": 0.8}
-        results = await vs.asimilarity_search_with_score("joo", **score_threshold)
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "joo", **score_threshold
+        )
         assert len(results) == 2
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
