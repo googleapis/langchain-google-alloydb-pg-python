@@ -219,8 +219,6 @@ class AlloyDBEngine:
         loop = asyncio.new_event_loop()
         thread = Thread(target=loop.run_forever, daemon=True)
         thread.start()
-        # loop = None
-        # thread = None
         engine = await cls._create(
             project_id,
             region,
@@ -270,7 +268,7 @@ class AlloyDBEngine:
         if not self._loop:
             # Run coroutine on current loop
             event_loop = asyncio.get_event_loop()
-            return asyncio.ensure_future(coro, loop=event_loop)
+            return asyncio.ensure_future(coro, loop=event_loop).result()
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
     async def ainit_vectorstore_table(

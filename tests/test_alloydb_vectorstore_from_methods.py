@@ -150,7 +150,7 @@ class TestVectorStoreFromMethods:
         assert len(results) == 3
         await engine._aexecute(f"TRUNCATE TABLE {DEFAULT_TABLE}")
 
-    async def test_from_docs(self, engine_sync):
+    def test_from_docs(self, engine_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         AlloyDBVectorStore.from_documents(
             docs,
@@ -162,7 +162,21 @@ class TestVectorStoreFromMethods:
         results = engine_sync._fetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
 
         assert len(results) == 3
-        engine_sync._aexecute(f"TRUNCATE TABLE {DEFAULT_TABLE_SYNC}")
+        engine_sync._execute(f"TRUNCATE TABLE {DEFAULT_TABLE_SYNC}")
+
+    async def test_from_docs_cross_env(self, engine):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        AlloyDBVectorStore.from_documents(
+            docs,
+            embeddings_service,
+            engine,
+            DEFAULT_TABLE_SYNC,
+            ids=ids,
+        )
+        results = engine._fetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
+
+        assert len(results) == 3
+        engine._aexecute(f"TRUNCATE TABLE {DEFAULT_TABLE_SYNC}")
 
     async def test_afrom_texts_custom(self, engine):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]

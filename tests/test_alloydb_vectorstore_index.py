@@ -164,6 +164,12 @@ class TestIndex:
         result = await vs.is_valid_index(DEFAULT_INDEX_NAME)
         assert not result
 
+    async def test_cross_env(self, vs):
+        index = HNSWIndex()
+        vs.apply_vector_index(index)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
+        vs.drop_vector_index()
+
     async def test_aapply_vector_index_ivfflat(self, vs):
         index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
