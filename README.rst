@@ -123,7 +123,7 @@ See the full `Document Loader`_ tutorial.
 .. _`Document Loader`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/document_loader.ipynb
 
 Chat Message History Usage
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use ``ChatMessageHistory`` to store messages and provide conversation
 history to LLMs.
