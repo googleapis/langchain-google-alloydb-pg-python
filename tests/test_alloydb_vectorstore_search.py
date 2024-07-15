@@ -157,7 +157,7 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results[0][0] == Document(page_content="foo")
 
-        score_threshold = {"score_threshold": 0.3}
+        score_threshold = {"score_threshold": 0.1}
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
         )
