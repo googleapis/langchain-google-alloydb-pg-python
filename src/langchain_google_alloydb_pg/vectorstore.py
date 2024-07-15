@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
