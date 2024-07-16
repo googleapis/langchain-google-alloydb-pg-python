@@ -368,7 +368,7 @@ class AlloyDBEngine:
     ) -> None:
         """
         Create a table for saving of langchain documents.
-        If table already exists, a TABLE_ALREADY_EXISTS error is thrown.
+        If table already exists, a DuplicateTableError error is thrown.
 
         Args:
             table_name (str): The PgSQL database table name.
