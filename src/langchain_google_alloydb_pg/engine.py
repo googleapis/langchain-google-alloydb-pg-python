@@ -297,6 +297,8 @@ class AlloyDBEngine:
                 Default: False.
             store_metadata (bool): Whether to store metadata in a JSON column if not specified by `metadata_columns`.
                 Default: True.
+        Raises:
+            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
         """
         await self._aexecute("CREATE EXTENSION IF NOT EXISTS vector")
 
