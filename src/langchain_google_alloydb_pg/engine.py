@@ -102,13 +102,20 @@ class AlloyDBEngine:
     """A class for managing connections to a AlloyDB database."""
 
     _connector: Optional[AsyncConnector] = None
+    __create_key = object()
 
     def __init__(
         self,
+        key: object,
         engine: AsyncEngine,
         loop: Optional[asyncio.AbstractEventLoop],
         thread: Optional[Thread],
     ) -> None:
+
+        if key != AlloyDBEngine.__create_key:
+            raise Exception(
+                "Only create class through 'create' or 'create_sync' methods!"
+            )
         self._engine = engine
         self._loop = loop
         self._thread = thread
@@ -201,7 +208,7 @@ class AlloyDBEngine:
             "postgresql+asyncpg://",
             async_creator=getconn,
         )
-        return cls(engine, loop, thread)
+        return cls(cls.__create_key, engine, loop, thread)
 
     @classmethod
     async def afrom_instance(
@@ -228,7 +235,7 @@ class AlloyDBEngine:
 
     @classmethod
     def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
-        return cls(engine, None, None)
+        return cls(cls.__create_key, engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
         """Execute a SQL query."""
