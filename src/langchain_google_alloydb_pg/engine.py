@@ -295,7 +295,7 @@ class AlloyDBEngine:
                 Default: "langchain_id". Optional,
             overwrite_existing (bool): Whether to drop the existing table.
                 Default: False.
-            store_metadata (bool): Whether to store metadata in the table.
+            store_metadata (bool): Whether to store metadata in a JSON column if not specified by `metadata_columns`.
                 Default: True.
         """
         await self._aexecute("CREATE EXTENSION IF NOT EXISTS vector")
