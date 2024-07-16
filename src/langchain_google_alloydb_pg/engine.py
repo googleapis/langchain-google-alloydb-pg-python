@@ -293,7 +293,7 @@ class AlloyDBEngine:
                 Default: "langchain_metadata". Optional.
             id_column (str):  Name of the column to store ids.
                 Default: "langchain_id". Optional,
-            overwrite_existing (bool): Whether to drop the existing table.
+            overwrite_existing (bool): Whether to drop the existing table before insertion.
                 Default: False.
             store_metadata (bool): Whether to store metadata in a JSON column if not specified by `metadata_columns`.
                 Default: True.
