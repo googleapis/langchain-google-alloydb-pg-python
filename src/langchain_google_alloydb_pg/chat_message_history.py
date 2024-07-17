@@ -21,7 +21,7 @@ from typing import List, Sequence
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage, messages_from_dict
 
-from .alloydb_engine import AlloyDBEngine
+from .engine import AlloyDBEngine
 
 
 async def _aget_messages(

@@ -16,7 +16,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Type, Union
+import uuid
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 from langchain_core.documents import Document
@@ -24,10 +25,10 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from sqlalchemy import RowMapping
 
-from .alloydb_engine import AlloyDBEngine
+from .engine import AlloyDBEngine
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
-    DEFAULT_INDEX_NAME,
+    DEFAULT_INDEX_NAME_SUFFIX,
     BaseIndex,
     DistanceStrategy,
     ExactNearestNeighbor,
@@ -221,7 +222,7 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[str]:
         if not ids:
-            ids = ["NULL" for _ in texts]
+            ids = [str(uuid.uuid4()) for _ in texts]
         if not metadatas:
             metadatas = [{} for _ in texts]
         # Insert embeddings
@@ -457,6 +458,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: List[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        **kwargs: Any,
     ) -> Sequence[RowMapping]:
         k = k if k else self.k
         operator = self.distance_strategy.operator
@@ -494,6 +496,19 @@ class AlloyDBVectorStore(VectorStore):
         return await self.asimilarity_search_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
         )
+
+    def _select_relevance_score_fn(self) -> Callable[[float], float]:
+        """
+        Select a relevance function based on distance strategy
+        """
+        # Calculate distance strategy provided in
+        # vectorstore constructor
+        if self.distance_strategy == DistanceStrategy.COSINE_DISTANCE:
+            return self._cosine_relevance_score_fn
+        if self.distance_strategy == DistanceStrategy.INNER_PRODUCT:
+            return self._max_inner_product_relevance_score_fn
+        elif self.distance_strategy == DistanceStrategy.EUCLIDEAN:
+            return self._euclidean_relevance_score_fn
 
     async def asimilarity_search_with_score(
         self,
@@ -759,28 +774,34 @@ class AlloyDBVectorStore(VectorStore):
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
-        name = name or index.name
+        if name is None:
+            if index.name == None:
+                index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
+            name = index.name
         stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
         if concurrently:
             await self.engine._aexecute_outside_tx(stmt)
         else:
             await self.engine._aexecute(stmt)
 
-    async def areindex(self, index_name: str = DEFAULT_INDEX_NAME) -> None:
+    async def areindex(self, index_name: Optional[str] = None) -> None:
+        index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"REINDEX INDEX {index_name};"
         await self.engine._aexecute(query)
 
     async def adrop_vector_index(
         self,
-        index_name: str = DEFAULT_INDEX_NAME,
+        index_name: Optional[str] = None,
     ) -> None:
+        index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"DROP INDEX IF EXISTS {index_name};"
         await self.engine._aexecute(query)
 
     async def is_valid_index(
         self,
-        index_name: str = DEFAULT_INDEX_NAME,
+        index_name: Optional[str] = None,
     ) -> bool:
+        index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"""
         SELECT tablename, indexname
         FROM pg_indexes

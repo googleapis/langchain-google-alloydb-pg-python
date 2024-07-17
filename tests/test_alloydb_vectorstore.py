@@ -17,8 +17,8 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from langchain_community.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
+from langchain_core.embeddings import DeterministicFakeEmbedding
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
@@ -184,6 +184,13 @@ class TestVectorStore:
         await vs._aadd_embeddings(texts, embeddings, metadatas, ids)
         results = await engine._afetch(f'SELECT * FROM "{DEFAULT_TABLE}"')
         assert len(results) == 3
+        await engine._aexecute(f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
+
+    async def test_aadd_embedding_without_id(self, engine, vs):
+        await vs._aadd_embeddings(texts, embeddings, metadatas)
+        results = await engine._afetch(f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 3
+        assert results[0]["langchain_id"]
         await engine._aexecute(f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
 
     async def test_adelete(self, engine, vs):

@@ -17,8 +17,8 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from langchain_community.embeddings import DeterministicFakeEmbedding
 from langchain_core.documents import Document
+from langchain_core.embeddings import DeterministicFakeEmbedding
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.indexes import HNSWQueryOptions
@@ -148,6 +148,26 @@ class TestVectorStoreSearch:
         assert len(results) == 4
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
+
+    async def test_similarity_search_with_relevance_scores_threshold(self, vs):
+        score_threshold = {"score_threshold": 0}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 4
+
+        score_threshold = {"score_threshold": 0.02}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 2
+
+        score_threshold = {"score_threshold": 0.9}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 1
+        assert results[0][0] == Document(page_content="foo")
 
     async def test_asimilarity_search_by_vector(self, vs):
         embedding = embeddings_service.embed_query("foo")

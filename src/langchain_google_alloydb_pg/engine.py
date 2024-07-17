@@ -102,13 +102,20 @@ class AlloyDBEngine:
     """A class for managing connections to a AlloyDB database."""
 
     _connector: Optional[AsyncConnector] = None
+    __create_key = object()
 
     def __init__(
         self,
+        key: object,
         engine: AsyncEngine,
         loop: Optional[asyncio.AbstractEventLoop],
         thread: Optional[Thread],
     ) -> None:
+
+        if key != AlloyDBEngine.__create_key:
+            raise Exception(
+                "Only create class through 'create' or 'create_sync' methods!"
+            )
         self._engine = engine
         self._loop = loop
         self._thread = thread
@@ -201,7 +208,7 @@ class AlloyDBEngine:
             "postgresql+asyncpg://",
             async_creator=getconn,
         )
-        return cls(engine, loop, thread)
+        return cls(cls.__create_key, engine, loop, thread)
 
     @classmethod
     async def afrom_instance(
@@ -228,7 +235,7 @@ class AlloyDBEngine:
 
     @classmethod
     def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
-        return cls(engine, None, None)
+        return cls(cls.__create_key, engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
         """Execute a SQL query."""
@@ -276,6 +283,30 @@ class AlloyDBEngine:
         overwrite_existing: bool = False,
         store_metadata: bool = True,
     ) -> None:
+        """
+        Create a table for saving of vectors to be used with Alloy DB.
+        If table already exists and overwrite flag is not set, a TABLE_ALREADY_EXISTS error is thrown.
+
+        Args:
+            table_name (str): The table name.
+            vector_size (int): Vector size for the embedding model to be used.
+            content_column (str): Name of the column to store document content.
+                Default: "page_content".
+            embedding_column (str) : Name of the column to store vector embeddings.
+                Default: "embedding".
+            metadata_columns (List[Column]): A list of Columns to create for custom
+                metadata. Default: []. Optional.
+            metadata_json_column (str): The column to store extra metadata in JSON format.
+                Default: "langchain_metadata". Optional.
+            id_column (str):  Name of the column to store ids.
+                Default: "langchain_id". Optional,
+            overwrite_existing (bool): Whether to drop the existing table before insertion.
+                Default: False.
+            store_metadata (bool): Whether to store metadata in a JSON column if not specified by `metadata_columns`.
+                Default: True.
+        Raises:
+            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
+        """
         await self._aexecute("CREATE EXTENSION IF NOT EXISTS vector")
 
         if overwrite_existing:
@@ -346,11 +377,16 @@ class AlloyDBEngine:
     ) -> None:
         """
         Create a table for saving of langchain documents.
+        If table already exists, a DuplicateTableError error is thrown.
 
         Args:
             table_name (str): The PgSQL database table name.
+            content_column (str): Name of the column to store document content.
+                Default: "page_content".
             metadata_columns (List[Column]): A list of Columns
                 to create for custom metadata. Optional.
+            metadata_json_column (str): The column to store extra metadata in JSON format.
+                Default: "langchain_metadata". Optional.
             store_metadata (bool): Whether to store extra metadata in a metadata column
                 if not described in 'metadata' field list (Default: True).
         """

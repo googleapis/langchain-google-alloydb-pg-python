@@ -20,7 +20,7 @@ import asyncpg  # type: ignore
 import pytest
 import pytest_asyncio
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
-from langchain_community.embeddings import FakeEmbeddings
+from langchain_core.embeddings import FakeEmbeddings
 from sqlalchemy import VARCHAR
 from sqlalchemy.ext.asyncio import create_async_engine
 
