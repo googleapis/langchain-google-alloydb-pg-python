@@ -131,6 +131,7 @@ class AlloyDBEngine:
         user: Optional[str] = None,
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
+        service_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
@@ -148,6 +149,7 @@ class AlloyDBEngine:
             password,
             loop=loop,
             thread=thread,
+            service_account_email=service_account_email,
         )
         return asyncio.run_coroutine_threadsafe(coro, loop).result()
 
@@ -164,6 +166,7 @@ class AlloyDBEngine:
         password: Optional[str] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread: Optional[Thread] = None,
+        service_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
         # error if only one of user or password is set, must be both or neither
         if bool(user) ^ bool(password):
@@ -184,12 +187,15 @@ class AlloyDBEngine:
             db_user = user
         # otherwise use automatic IAM database authentication
         else:
-            # get application default credentials
-            credentials, _ = google.auth.default(
-                scopes=["https://www.googleapis.com/auth/userinfo.email"]
-            )
-            db_user = await _get_iam_principal_email(credentials)
             enable_iam_auth = True
+            if service_account_email:
+                db_user = service_account_email
+            else:
+                # get application default credentials
+                credentials, _ = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/userinfo.email"]
+                )
+                db_user = await _get_iam_principal_email(credentials)
 
         # anonymous function to be used for SQLAlchemy 'creator' argument
         async def getconn() -> asyncpg.Connection:
@@ -221,6 +227,7 @@ class AlloyDBEngine:
         user: Optional[str] = None,
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
+        service_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
         return await cls._create(
             project_id,
