@@ -149,6 +149,26 @@ class TestVectorStoreSearch:
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
 
+    async def test_similarity_search_with_relevance_scores_threshold(self, vs):
+        score_threshold = {"score_threshold": 0}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 4
+
+        score_threshold = {"score_threshold": 0.02}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 2
+
+        score_threshold = {"score_threshold": 0.9}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 1
+        assert results[0][0] == Document(page_content="foo")
+
     async def test_asimilarity_search_by_vector(self, vs):
         embedding = embeddings_service.embed_query("foo")
         results = await vs.asimilarity_search_by_vector(embedding)
