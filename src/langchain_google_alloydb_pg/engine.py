@@ -174,9 +174,7 @@ class AlloyDBEngine:
             )
 
         if cls._connector is None:
-            cls._connector = AsyncConnector(
-                user_agent=USER_AGENT, refresh_strategy=RefreshStrategy.LAZY
-            )
+            cls._connector = AsyncConnector(user_agent=USER_AGENT, refresh_strategy=RefreshStrategy.LAZY)
 
         # if user and password are given, use basic auth
         if user and password:
