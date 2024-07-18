@@ -125,7 +125,7 @@ class AlloyDBLoader(BaseLoader):
         formatter: Callable[[Dict[str, Any], Iterable[str]], str],
         metadata_json_column: Optional[str] = None,
     ) -> None:
-        """Create an AlloyDBLoader instance.
+        """AlloyDBLoader constructor.
 
         Args:
             key (object): Prevent direct constructor usage.
@@ -139,7 +139,7 @@ class AlloyDBLoader(BaseLoader):
             formatter (Optional[Callable], optional): A function to format page content (OneOf: format, formatter). Defaults to None.
 
         Raises:
-            Excaption:
+            Excaption: If called directly by user.
         """
         if key != AlloyDBLoader.__create_key:
             raise Exception(
