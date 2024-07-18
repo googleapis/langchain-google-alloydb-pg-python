@@ -131,7 +131,7 @@ class AlloyDBEngine:
         user: Optional[str] = None,
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
-        service_account_email: Optional[str] = None,
+        iam_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
