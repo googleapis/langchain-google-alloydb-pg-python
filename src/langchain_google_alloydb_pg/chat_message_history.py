@@ -51,7 +51,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         table_name: str,
         messages: List[BaseMessage],
     ):
-        """_summary_
+        """AlloyDBChatMessageHistory constructor.
 
         Args:
             key (object): Key to prevent direct constructor usage.

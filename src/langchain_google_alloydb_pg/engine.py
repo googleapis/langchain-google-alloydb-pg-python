@@ -270,7 +270,7 @@ class AlloyDBEngine:
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
         service_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
-        """_summary_
+        """Create an AlloyDBEngine from an AlloyDB instance.
 
         Args:
             project_id (str): GCP project ID.
