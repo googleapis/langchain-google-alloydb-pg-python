@@ -54,14 +54,14 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         """_summary_
 
         Args:
-            key (object): _description_
+            key (object): Key to prevent direct constructor usage.
             engine (AlloyDBEngine): AlloyDB engine to use.
             session_id (str): Retrieve the table content with this session ID.
             table_name (str): Table name that stores the chat message history.
-            messages (List[BaseMessage]): _description_
+            messages (List[BaseMessage]): Messages to store.
 
         Raises:
-            Exception: _description_
+            Exception: If constructor is directly called by the user.
         """
         if key != AlloyDBChatMessageHistory.__create_key:
             raise Exception(
@@ -87,7 +87,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
             table_name (str): Table name that stores the chat message history.
 
         Raises:
-            IndexError: Raises error if the table provided does not contain required schema.
+            IndexError: If the table provided does not contain required schema.
 
         Returns:
             AlloyDBChatMessageHistory: A newly created instance of AlloyDBChatMessageHistory.
@@ -127,7 +127,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
             table_name (str): Table name that stores the chat message history.
 
         Raises:
-            IndexError: Raises error if the table provided does not contain required schema.
+            IndexError: If the table provided does not contain required schema.
 
         Returns:
             AlloyDBChatMessageHistory: A newly created instance of AlloyDBChatMessageHistory.

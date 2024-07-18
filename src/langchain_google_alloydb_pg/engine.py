@@ -151,7 +151,7 @@ class AlloyDBEngine:
             user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
             password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
-            service_account_email (Optional[str], optional): Service account email. Defaults to None.
+            service_account_email (Optional[str], optional): IAM service account email. Defaults to None.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
@@ -202,7 +202,7 @@ class AlloyDBEngine:
             user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
             password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
-            service_account_email (Optional[str], optional): Service account email. Defaults to None.
+            service_account_email (Optional[str], optional): IAM service account email.
 
         Raises:
             ValueError: Raises error if only one of 'user' or 'password' is specified.
@@ -281,7 +281,7 @@ class AlloyDBEngine:
             user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
             password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
-            service_account_email (Optional[str], optional): Service account email. Defaults to None.
+            service_account_email (Optional[str], optional): IAM service account email. Defaults to None.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
