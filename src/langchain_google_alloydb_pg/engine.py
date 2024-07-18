@@ -325,7 +325,7 @@ class AlloyDBEngine:
     async def _afetch(
         self, query: str, params: Optional[dict] = None
     ) -> Sequence[RowMapping]:
-        """Fetch results froma SQL query."""
+        """Fetch results from a SQL query."""
         async with self._engine.connect() as conn:
             result = await conn.execute(text(query), params)
             result_map = result.mappings()
@@ -338,7 +338,7 @@ class AlloyDBEngine:
         return self._run_as_sync(self._aexecute(query, params))
 
     def _fetch(self, query: str, params: Optional[dict] = None) -> Sequence[RowMapping]:
-        """Fetch results froma SQL query."""
+        """Fetch results from a SQL query."""
         return self._run_as_sync(self._afetch(query, params))
 
     def _run_as_sync(self, coro: Awaitable[T]) -> T:
