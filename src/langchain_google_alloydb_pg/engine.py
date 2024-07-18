@@ -126,8 +126,8 @@ class AlloyDBEngine:
             loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
             thread (Optional[Thread] = None): Thread used to create the engine async.
 
-        Returns:
-            AlloyDBEngine: A newly created AlloyDBEngine instance.
+        Raises:
+            Exception: If the constructor is called directly by the user.
         """
 
         if key != AlloyDBEngine.__create_key:
