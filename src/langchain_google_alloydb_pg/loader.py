@@ -131,15 +131,14 @@ class AlloyDBLoader(BaseLoader):
             key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): AsyncEngine with pool connection to the postgres database
             query (Optional[str], optional): SQL query. Defaults to None.
-            table_name (Optional[str], optional): Name of table to query. Defaults to None.
             content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
             metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to None.
-            metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
-            format (Optional[str], optional): Format of page content (OneOf: text, csv, YAML, JSON). Defaults to 'text'.
             formatter (Optional[Callable], optional): A function to format page content (OneOf: format, formatter). Defaults to None.
+            metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
+
 
         Raises:
-            Excaption: If called directly by user.
+            Exception: If called directly by user.
         """
         if key != AlloyDBLoader.__create_key:
             raise Exception(
@@ -351,7 +350,7 @@ class AlloyDBDocumentSaver:
         metadata_columns: List[str] = [],
         metadata_json_column: Optional[str] = None,
     ) -> None:
-        """Create an AlloyDBDocumentSaver instance.
+        """AlloyDBDocumentSaver constructor.
 
         Args:
             key (object): Prevent direct constructor usage.

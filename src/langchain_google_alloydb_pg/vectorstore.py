@@ -59,7 +59,7 @@ class AlloyDBVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
     ):
-        """Constructor for AlloyDBVectorStore.
+        """AlloyDBVectorStore constructor.
         Args:
             key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
@@ -119,8 +119,8 @@ class AlloyDBVectorStore(VectorStore):
         index_query_options: Optional[QueryOptions] = None,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance.
+
         Args:
-            key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
@@ -223,6 +223,7 @@ class AlloyDBVectorStore(VectorStore):
         index_query_options: Optional[QueryOptions] = None,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance.
+
         Args:
             key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
@@ -334,7 +335,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Embed documents and add to the table"""
+        """Embed documents and add to the table."""
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
@@ -358,7 +359,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Embed documents and add to the table"""
+        """Embed documents and add to the table."""
         return self.engine._run_as_sync(self.aadd_documents(documents, ids, **kwargs))
 
     async def adelete(
@@ -366,7 +367,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
-        """Delete records from the table"""
+        """Delete records from the table."""
         if not ids:
             return False
 
@@ -380,7 +381,7 @@ class AlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
-        """Delete records from the table"""
+        """Delete records from the table."""
         return self.engine._run_as_sync(self.adelete(ids, **kwargs))
 
     @classmethod
@@ -401,11 +402,14 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance from texts.
+
         Args:
             texts (List[str]): Texts to add to the vector store.
+            embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
+            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
+            ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -447,11 +451,14 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance from documents.
+
         Args:
             documents (List[Document]): Documents to add to the vector store.
+            embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
+            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
+            ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -462,6 +469,7 @@ class AlloyDBVectorStore(VectorStore):
         Returns:
             AlloyDBVectorStore
         """
+
         vs = await cls.create(
             engine,
             embedding,
@@ -496,11 +504,14 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance from texts.
+
         Args:
             texts (List[str]): Texts to add to the vector store.
+            embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
+            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
+            ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -545,11 +556,14 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance from documents.
+
         Args:
             documents (List[Document]): Documents to add to the vector store.
+            embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
+            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
+            ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -604,7 +618,7 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Document]:
-        """Return doc selected by similarity search on query."""
+        """Return docs selected by similarity search on query."""
         return self.engine._run_as_sync(
             self.asimilarity_search(query, k=k, filter=filter, **kwargs)
         )
@@ -897,7 +911,7 @@ class AlloyDBVectorStore(VectorStore):
         name: Optional[str] = None,
         concurrently: bool = False,
     ) -> None:
-        """Create index in the database."""
+        """Create index in the vector store table."""
         if isinstance(index, ExactNearestNeighbor):
             await self.adrop_vector_index()
             return
@@ -922,7 +936,7 @@ class AlloyDBVectorStore(VectorStore):
             await self.engine._aexecute(stmt)
 
     async def areindex(self, index_name: Optional[str] = None) -> None:
-        """Re-index the database."""
+        """Re-index the vector store table."""
         index_name = index_name or self.table_name + DEFAULT_INDEX_NAME_SUFFIX
         query = f"REINDEX INDEX {index_name};"
         await self.engine._aexecute(query)
