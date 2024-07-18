@@ -229,14 +229,12 @@ class AlloyDBEngine:
             db_user = user
         # otherwise use automatic IAM database authentication
         else:
-            if service_account_email:
-                db_user = service_account_email
-            else:
-                # get application default credentials
-                credentials, _ = google.auth.default(
-                    scopes=["https://www.googleapis.com/auth/userinfo.email"]
-                )
-                db_user = await _get_iam_principal_email(credentials)
+            # get application default credentials
+            credentials, _ = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/userinfo.email"]
+            )
+            db_user = await _get_iam_principal_email(credentials)
+            enable_iam_auth = True
 
         # anonymous function to be used for SQLAlchemy 'creator' argument
         async def getconn() -> asyncpg.Connection:
