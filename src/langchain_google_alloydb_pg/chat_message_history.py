@@ -27,7 +27,7 @@ from .engine import AlloyDBEngine
 async def _aget_messages(
     engine: AlloyDBEngine, session_id: str, table_name: str
 ) -> List[BaseMessage]:
-    """Retrieve the messages from AlloyDB"""
+    """Retrieve the messages from AlloyDB."""
     query = f"""SELECT data, type FROM "{table_name}" WHERE session_id = :session_id ORDER BY id;"""
     results = await engine._afetch(query, {"session_id": session_id})
     if not results:

@@ -95,8 +95,8 @@ class Column:
         """Check if initialization parameters are valid.
 
         Raises:
-            ValueError: Raises error if Column name is not string.
-            ValueError: Raises error if data_type is not type string.
+            ValueError: If Column name is not string.
+            ValueError: If data_type is not type string.
         """
 
         if not isinstance(self.name, str):
@@ -118,6 +118,17 @@ class AlloyDBEngine:
         loop: Optional[asyncio.AbstractEventLoop],
         thread: Optional[Thread],
     ) -> None:
+        """AlloyDBEngine constructor.
+
+        Args:
+            key(object): Prevent direct constructor usage.
+            engine(AsyncEngine): Async engine to create AlloyDBEngine from.
+            loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
+            thread (Optional[Thread] = None): Thread used to create the engine async.
+
+        Returns:
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
+        """
 
         if key != AlloyDBEngine.__create_key:
             raise Exception(
@@ -197,9 +208,11 @@ class AlloyDBEngine:
             cluster (str): Cloud AlloyDB cluster name.
             instance (str): Cloud AlloyDB instance name.
             database (str): Database name.
+            ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
             password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
-            ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
+            loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
+            thread (Optional[Thread] = None): Thread used to create the engine async.
             iam_account_email (Optional[str], optional): IAM service account email.
 
         Raises:
