@@ -43,19 +43,19 @@ def text_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
 
 
 def csv_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
-    """CSV documennt formatter."""
+    """CSV document formatter."""
     return ", ".join(str(row[column]) for column in content_columns if column in row)
 
 
 def yaml_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
-    """YAML documennt formatter."""
+    """YAML document formatter."""
     return "\n".join(
         f"{column}: {str(row[column])}" for column in content_columns if column in row
     )
 
 
 def json_formatter(row: Dict[str, Any], content_columns: Iterable[str]) -> str:
-    """JSON documennt formatter."""
+    """JSON document formatter."""
     dictionary: Dict[str, Any] = {}
     for column in content_columns:
         if column in row:
@@ -125,7 +125,7 @@ class AlloyDBLoader(BaseLoader):
         formatter: Callable[[Dict[str, Any], Iterable[str]], str],
         metadata_json_column: Optional[str] = None,
     ) -> None:
-        """AlloyDBLoader initialization.
+        """Create an AlloyDBLoader instance.
 
         Args:
             key (object): Prevent direct constructor usage.
@@ -551,4 +551,11 @@ class AlloyDBDocumentSaver:
             await self.engine._aexecute(stmt, values)
 
     def delete(self, docs: List[Document]) -> None:
+        """
+        Delete all instances of a document from the DocumentSaver table by matching the entire Document
+        object.
+
+        Args:
+            docs (List[langchain_core.documents.Document]): a list of documents to be deleted.
+        """
         self.engine._run_as_sync(self.adelete(docs))
