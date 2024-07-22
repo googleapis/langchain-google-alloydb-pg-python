@@ -388,7 +388,7 @@ class AlloyDBDocumentSaver:
             engine (AlloyDBEngine):AsyncEngine with pool connection to the postgres database
             table_name (Optional[str], optional): Name of table to query. Defaults to None.
             content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
-            metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to None.
+            metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to an empty list.
             metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
