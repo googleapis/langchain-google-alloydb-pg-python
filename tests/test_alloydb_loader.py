@@ -459,11 +459,7 @@ class TestAlloyDBLoader:
 
             assert documents == [
                 Document(
-                    page_content="""{
-                                "variety": "Granny Smith",
-                                "quantity_in_stock": 150,
-                                "price_per_unit": 1
-                                }""",
+                    page_content='{"variety": "Granny Smith", "quantity_in_stock": 150, "price_per_unit": 1}',
                     metadata={
                         "fruit_id": 1,
                         "fruit_name": "Apple",
