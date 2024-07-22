@@ -303,7 +303,7 @@ class TestEngineSync:
             iam_account_email=iam_account,
         )
         assert engine
-        engine._aexecute("SELECT 1")
+        engine._execute("SELECT 1")
         await engine._connector.close()
         await engine._engine.dispose()
 
