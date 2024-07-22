@@ -55,7 +55,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
 
         Args:
             key (object): Key to prevent direct constructor usage.
-            engine (AlloyDBEngine): AlloyDB engine to use.
+            engine (AlloyDBEngine): database connection pool.
             session_id (str): Retrieve the table content with this session ID.
             table_name (str): Table name that stores the chat message history.
             messages (List[BaseMessage]): Messages to store.
