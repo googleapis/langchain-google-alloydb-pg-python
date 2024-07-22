@@ -108,6 +108,7 @@ class TestEngineAsync:
     async def test_iam_account_override(
         self,
         db_project,
+        db_cluster,
         db_instance,
         db_region,
         db_name,
@@ -115,6 +116,7 @@ class TestEngineAsync:
     ):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
+            cluster=db_cluster,
             instance=db_instance,
             region=db_region,
             database=db_name,
@@ -290,6 +292,7 @@ class TestEngineSync:
     async def test_iam_account_override(
         self,
         db_project,
+        db_cluster,
         db_instance,
         db_region,
         db_name,
@@ -297,6 +300,7 @@ class TestEngineSync:
     ):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
+            cluster=db_cluster,
             instance=db_instance,
             region=db_region,
             database=db_name,
