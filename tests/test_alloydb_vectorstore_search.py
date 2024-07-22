@@ -21,7 +21,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
-from langchain_google_alloydb_pg.indexes import HNSWQueryOptions
+from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
@@ -149,7 +149,7 @@ class TestVectorStoreSearch:
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
 
-    async def test_similarity_search_with_relevance_scores_threshold(self, vs):
+    async def test_similarity_search_with_relevance_scores_threshold(self, engine, vs):
         score_threshold = {"score_threshold": 0}
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
@@ -162,6 +162,32 @@ class TestVectorStoreSearch:
         )
         assert len(results) == 2
 
+        score_threshold = {"score_threshold": 0.9}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 1
+        assert results[0][0] == Document(page_content="foo")
+
+        vs = await AlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=DEFAULT_TABLE,
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+        )
+        score_threshold = {"score_threshold": 0.9}
+        results = await vs.asimilarity_search_with_relevance_scores(
+            "foo", **score_threshold
+        )
+        assert len(results) == 1
+        assert results[0][0] == Document(page_content="foo")
+
+        vs = await AlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=DEFAULT_TABLE,
+            distance_strategy=DistanceStrategy.EUCLIDEAN,
+        )
         score_threshold = {"score_threshold": 0.9}
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
