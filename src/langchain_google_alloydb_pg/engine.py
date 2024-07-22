@@ -238,6 +238,7 @@ class AlloyDBEngine:
             ip_type,
             user,
             password,
+            iam_account_email,
         )
 
     @classmethod
