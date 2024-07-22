@@ -360,7 +360,7 @@ class AlloyDBEngine:
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of vectors to be used with Alloy DB.
+        Create a table for saving of vectors to be used with AlloyDB.
         If table already exists and overwrite flag is not set, a TABLE_ALREADY_EXISTS error is thrown.
 
         Args:
@@ -414,7 +414,7 @@ class AlloyDBEngine:
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of vectors to be used with Alloy DB.
+        Create a table for saving of vectors to be used with AlloyDB.
         If table already exists and overwrite flag is not set, a TABLE_ALREADY_EXISTS error is thrown.
 
         Args:
@@ -452,7 +452,15 @@ class AlloyDBEngine:
         )
 
     async def ainit_chat_history_table(self, table_name: str) -> None:
-        """Create a new chat history table."""
+        """
+        Create an AlloyDB table to save chat history messages.
+
+        Args:
+            table_name (str): The table name to store chat history.
+
+        Returns:
+            None
+        """
         create_table_query = f"""CREATE TABLE IF NOT EXISTS "{table_name}"(
             id SERIAL PRIMARY KEY,
             session_id TEXT NOT NULL,
@@ -462,7 +470,15 @@ class AlloyDBEngine:
         await self._aexecute(create_table_query)
 
     def init_chat_history_table(self, table_name: str) -> None:
-        """Create a new chat history table."""
+        """
+        Create an AlloyDB table to save chat history messages.
+
+        Args:
+            table_name (str): The table name to store chat history.
+
+        Returns:
+            None
+        """
         return self._run_as_sync(
             self.ainit_chat_history_table(
                 table_name,
