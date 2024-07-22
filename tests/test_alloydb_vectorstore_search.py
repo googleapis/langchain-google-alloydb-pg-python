@@ -169,12 +169,8 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results[0][0] == Document(page_content="foo")
 
-        vs = await AlloyDBVectorStore.create(
-            engine,
-            embedding_service=embeddings_service,
-            table_name=DEFAULT_TABLE,
-            distance_strategy=DistanceStrategy.INNER_PRODUCT,
-        )
+        vs.distance_strategy = DistanceStrategy.INNER_PRODUCT
+
         score_threshold = {"score_threshold": 0.9}
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
@@ -182,18 +178,16 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results[0][0] == Document(page_content="foo")
 
-        vs = await AlloyDBVectorStore.create(
-            engine,
-            embedding_service=embeddings_service,
-            table_name=DEFAULT_TABLE,
-            distance_strategy=DistanceStrategy.EUCLIDEAN,
-        )
+        vs.distance_strategy = DistanceStrategy.EUCLIDEAN
+
         score_threshold = {"score_threshold": 0.9}
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
         )
         assert len(results) == 1
         assert results[0][0] == Document(page_content="foo")
+
+        vs.distance_strategy = DistanceStrategy.COSINE_DISTANCE
 
     async def test_asimilarity_search_by_vector(self, vs):
         embedding = embeddings_service.embed_query("foo")
