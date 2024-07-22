@@ -122,7 +122,7 @@ class AlloyDBEngine:
 
         Args:
             key(object): Prevent direct constructor usage.
-            engine(AsyncEngine): Async engine to create AlloyDBEngine from.
+            engine(AsyncEngine): Async engine connection pool.
             loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
             thread (Optional[Thread] = None): Thread used to create the engine async.
 
