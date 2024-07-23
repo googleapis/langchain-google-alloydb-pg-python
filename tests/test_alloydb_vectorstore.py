@@ -139,6 +139,19 @@ class TestVectorStore:
         yield vs
         await engine._aexecute(f'DROP TABLE IF EXISTS "{CUSTOM_TABLE}"')
 
+    async def test_init_with_constructor(self, engine):
+        with pytest.raises(Exception):
+            AlloyDBVectorStore(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="noname",
+                embedding_column="myembedding",
+                metadata_columns=["page", "source"],
+                metadata_json_column="mymeta",
+            )
+
     async def test_post_init(self, engine):
         with pytest.raises(ValueError):
             await AlloyDBVectorStore.create(
