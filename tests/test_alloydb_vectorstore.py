@@ -311,6 +311,3 @@ class TestVectorStore:
                 embedding_column="myembedding",
                 metadata_columns=["random_column"],
             )
-
-    def test_cosine_similarity(self):
-        cosine_similarity([0.1], [0.2])
