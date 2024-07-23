@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.5.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.4.1...v0.5.0) (2024-07-23)
+
+
+### Features
+
+* Add similarity search score threshold select function ([#181](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/181)) ([ab0a574](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/ab0a5746b21971c6ef8bc24f45d620d1a5925176))
+* Add table name to default index name ([#182](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/182)) ([5e746ce](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/5e746ce037a0040479eab75f1aa7147b949d487a))
+* Add tests to reach 90% coverage ([#193](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/193)) ([390d945](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/390d945e2442cf47f6d7bb6c9d7cfb1746df63d3))
+* Added example for document saver ([#185](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/185)) ([e0aab6f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/e0aab6f9a297163fe009048c654e679c0de73e3b))
+* Added guide for using existing table as vector store ([#170](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/170)) ([adefe60](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/adefe6019a3e875ebef2b5ed8866ecd31db52e69))
+* Auto-generate IDs upon adding embeddings ([#184](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/184)) ([3e5a381](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/3e5a381be78e09b95be031eb47d59d64fa2c39a8))
+* Remove `alloydb_` prefix from module names ([#173](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/173)) ([9c80bf3](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9c80bf3c655ae7b32bb384c4ed850c9aa931ebca))
+* Support IAM account override ([#188](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/188)) ([5c3d5ea](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/5c3d5ea6dc4acbf499b1ed34649154035ef9a5b1))
+
+
+### Bug Fixes
+
+* Add `key` to engine constructor ([#179](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/179)) ([497fec4](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/497fec489ab32a6dda1b19e3e686c7b872461847))
+* Remove `langchain-community` dependency ([#178](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/178)) ([96fd44d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/96fd44dde257d3dd96e841e2e433691ad4ff903e))
+* Rename inner product distance search function to inner_product ([#195](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/195)) ([7eee4e6](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/7eee4e6ac4037de44e9fccc136ef566d6d9c8c90))
+
+
+### Documentation
+
+* Add docstring to all methods ([#187](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/187)) ([518581e](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/518581e68cb552a07207c9f794de03a03ed97ce7))
+
 ## [0.4.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.4.0...v0.4.1) (2024-06-27)
 
 
