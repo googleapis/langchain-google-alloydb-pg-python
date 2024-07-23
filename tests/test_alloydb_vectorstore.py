@@ -300,7 +300,7 @@ class TestVectorStore:
         )
         assert column_to_ignore not in vs.metadata_columns
 
-    async def test_metadata_columns_not_exist(self, vs_custom):
+    async def test_create_vectorstore_with_invalid_parameters(self, vs_custom):
         with pytest.raises(ValueError):
             await AlloyDBVectorStore.create(
                 vs_custom.engine,
@@ -309,5 +309,35 @@ class TestVectorStore:
                 id_column="myid",
                 content_column="mycontent",
                 embedding_column="myembedding",
+                metadata_columns=["random_column"],  # invalid metadata column
+            )
+        with pytest.raises(ValueError):
+            await AlloyDBVectorStore.create(
+                vs_custom.engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="langchain_id",  # invalid content column type
+                embedding_column="myembedding",
+                metadata_columns=["random_column"],
+            )
+        with pytest.raises(ValueError):
+            await AlloyDBVectorStore.create(
+                vs_custom.engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="random_column",  # invalid embedding column
+                metadata_columns=["random_column"],
+            )
+        with pytest.raises(ValueError):
+            await AlloyDBVectorStore.create(
+                vs_custom.engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="langchain_id",  # invalid embedding column data type
                 metadata_columns=["random_column"],
             )
