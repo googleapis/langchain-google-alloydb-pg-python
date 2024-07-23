@@ -87,6 +87,10 @@ class TestEngineAsync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
+    @pytest.fixture(scope="module")
+    def iam_account(self) -> str:
+        return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
+
     @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
     async def engine(
         self, request, db_project, db_region, db_cluster, db_instance, db_name
@@ -100,6 +104,28 @@ class TestEngineAsync:
             ip_type=request.param,
         )
         yield engine
+
+    async def test_iam_account_override(
+        self,
+        db_project,
+        db_cluster,
+        db_instance,
+        db_region,
+        db_name,
+        iam_account,
+    ):
+        engine = await AlloyDBEngine.afrom_instance(
+            project_id=db_project,
+            cluster=db_cluster,
+            instance=db_instance,
+            region=db_region,
+            database=db_name,
+            iam_account_email=iam_account,
+        )
+        assert engine
+        await engine._aexecute("SELECT 1")
+        await engine._connector.close()
+        await engine._engine.dispose()
 
     async def test_execute(self, engine):
         await engine._aexecute("SELECT 1")
@@ -212,7 +238,9 @@ class TestEngineAsync:
             engine = AlloyDBEngine.from_engine(pool)
             await engine._aexecute("SELECT 1")
 
-    async def test_column(self, engine):
+    async def test_column(self):
+        with pytest.raises(ValueError):
+            Column(32, "VARCHAR")
         with pytest.raises(ValueError):
             Column("test", VARCHAR)
 
@@ -247,6 +275,10 @@ class TestEngineSync:
     def password(self) -> str:
         return get_env_var("DB_PASSWORD", "password for AlloyDB")
 
+    @pytest.fixture(scope="module")
+    def iam_account(self) -> str:
+        return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
+
     @pytest.fixture(params=["PUBLIC", "PRIVATE"])
     def engine(self, request, db_project, db_region, db_cluster, db_instance, db_name):
         engine = AlloyDBEngine.from_instance(
@@ -258,6 +290,28 @@ class TestEngineSync:
             ip_type=request.param,
         )
         yield engine
+
+    async def test_iam_account_override(
+        self,
+        db_project,
+        db_cluster,
+        db_instance,
+        db_region,
+        db_name,
+        iam_account,
+    ):
+        engine = AlloyDBEngine.from_instance(
+            project_id=db_project,
+            cluster=db_cluster,
+            instance=db_instance,
+            region=db_region,
+            database=db_name,
+            iam_account_email=iam_account,
+        )
+        assert engine
+        engine._execute("SELECT 1")
+        await engine._connector.close()
+        await engine._engine.dispose()
 
     def test_execute(self, engine):
         engine._execute("SELECT 1")

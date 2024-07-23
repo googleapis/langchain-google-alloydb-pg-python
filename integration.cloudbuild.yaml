@@ -34,7 +34,7 @@ steps:
       - "DATABASE_ID=$_DATABASE_ID"
       - "REGION=$_REGION"
       - "OMNI_DATABASE_ID=$_OMNI_DATABASE_ID"
-    secretEnv: ["DB_USER", "DB_PASSWORD", "OMNI_HOST", "OMNI_USER", "OMNI_PASSWORD"]
+    secretEnv: ["DB_USER", "DB_PASSWORD", "OMNI_HOST", "OMNI_USER", "OMNI_PASSWORD", "IAM_ACCOUNT"]
 
 availableSecrets:
   secretManager:
@@ -48,6 +48,8 @@ availableSecrets:
       env: "OMNI_USER"
     - versionName: projects/$PROJECT_ID/secrets/OMNI_PASSWORD/versions/1
       env: "OMNI_PASSWORD"
+    - versionName: projects/$PROJECT_ID/secrets/service_account_email/versions/1
+      env: "IAM_ACCOUNT"
 
 substitutions:
   _VERSION: "3.8"

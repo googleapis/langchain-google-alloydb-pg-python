@@ -27,7 +27,7 @@ from .engine import AlloyDBEngine
 async def _aget_messages(
     engine: AlloyDBEngine, session_id: str, table_name: str
 ) -> List[BaseMessage]:
-    """Retrieve the messages from AlloyDB"""
+    """Retrieve the messages from AlloyDB."""
     query = f"""SELECT data, type FROM "{table_name}" WHERE session_id = :session_id ORDER BY id;"""
     results = await engine._afetch(query, {"session_id": session_id})
     if not results:
@@ -51,6 +51,18 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         table_name: str,
         messages: List[BaseMessage],
     ):
+        """AlloyDBChatMessageHistory constructor.
+
+        Args:
+            key (object): Key to prevent direct constructor usage.
+            engine (AlloyDBEngine): database connection pool.
+            session_id (str): Retrieve the table content with this session ID.
+            table_name (str): Table name that stores the chat message history.
+            messages (List[BaseMessage]): Messages to store.
+
+        Raises:
+            Exception: If constructor is directly called by the user.
+        """
         if key != AlloyDBChatMessageHistory.__create_key:
             raise Exception(
                 "Only create class through 'create' or 'create_sync' methods!"
@@ -67,6 +79,19 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         session_id: str,
         table_name: str,
     ) -> AlloyDBChatMessageHistory:
+        """Create a new AlloyDBChatMessageHistory instance.
+
+        Args:
+            engine (AlloyDBEngine): AlloyDB engine to use.
+            session_id (str): Retrieve the table content with this session ID.
+            table_name (str): Table name that stores the chat message history.
+
+        Raises:
+            IndexError: If the table provided does not contain required schema.
+
+        Returns:
+            AlloyDBChatMessageHistory: A newly created instance of AlloyDBChatMessageHistory.
+        """
         table_schema = await engine._aload_table_schema(table_name)
         column_names = table_schema.columns.keys()
 
@@ -94,11 +119,24 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         session_id: str,
         table_name: str,
     ) -> AlloyDBChatMessageHistory:
+        """Create a new AlloyDBChatMessageHistory instance.
+
+        Args:
+            engine (AlloyDBEngine): AlloyDB engine to use.
+            session_id (str): Retrieve the table content with this session ID.
+            table_name (str): Table name that stores the chat message history.
+
+        Raises:
+            IndexError: If the table provided does not contain required schema.
+
+        Returns:
+            AlloyDBChatMessageHistory: A newly created instance of AlloyDBChatMessageHistory.
+        """
         coro = cls.create(engine, session_id, table_name)
         return engine._run_as_sync(coro)
 
     async def aadd_message(self, message: BaseMessage) -> None:
-        """Append the message to the record in AlloyDB"""
+        """Append the message to the record in AlloyDB."""
         query = f"""INSERT INTO "{self.table_name}"(session_id, data, type)
                     VALUES (:session_id, :data, :type);
                 """
@@ -115,28 +153,34 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
         )
 
     def add_message(self, message: BaseMessage) -> None:
+        """Append the message to the record in AlloyDB."""
         self.engine._run_as_sync(self.aadd_message(message))
 
     async def aadd_messages(self, messages: Sequence[BaseMessage]) -> None:
+        """Append a list of messages to the record in AlloyDB."""
         for message in messages:
             await self.aadd_message(message)
 
     def add_messages(self, messages: Sequence[BaseMessage]) -> None:
+        """Append a list of messages to the record in AlloyDB."""
         self.engine._run_as_sync(self.aadd_messages(messages))
 
     async def aclear(self) -> None:
-        """Clear session memory from AlloyDB"""
+        """Clear session memory from AlloyDB."""
         query = f"""DELETE FROM "{self.table_name}" WHERE session_id = :session_id;"""
         await self.engine._aexecute(query, {"session_id": self.session_id})
         self.messages = []
 
     def clear(self) -> None:
+        """Clear session memory from AlloyDB."""
         self.engine._run_as_sync(self.aclear())
 
     async def async_messages(self) -> None:
+        """Retrieve the messages from AlloyDB."""
         self.messages = await _aget_messages(
             self.engine, self.session_id, self.table_name
         )
 
     def sync_messages(self) -> None:
+        """Retrieve the messages from AlloyDB."""
         self.engine._run_as_sync(self.async_messages())
