@@ -51,6 +51,7 @@ embedding = VertexAIEmbeddings(
 
 
 async def get_vector_store():
+    """Get vector store instance."""
     engine = await AlloyDBEngine.afrom_instance(
         project_id=PROJECT_ID,
         region=REGION,
@@ -71,6 +72,7 @@ async def get_vector_store():
 
 
 async def query_vector_with_timing(vector_store, query):
+    """Query using the vector with timing"""
     start_time = time.monotonic()  # timer starts
     docs = await vector_store.asimilarity_search(k=k, query=query)
     end_time = time.monotonic()  # timer ends
@@ -79,6 +81,7 @@ async def query_vector_with_timing(vector_store, query):
 
 
 async def hnsw_search(vector_store, knn_docs):
+    """Create an HNSW index and perform similaity search with the index."""
     hnsw_index = HNSWIndex(name="hnsw", m=36, ef_construction=96)
     await vector_store.aapply_vector_index(hnsw_index)
     assert await vector_store.is_valid_index(hnsw_index.name)
@@ -99,6 +102,7 @@ async def hnsw_search(vector_store, knn_docs):
 
 
 async def ivfflat_search(vector_store, knn_docs):
+    """Create an IVFFlat index and perform similaity search with the index."""
     ivfflat_index = IVFFlatIndex(name="ivfflat")
     await vector_store.aapply_vector_index(ivfflat_index)
     assert await vector_store.is_valid_index(ivfflat_index.name)
@@ -119,6 +123,7 @@ async def ivfflat_search(vector_store, knn_docs):
 
 
 async def knn_search(vector_store):
+    """Perform similaity search without index."""
     latencies = []
     knn_docs = []
     for query in queries:
@@ -130,6 +135,7 @@ async def knn_search(vector_store):
 
 
 def calculate_recall(base, target):
+    """Calculate recall on the target result."""
     # size of intersection / total number of times
     base = {doc.page_content for doc in base}
     target = {doc.page_content for doc in target}
