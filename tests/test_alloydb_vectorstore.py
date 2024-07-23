@@ -21,6 +21,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg.vectorstore import cosine_similarity
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -298,3 +299,18 @@ class TestVectorStore:
             metadata_json_column="mymeta",
         )
         assert column_to_ignore not in vs.metadata_columns
+
+    async def test_metadata_columns_not_exist(self, vs_custom):
+        with pytest.raises(ValueError):
+            await AlloyDBVectorStore.create(
+                vs_custom.engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="myembedding",
+                metadata_columns=["random_column"],
+            )
+
+    def test_cosine_similarity(self):
+        cosine_similarity([0.1], [0.2])
