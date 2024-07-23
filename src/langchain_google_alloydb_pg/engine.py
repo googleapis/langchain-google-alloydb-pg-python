@@ -149,6 +149,7 @@ class AlloyDBEngine:
         user: Optional[str] = None,
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
+        iam_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -182,6 +183,7 @@ class AlloyDBEngine:
             password,
             loop=loop,
             thread=thread,
+            iam_account_email=iam_account_email,
         )
         return asyncio.run_coroutine_threadsafe(coro, loop).result()
 
@@ -240,12 +242,15 @@ class AlloyDBEngine:
             db_user = user
         # otherwise use automatic IAM database authentication
         else:
-            # get application default credentials
-            credentials, _ = google.auth.default(
-                scopes=["https://www.googleapis.com/auth/userinfo.email"]
-            )
-            db_user = await _get_iam_principal_email(credentials)
             enable_iam_auth = True
+            if iam_account_email:
+                db_user = iam_account_email
+            else:
+                # get application default credentials
+                credentials, _ = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/userinfo.email"]
+                )
+                db_user = await _get_iam_principal_email(credentials)
 
         # anonymous function to be used for SQLAlchemy 'creator' argument
         async def getconn() -> asyncpg.Connection:
@@ -277,6 +282,7 @@ class AlloyDBEngine:
         user: Optional[str] = None,
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
+        iam_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -303,6 +309,7 @@ class AlloyDBEngine:
             ip_type,
             user,
             password,
+            iam_account_email=iam_account_email,
         )
 
     @classmethod
