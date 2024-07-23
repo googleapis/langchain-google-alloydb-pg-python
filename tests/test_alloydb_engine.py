@@ -212,7 +212,9 @@ class TestEngineAsync:
             engine = AlloyDBEngine.from_engine(pool)
             await engine._aexecute("SELECT 1")
 
-    async def test_column(self, engine):
+    async def test_column(self):
+        with pytest.raises(ValueError):
+            Column(32, "VARCHAR")
         with pytest.raises(ValueError):
             Column("test", VARCHAR)
 
