@@ -92,6 +92,13 @@ class Column:
     nullable: bool = True
 
     def __post_init__(self) -> None:
+        """Check if initialization parameters are valid.
+
+        Raises:
+            ValueError: If Column name is not string.
+            ValueError: If data_type is not type string.
+        """
+
         if not isinstance(self.name, str):
             raise ValueError("Column name must be type string")
         if not isinstance(self.data_type, str):
@@ -111,6 +118,17 @@ class AlloyDBEngine:
         loop: Optional[asyncio.AbstractEventLoop],
         thread: Optional[Thread],
     ) -> None:
+        """AlloyDBEngine constructor.
+
+        Args:
+            key(object): Prevent direct constructor usage.
+            engine(AsyncEngine): Async engine connection pool.
+            loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
+            thread (Optional[Thread] = None): Thread used to create the engine async.
+
+        Raises:
+            Exception: If the constructor is called directly by the user.
+        """
 
         if key != AlloyDBEngine.__create_key:
             raise Exception(
@@ -131,7 +149,24 @@ class AlloyDBEngine:
         user: Optional[str] = None,
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
+        iam_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
+        """Create an AlloyDBEngine from an AlloyDB instance.
+
+        Args:
+            project_id (str): GCP project ID.
+            region (str): Cloud AlloyDB instance region.
+            cluster (str): Cloud AlloyDB cluster name.
+            instance (str): Cloud AlloyDB instance name.
+            database (str): Database name.
+            user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
+            password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
+            ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
+            iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
+
+        Returns:
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
+        """
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
         loop = asyncio.new_event_loop()
@@ -148,6 +183,7 @@ class AlloyDBEngine:
             password,
             loop=loop,
             thread=thread,
+            iam_account_email=iam_account_email,
         )
         return asyncio.run_coroutine_threadsafe(coro, loop).result()
 
@@ -164,7 +200,29 @@ class AlloyDBEngine:
         password: Optional[str] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread: Optional[Thread] = None,
+        iam_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
+        """Create an AlloyDBEngine from an AlloyDB instance.
+
+        Args:
+            project_id (str): GCP project ID.
+            region (str): Cloud AlloyDB instance region.
+            cluster (str): Cloud AlloyDB cluster name.
+            instance (str): Cloud AlloyDB instance name.
+            database (str): Database name.
+            ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
+            user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
+            password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
+            loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
+            thread (Optional[Thread] = None): Thread used to create the engine async.
+            iam_account_email (Optional[str], optional): IAM service account email.
+
+        Raises:
+            ValueError: Raises error if only one of 'user' or 'password' is specified.
+
+        Returns:
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
+        """
         # error if only one of user or password is set, must be both or neither
         if bool(user) ^ bool(password):
             raise ValueError(
@@ -184,12 +242,15 @@ class AlloyDBEngine:
             db_user = user
         # otherwise use automatic IAM database authentication
         else:
-            # get application default credentials
-            credentials, _ = google.auth.default(
-                scopes=["https://www.googleapis.com/auth/userinfo.email"]
-            )
-            db_user = await _get_iam_principal_email(credentials)
             enable_iam_auth = True
+            if iam_account_email:
+                db_user = iam_account_email
+            else:
+                # get application default credentials
+                credentials, _ = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/userinfo.email"]
+                )
+                db_user = await _get_iam_principal_email(credentials)
 
         # anonymous function to be used for SQLAlchemy 'creator' argument
         async def getconn() -> asyncpg.Connection:
@@ -221,7 +282,24 @@ class AlloyDBEngine:
         user: Optional[str] = None,
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
+        iam_account_email: Optional[str] = None,
     ) -> AlloyDBEngine:
+        """Create an AlloyDBEngine from an AlloyDB instance.
+
+        Args:
+            project_id (str): GCP project ID.
+            region (str): Cloud AlloyDB instance region.
+            cluster (str): Cloud AlloyDB cluster name.
+            instance (str): Cloud AlloyDB instance name.
+            database (str): Cloud AlloyDB database name.
+            user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
+            password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
+            ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
+            iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
+
+        Returns:
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
+        """
         return await cls._create(
             project_id,
             region,
@@ -231,10 +309,12 @@ class AlloyDBEngine:
             ip_type,
             user,
             password,
+            iam_account_email=iam_account_email,
         )
 
     @classmethod
     def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
+        """Create an AlloyDBEngine instance from an AsyncEngine."""
         return cls(cls.__create_key, engine, None, None)
 
     async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
@@ -252,8 +332,8 @@ class AlloyDBEngine:
     async def _afetch(
         self, query: str, params: Optional[dict] = None
     ) -> Sequence[RowMapping]:
+        """Fetch results from a SQL query."""
         async with self._engine.connect() as conn:
-            """Fetch results from a SQL query."""
             result = await conn.execute(text(query), params)
             result_map = result.mappings()
             result_fetch = result_map.fetchall()
@@ -261,12 +341,15 @@ class AlloyDBEngine:
         return result_fetch
 
     def _execute(self, query: str, params: Optional[dict] = None) -> None:
+        """Execute a SQL query."""
         return self._run_as_sync(self._aexecute(query, params))
 
     def _fetch(self, query: str, params: Optional[dict] = None) -> Sequence[RowMapping]:
+        """Fetch results from a SQL query."""
         return self._run_as_sync(self._afetch(query, params))
 
     def _run_as_sync(self, coro: Awaitable[T]) -> T:
+        """Run an async coroutine synchronously"""
         if not self._loop:
             raise Exception("Engine was initialized async.")
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
@@ -284,7 +367,7 @@ class AlloyDBEngine:
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of vectors to be used with Alloy DB.
+        Create a table for saving of vectors to be used with AlloyDB.
         If table already exists and overwrite flag is not set, a TABLE_ALREADY_EXISTS error is thrown.
 
         Args:
@@ -337,6 +420,30 @@ class AlloyDBEngine:
         overwrite_existing: bool = False,
         store_metadata: bool = True,
     ) -> None:
+        """
+        Create a table for saving of vectors to be used with AlloyDB.
+        If table already exists and overwrite flag is not set, a TABLE_ALREADY_EXISTS error is thrown.
+
+        Args:
+            table_name (str): The table name.
+            vector_size (int): Vector size for the embedding model to be used.
+            content_column (str): Name of the column to store document content.
+                Default: "page_content".
+            embedding_column (str) : Name of the column to store vector embeddings.
+                Default: "embedding".
+            metadata_columns (List[Column]): A list of Columns to create for custom
+                metadata. Default: []. Optional.
+            metadata_json_column (str): The column to store extra metadata in JSON format.
+                Default: "langchain_metadata". Optional.
+            id_column (str):  Name of the column to store ids.
+                Default: "langchain_id". Optional,
+            overwrite_existing (bool): Whether to drop the existing table before insertion.
+                Default: False.
+            store_metadata (bool): Whether to store metadata in a JSON column if not specified by `metadata_columns`.
+                Default: True.
+        Raises:
+            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
+        """
         return self._run_as_sync(
             self.ainit_vectorstore_table(
                 table_name,
@@ -352,6 +459,15 @@ class AlloyDBEngine:
         )
 
     async def ainit_chat_history_table(self, table_name: str) -> None:
+        """
+        Create an AlloyDB table to save chat history messages.
+
+        Args:
+            table_name (str): The table name to store chat history.
+
+        Returns:
+            None
+        """
         create_table_query = f"""CREATE TABLE IF NOT EXISTS "{table_name}"(
             id SERIAL PRIMARY KEY,
             session_id TEXT NOT NULL,
@@ -361,6 +477,15 @@ class AlloyDBEngine:
         await self._aexecute(create_table_query)
 
     def init_chat_history_table(self, table_name: str) -> None:
+        """
+        Create an AlloyDB table to save chat history messages.
+
+        Args:
+            table_name (str): The table name to store chat history.
+
+        Returns:
+            None
+        """
         return self._run_as_sync(
             self.ainit_chat_history_table(
                 table_name,
@@ -411,6 +536,21 @@ class AlloyDBEngine:
         metadata_json_column: str = "langchain_metadata",
         store_metadata: bool = True,
     ) -> None:
+        """
+        Create a table for saving of langchain documents.
+        If table already exists, a DuplicateTableError error is thrown.
+
+        Args:
+            table_name (str): The PgSQL database table name.
+            content_column (str): Name of the column to store document content.
+                Default: "page_content".
+            metadata_columns (List[Column]): A list of Columns
+                to create for custom metadata. Optional.
+            metadata_json_column (str): The column to store extra metadata in JSON format.
+                Default: "langchain_metadata". Optional.
+            store_metadata (bool): Whether to store extra metadata in a metadata column
+                if not described in 'metadata' field list (Default: True).
+        """
         return self._run_as_sync(
             self.ainit_document_table(
                 table_name,

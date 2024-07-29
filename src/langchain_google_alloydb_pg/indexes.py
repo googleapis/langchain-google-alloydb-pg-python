@@ -31,7 +31,7 @@ class DistanceStrategy(StrategyMixin, enum.Enum):
 
     EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops", "l2"
     COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops", "cosine"
-    INNER_PRODUCT = "<#>", "ip_distance", "vector_ip_ops", "dot_product"
+    INNER_PRODUCT = "<#>", "inner_product", "vector_ip_ops", "dot_product"
 
 
 DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.COSINE_DISTANCE
@@ -49,6 +49,7 @@ class BaseIndex(ABC):
 
     @abstractmethod
     def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
         raise NotImplementedError(
             "index_options method must be implemented by subclass"
         )
@@ -66,6 +67,7 @@ class HNSWIndex(BaseIndex):
     ef_construction: int = 64
 
     def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
         return f"(m = {self.m}, ef_construction = {self.ef_construction})"
 
 
@@ -73,6 +75,7 @@ class HNSWIndex(BaseIndex):
 class QueryOptions(ABC):
     @abstractmethod
     def to_string(self) -> str:
+        """Convert index attributes to string."""
         raise NotImplementedError("to_string method must be implemented by subclass")
 
 
@@ -81,6 +84,7 @@ class HNSWQueryOptions(QueryOptions):
     ef_search: int = 40
 
     def to_string(self) -> str:
+        """Convert index attributes to string."""
         return f"hnsw.ef_search = {self.ef_search}"
 
 
@@ -90,6 +94,7 @@ class IVFFlatIndex(BaseIndex):
     lists: int = 100
 
     def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
         return f"(lists = {self.lists})"
 
 
@@ -98,6 +103,7 @@ class IVFFlatQueryOptions(QueryOptions):
     probes: int = 1
 
     def to_string(self) -> str:
+        """Convert index attributes to string."""
         return f"ivfflat.probes = {self.probes}"
 
 
@@ -110,6 +116,7 @@ class IVFIndex(BaseIndex):
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
 
     def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
         return f"(lists = {self.lists}, quantizer = {self.quantizer})"
 
 
@@ -118,6 +125,7 @@ class IVFQueryOptions(QueryOptions):
     probes: int = 1
 
     def to_string(self) -> str:
+        """Convert index attributes to string."""
         return f"ivf.probes = {self.probes}"
 
 
@@ -130,4 +138,5 @@ class ScaNNIndex(BaseIndex):
     )  # Excludes `quantizer` from initialization currently only supports the value "sq8"
 
     def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
