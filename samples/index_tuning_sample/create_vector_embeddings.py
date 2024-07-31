@@ -12,24 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import asyncio
 import uuid
 
+import sqlalchemy
 from langchain_community.document_loaders import CSVLoader
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
 EMBEDDING_COUNT = 100000
+VECTOR_SIZE = 768
+
+
+PROJECT_ID = "duwenxin-space"
 
 # AlloyDB info
-PROJECT_ID = ""
 REGION = ""
 CLUSTER_NAME = ""
 INSTANCE_NAME = ""
 DATABASE_NAME = ""
 USER = ""  # Use your super user `postgres`
 PASSWORD = ""
+
+# AlloyDB Omni info for running ScaNN index only
+OMNI_HOST = ""
+OMNI_DATABASE_NAME = ""
+OMNI_USER = ""  # Use your super user `postgres`
+OMNI_PASSWORD = ""
 
 vector_table_name = "wine_reviews_vector"
 
@@ -60,21 +71,33 @@ def load_csv_documents(dataset_path=DATASET_PATH):
     return documents[0:EMBEDDING_COUNT]
 
 
-async def create_vector_store_table(documents):
-    engine = await AlloyDBEngine.afrom_instance(
-        project_id=PROJECT_ID,
-        region=REGION,
-        cluster=CLUSTER_NAME,
-        instance=INSTANCE_NAME,
-        database=DATABASE_NAME,
-        user=USER,
-        password=PASSWORD,
-    )
-    print("Successfully connected to AlloyDB database.")
+async def get_engine(is_omni=False):
+    if is_omni:
+        connstring = f"postgresql+asyncpg://{OMNI_USER}:{OMNI_PASSWORD}@{OMNI_HOST}:5432/{OMNI_DATABASE_NAME}"
+        print(f"Connecting to AlloyDB Omni with {connstring}")
+
+        async_engine = sqlalchemy.ext.asyncio.create_async_engine(connstring)
+        engine = AlloyDBEngine.from_engine(async_engine)
+        print("Successfully connected to AlloyDB Omni database.")
+    else:
+        engine = await AlloyDBEngine.afrom_instance(
+            project_id=PROJECT_ID,
+            region=REGION,
+            cluster=CLUSTER_NAME,
+            instance=INSTANCE_NAME,
+            database=DATABASE_NAME,
+            user=USER,
+            password=PASSWORD,
+        )
+        print("Successfully connected to AlloyDB database.")
+    return engine
+
+
+async def create_vector_store_table(documents, engine):
     print("Initializaing Vectorstore tables...")
     await engine.ainit_vectorstore_table(
         table_name=vector_table_name,
-        vector_size=768,
+        vector_size=VECTOR_SIZE,
         metadata_columns=[
             Column("country", "VARCHAR", nullable=True),
             Column("description", "VARCHAR", nullable=True),
@@ -111,8 +134,19 @@ async def create_vector_store_table(documents):
 
 
 async def main():
+    parser = argparse.ArgumentParser(description="Your script's description")
+    parser.add_argument(
+        "--omni", action="store_true", help="Running on AlloyDB Omni instance,"
+    )
+    args = parser.parse_args()
+    if args.omni:
+        engine = await get_engine(is_omni=True)
+    else:
+        engine = await get_engine()
     documents = load_csv_documents()
-    await create_vector_store_table(documents)
+    await create_vector_store_table(documents, engine)
+    await engine._connector.close()
+    await engine._engine.dispose()
 
 
 if __name__ == "__main__":
