@@ -61,6 +61,14 @@ class ExactNearestNeighbor(BaseIndex):
 
 
 @dataclass
+class QueryOptions(ABC):
+    @abstractmethod
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        raise NotImplementedError("to_string method must be implemented by subclass")
+
+
+@dataclass
 class HNSWIndex(BaseIndex):
     index_type: str = "hnsw"
     m: int = 16
@@ -69,14 +77,6 @@ class HNSWIndex(BaseIndex):
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
         return f"(m = {self.m}, ef_construction = {self.ef_construction})"
-
-
-@dataclass
-class QueryOptions(ABC):
-    @abstractmethod
-    def to_string(self) -> str:
-        """Convert index attributes to string."""
-        raise NotImplementedError("to_string method must be implemented by subclass")
 
 
 @dataclass
@@ -140,3 +140,13 @@ class ScaNNIndex(BaseIndex):
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
+
+
+@dataclass
+class ScaNNQueryOptions(QueryOptions):
+    num_leaves_to_search: int = 1
+    pre_reordering_num_neighbors: int = -1
+
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        return f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
