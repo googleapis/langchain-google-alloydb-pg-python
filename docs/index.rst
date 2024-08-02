@@ -10,6 +10,13 @@ API Reference
   langchain_google_alloydb_pg/loader
   langchain_google_alloydb_pg/history
 
+Index Choosing Guide 
+---------------------
+.. toctree::
+  :maxdepth: 2
+
+  index_choosing_guide.md  
+  
 Changelog
 ---------
 .. toctree::
