@@ -1,4 +1,4 @@
-# Postgres Index Choosing Guide
+# How to Choose a Nearest-Neighbor Index Guide
 
 ## Introduction
 
@@ -25,7 +25,7 @@ When selecting an indexing algorithm for your application’s ANN vector search,
 - Graph-based algorithms are good at handling complex, high-dimensional data, offering faster search speeds by navigating through a network of interconnected data points. They are especially useful when the dataset is relatively larger, as they can efficiently traverse this network to find close matches. However, the memory usage and index building time could also grow significantly as the dataset grows compared to tree-based indexes. Example:
 HNSW (through the pgvector extension)
 
-- Tree-based algorithms organize data in a structured, hierarchical manner, making them efficient for lower-dimensional datasets. They offer a structured and often more resource-efficient approach to partitioning space and finding neighbors, but their performance degrades when the embeddings have high dimensionality but low information density. Examples: 
+- Tree-based algorithms organize data in a structured, hierarchical manner, making them efficient for lower-dimensional datasets. They offer a structured and often more resource-efficient approach to partitioning space and finding neighbors, but their performance degrades when the embeddings have high dimensionality but low information density. Examples:
 IVF (through the pgvector++ extension)
 IVFFlat (through the pgvector extension)
 ScaNN (through the postgres_ann extension)
