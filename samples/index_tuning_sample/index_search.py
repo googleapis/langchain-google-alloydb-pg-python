@@ -154,9 +154,9 @@ async def ivf_search(vector_store, knn_docs):
     recalls = []
 
     for i in range(len(queries)):
-        ivfflat_docs, latency = await query_vector_with_timing(vector_store, queries[i])
+        ivf_docs, latency = await query_vector_with_timing(vector_store, queries[i])
         latencies.append(latency)
-        recalls.append(calculate_recall(knn_docs[i], ivfflat_docs))
+        recalls.append(calculate_recall(knn_docs[i], ivf_docs))
 
     await vector_store.adrop_vector_index(ivf_index.name)
     # calculate average recall & latency
@@ -175,9 +175,9 @@ async def scann_search(vector_store, knn_docs):
     recalls = []
 
     for i in range(len(queries)):
-        ivfflat_docs, latency = await query_vector_with_timing(vector_store, queries[i])
+        scann_docs, latency = await query_vector_with_timing(vector_store, queries[i])
         latencies.append(latency)
-        recalls.append(calculate_recall(knn_docs[i], ivfflat_docs))
+        recalls.append(calculate_recall(knn_docs[i], scann_docs))
 
     await vector_store.adrop_vector_index(scann_index.name)
     # calculate average recall & latency
