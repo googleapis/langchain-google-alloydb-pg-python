@@ -26,7 +26,7 @@ EMBEDDING_COUNT = 100000
 VECTOR_SIZE = 768
 
 
-PROJECT_ID = "duwenxin-space"
+PROJECT_ID = ""
 
 # AlloyDB info
 REGION = ""

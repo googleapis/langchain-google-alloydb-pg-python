@@ -146,7 +146,7 @@ async def ivfflat_search(vector_store, knn_docs):
 
 async def ivf_search(vector_store, knn_docs):
     """Create an IVF index and perform similaity search with the index."""
-    ivf_index = IVFIndex(name="ivfflat")
+    ivf_index = IVFIndex(name="ivf")
     await vector_store.aapply_vector_index(ivf_index)
     assert await vector_store.is_valid_index(ivf_index.name)
     print("IVF index created.")
@@ -167,7 +167,7 @@ async def ivf_search(vector_store, knn_docs):
 
 async def scann_search(vector_store, knn_docs):
     """Create an ScaNN index and perform similaity search with the index."""
-    scann_index = ScaNNIndex(name="ivfflat")
+    scann_index = ScaNNIndex(name="scann")
     await vector_store.aapply_vector_index(scann_index)
     assert await vector_store.is_valid_index(scann_index.name)
     print("ScaNN index created.")
