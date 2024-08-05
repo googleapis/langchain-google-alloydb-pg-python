@@ -281,7 +281,7 @@ class ScaNNIndex(BaseIndex):
 
 For the ScaNN index, the `num_leaves` parameter impacts search recalls:
 
-- `num_leaves`: the number of partitions to apply to this index. Increaseing `num_leaves` also increases index build time. Check out [this guide](https://cloud.google.com/alloydb/docs/ai/work-with-embeddings#tune-scann) to select a good `num_leaves` number.
+- `num_leaves`: the number of partitions to apply to this index. Increaseing `num_leaves` also increases index build time. To learn more about tuning this parameter, see [Tune a `scann` index](https://cloud.google.com/alloydb/docs/ai/work-with-embeddings#tune-scann).
 
 
 
