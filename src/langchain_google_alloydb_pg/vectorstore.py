@@ -123,7 +123,7 @@ class AlloyDBVectorStore(VectorStore):
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
-            table_name (str): Name of the existing table or the table to be created.
+            table_name (str): Name of an existing table.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -228,7 +228,7 @@ class AlloyDBVectorStore(VectorStore):
             key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
-            table_name (str): Name of the existing table or the table to be created.
+            table_name (str): Name of an existing table.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -407,7 +407,7 @@ class AlloyDBVectorStore(VectorStore):
             texts (List[str]): Texts to add to the vector store.
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            table_name (str): Name of the existing table or the table to be created.
+            table_name (str): Name of an existing table.
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
@@ -456,7 +456,7 @@ class AlloyDBVectorStore(VectorStore):
             documents (List[Document]): Documents to add to the vector store.
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            table_name (str): Name of the existing table or the table to be created.
+            table_name (str): Name of an existing table.
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
@@ -509,7 +509,7 @@ class AlloyDBVectorStore(VectorStore):
             texts (List[str]): Texts to add to the vector store.
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            table_name (str): Name of the existing table or the table to be created.
+            table_name (str): Name of an existing table.
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
@@ -561,7 +561,7 @@ class AlloyDBVectorStore(VectorStore):
             documents (List[Document]): Documents to add to the vector store.
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
-            table_name (str): Name of the existing table or the table to be created.
+            table_name (str): Name of an existing table.
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
