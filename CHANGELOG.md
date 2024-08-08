@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.5.0...v0.6.0) (2024-08-08)
+
+
+### Features
+
+* Add ScaNN index query options ([#198](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/198)) ([0813867](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/081386779ef80e419cb734d21673a8feb195a271))
+
+
+### Documentation
+
+* Add index choosing guide ([#200](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/200)) ([dd91d54](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/dd91d54f0bfc2942704537b062862b038f9f3891))
+* Added vector store initialization from documents ([#196](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/196)) ([823821c](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/823821c647b2e0fd6a7a44d4a2ed6d11ffb1037a))
+* Rename index guide ([#201](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/201)) ([2436c5b](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2436c5b2120d69938644e20181559aa62b95fc84))
+* Update index tuning samples to include advanced indexes ([#197](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/197)) ([da52bc4](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/da52bc421da1ca8cad78184566426b22941b09af))
+
 ## [0.5.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.4.1...v0.5.0) (2024-07-23)
 
 
