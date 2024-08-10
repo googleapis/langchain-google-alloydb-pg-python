@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import asyncio
 import time
 
+import sqlalchemy
 from create_vector_embeddings import (
     CLUSTER_NAME,
     DATABASE_NAME,
     INSTANCE_NAME,
+    OMNI_DATABASE_NAME,
+    OMNI_HOST,
+    OMNI_PASSWORD,
+    OMNI_USER,
     PASSWORD,
     PROJECT_ID,
     REGION,
@@ -32,6 +38,8 @@ from langchain_google_alloydb_pg.indexes import (
     HNSWIndex,
     HNSWQueryOptions,
     IVFFlatIndex,
+    IVFIndex,
+    ScaNNIndex,
 )
 
 k = 10
@@ -69,6 +77,20 @@ async def get_vector_store():
         index_query_options=HNSWQueryOptions(ef_search=256),
     )
     return vector_store
+
+
+async def get_omni_vector_store():
+    connstring = f"postgresql+asyncpg://{OMNI_USER}:{OMNI_PASSWORD}@{OMNI_HOST}:5432/{OMNI_DATABASE_NAME}"
+    print(f"Connecting to AlloyDB Omni with {connstring}")
+
+    async_engine = sqlalchemy.ext.asyncio.create_async_engine(connstring)
+    omni_engine = AlloyDBEngine.from_engine(async_engine)
+    omni_vector_store = await AlloyDBVectorStore.create(
+        omni_engine,
+        embedding_service=embedding,
+        table_name=vector_table_name,
+    )
+    return omni_vector_store
 
 
 async def query_vector_with_timing(vector_store, query):
@@ -122,6 +144,48 @@ async def ivfflat_search(vector_store, knn_docs):
     return average_latency, average_recall
 
 
+async def ivf_search(vector_store, knn_docs):
+    """Create an IVF index and perform similaity search with the index."""
+    ivf_index = IVFIndex(name="ivf")
+    await vector_store.aapply_vector_index(ivf_index)
+    assert await vector_store.is_valid_index(ivf_index.name)
+    print("IVF index created.")
+    latencies = []
+    recalls = []
+
+    for i in range(len(queries)):
+        ivf_docs, latency = await query_vector_with_timing(vector_store, queries[i])
+        latencies.append(latency)
+        recalls.append(calculate_recall(knn_docs[i], ivf_docs))
+
+    await vector_store.adrop_vector_index(ivf_index.name)
+    # calculate average recall & latency
+    average_latency = sum(latencies) / len(latencies)
+    average_recall = sum(recalls) / len(recalls)
+    return average_latency, average_recall
+
+
+async def scann_search(vector_store, knn_docs):
+    """Create an ScaNN index and perform similaity search with the index."""
+    scann_index = ScaNNIndex(name="scann")
+    await vector_store.aapply_vector_index(scann_index)
+    assert await vector_store.is_valid_index(scann_index.name)
+    print("ScaNN index created.")
+    latencies = []
+    recalls = []
+
+    for i in range(len(queries)):
+        scann_docs, latency = await query_vector_with_timing(vector_store, queries[i])
+        latencies.append(latency)
+        recalls.append(calculate_recall(knn_docs[i], scann_docs))
+
+    await vector_store.adrop_vector_index(scann_index.name)
+    # calculate average recall & latency
+    average_latency = sum(latencies) / len(latencies)
+    average_recall = sum(recalls) / len(recalls)
+    return average_latency, average_recall
+
+
 async def knn_search(vector_store):
     """Perform similaity search without index."""
     latencies = []
@@ -143,22 +207,48 @@ def calculate_recall(base, target):
 
 
 async def main():
-    vector_store = await get_vector_store()
-    knn_docs, knn_latency = await knn_search(vector_store)
-    hnsw_average_latency, hnsw_average_recall = await hnsw_search(
-        vector_store, knn_docs
+    parser = argparse.ArgumentParser(description="Your script's description")
+    parser.add_argument(
+        "--omni", action="store_true", help="Running on AlloyDB Omni instance,"
     )
-    ivfflat_average_latency, ivfflat_average_recall = await ivfflat_search(
-        vector_store, knn_docs
-    )
+    args = parser.parse_args()
+    if args.omni:
+        # Running ScaNN index benchmark on AlloyDB Omni.
+        vector_store = await get_omni_vector_store()
+        knn_docs, knn_latency = await knn_search(vector_store)
+        scann_average_latency, scann_average_recall = await scann_search(
+            vector_store, knn_docs
+        )
+        print(f"KNN recall: 1.0            KNN latency: {knn_latency}")
+        print(
+            f"ScaNN average recall: {scann_average_recall}         ScaNN average latency: {scann_average_latency}"
+        )
+    else:
+        # Running HNSW, IVFFlat, IVF indexes benchmark on Cloud AlloyDB.
+        vector_store = await get_vector_store()
+        knn_docs, knn_latency = await knn_search(vector_store)
+        hnsw_average_latency, hnsw_average_recall = await hnsw_search(
+            vector_store, knn_docs
+        )
+        ivfflat_average_latency, ivfflat_average_recall = await ivfflat_search(
+            vector_store, knn_docs
+        )
+        ivf_average_latency, ivf_average_recall = await ivf_search(
+            vector_store, knn_docs
+        )
 
-    print(f"KNN recall: 1.0            KNN latency: {knn_latency}")
-    print(
-        f"HNSW average recall: {hnsw_average_recall}          HNSW average latency: {hnsw_average_latency}"
-    )
-    print(
-        f"IVFFLAT average recall: {ivfflat_average_recall}    IVFFLAT latency: {ivfflat_average_latency}"
-    )
+        print(f"KNN recall: 1.0               KNN latency: {knn_latency}")
+        print(
+            f"HNSW average recall: {hnsw_average_recall}      HNSW average latency: {hnsw_average_latency}"
+        )
+        print(
+            f"IVFFLAT average recall: {ivfflat_average_recall}   IVFFLAT latency: {ivfflat_average_latency}"
+        )
+        print(
+            f"IVF average recall: {ivf_average_recall}       IVF latency: {ivf_average_latency}"
+        )
+    await vector_store.engine._connector.close()
+    await vector_store.engine._engine.dispose()
 
 
 if __name__ == "__main__":
