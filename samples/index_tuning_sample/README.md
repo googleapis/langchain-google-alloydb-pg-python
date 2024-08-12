@@ -73,6 +73,12 @@ If you already have vector embeddings ready in your database, you can skip this 
 python3 create_vector_embeddings.py
 ```
 
+For creating ScaNN index on AlloyDB Omni, run this command instead:
+
+```bash
+python3 create_vector_embeddings.py --omni
+```
+
 Now your database is populated with 100k vector embeddings.
 
 ## Step 6: Learn About Index Benchmarking Metrics
@@ -95,6 +101,12 @@ Run this command to get an index performance report printed out on your terminal
 
 ```bash
 python3 index_search.py
+```
+
+To create a ScaNN index on AlloyDB Omni, run this command instead:
+
+```bash
+python3 index_search.py --omni
 ```
 
 The sample code tested the recall and latency of both HNSW and IVFFlat on the current dataset. Let us understand how each measurement is implemented, so you could customize your own benchmarking script.
@@ -216,7 +228,7 @@ Our default values for `m` is 16 and `ef_construction` is 64. Modify your code t
     python3 index_search.py
     ```
 
-### IVFFlat
+### IVF and IVFFlat
 
 ```python
 class IVFFlatIndex(
@@ -231,12 +243,14 @@ class IVFFlatQueryOptions(QueryOptions):
     probes: int = 1
 ```
 
-IVFFlat index-specific parameter:
+IVF and IVFFlat index-specific parameter:
 
 - `lists`: the number of clusters into which the dataset is divided. Increasing `lists` generally improves recall but may increase latency as well. Tune `lists` to find the balance between recall and latency that is most suitable for your application.
 - `probes`: the number of inverted lists (clusters) to examine during similarity search. A higher number of `probes` increases both recall and latency.
 
-### IVF Index Tuning
+### IVF and IVFFlat Index Tuning
+
+IVF and IVFFlat share the same index parameters. Replace all `IVFFlatIndex` with `IVFIndex` in the following code for IVF tuning.
 
 1. Let us try changing several parameters of the IVF index aiming for a better performance.
 Our default values for `lists` is 100. Modify your code to increase `lists` to 200.
@@ -260,6 +274,50 @@ Our default values for `lists` is 100. Modify your code to increase `lists` to 2
 
     ```bash
     python3 index_search.py
+    ```
+
+### ScaNN
+
+```python
+class ScaNNIndex(BaseIndex):
+    index_type: str = "ScaNN"
+    num_leaves: int = 5
+    quantizer: str = field(
+        default="sq8", init=False
+    )  # Excludes `quantizer` from initialization currently only supports the value "sq8"
+
+class ScaNNQueryOptions(QueryOptions):
+    num_leaves_to_search: int = 1
+    pre_reordering_num_neighbors: int = -1
+```
+
+For the ScaNN index, the `num_leaves` parameter impacts search recalls:
+
+- `num_leaves`: the number of partitions to apply to this index. Increaseing `num_leaves` also increases index build time. To learn more about tuning this parameter, see [Tune a `scann` index](https://cloud.google.com/alloydb/docs/ai/work-with-embeddings#tune-scann).
+
+### ScaNN Index Tuning
+
+1. Let us try changing the `num_leaves` parameters of the ScaNN index aiming for a better performance. Our default values for `num_leaves` is 5, so let's change it to 20:
+
+    ```python
+    scann_index = ScaNNIndex(name="scann", num_leaves=300)
+    ```
+
+1. Now let's change the ScaNN index's database flags to increase the number of leaves to search:
+
+    ```python
+    vector_store = await AlloyDBVectorStore.create(
+        engine=engine,
+        table_name=vector_table_name,
+        embedding_service=embedding,
+        index_query_options=ScaNNQueryOptions(num_leaves_to_search=20),
+    )
+    ```
+
+1. Re-run this command to see the difference in recall and latency:
+
+    ```bash
+    python3 index_search.py --omni
     ```
 
 ### Distance Strategy (Optional)
