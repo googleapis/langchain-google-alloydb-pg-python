@@ -335,7 +335,7 @@ class AlloyDBEngine:
         """Set temporary database flags and fetch results from a SQL query."""
         async with self._engine.connect() as conn:
             await conn.execute(text(query_options))
-            result = await conn.execute(text(query), params)
+            result = await conn.execute(text(query))
             result_map = result.mappings()
             result_fetch = result_map.fetchall()
 
