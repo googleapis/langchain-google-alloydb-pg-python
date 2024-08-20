@@ -330,7 +330,7 @@ class AlloyDBEngine:
             await conn.execute(text(query))
 
     async def _afetch_with_query_options(
-        self, query: str, query_options: str, params: Optional[dict] = None
+        self, query: str, query_options: str
     ) -> Sequence[RowMapping]:
         """Set temporary database flags and fetch results from a SQL query."""
         async with self._engine.connect() as conn:
