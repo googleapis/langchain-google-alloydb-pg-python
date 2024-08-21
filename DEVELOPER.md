@@ -14,6 +14,11 @@ and creating release PRs.
 
 Learn more by reading [How should I write my commits?](https://github.com/googleapis/release-please?tab=readme-ov-file#how-should-i-write-my-commits)
 
+### Modifying existing classes
+When modifying any existing classes, ensure the required libraries are installed in "editable mode" using the command `pip install -e .` from your project's root directory.
+
+This allows your code to dynamically reflect any changes you make to the library, enabling efficient local testing of your new methods.
+
 ## Testing
 
 ### Run tests locally
