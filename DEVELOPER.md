@@ -76,8 +76,9 @@ Use `gcloud builds triggers import --source=trigger.yaml` to create triggers via
 
 #### Project Setup
 
-1. Create an AlloyDB cluster, instance, and database
-1. Setup Cloud Build triggers (above)
+1. Create an AlloyDB cluster, instance, and database.
+1. Create a private pool for Cloud Build, in order to connect to the VPC network to run tests against a private IP. Learn more at [Run builds in a private pool ](https://cloud.google.com/build/docs/private-pools/run-builds-in-private-pool)
+1. Setup Cloud Build triggers (above). Note: Triggers are created in same region as private pool.
 
 
 #### Run tests with Cloud Build
