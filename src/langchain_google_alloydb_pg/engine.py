@@ -324,10 +324,22 @@ class AlloyDBEngine:
             await conn.commit()
 
     async def _aexecute_outside_tx(self, query: str) -> None:
-        """Execute a SQL query."""
+        """Execute a SQL query in a new transaction."""
         async with self._engine.connect() as conn:
             await conn.execute(text("COMMIT"))
             await conn.execute(text(query))
+
+    async def _afetch_with_query_options(
+        self, query: str, query_options: str
+    ) -> Sequence[RowMapping]:
+        """Set temporary database flags and fetch results from a SQL query."""
+        async with self._engine.connect() as conn:
+            await conn.execute(text(query_options))
+            result = await conn.execute(text(query))
+            result_map = result.mappings()
+            result_fetch = result_map.fetchall()
+
+        return result_fetch
 
     async def _afetch(
         self, query: str, params: Optional[dict] = None
