@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from dataclasses import dataclass
 from threading import Thread
 from typing import (
@@ -36,7 +37,7 @@ from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrat
 from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.exc import InvalidRequestError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-import uuid
+
 from .version import __version__
 
 if TYPE_CHECKING:
@@ -697,14 +698,14 @@ class AlloyDBEngine:
         """
         Create a batch insert SQL query to insert multiple rows at once.
         Looks like:
-            INSERT INTO MyTable ( Column1, Column2 ) 
+            INSERT INTO MyTable ( Column1, Column2 )
             VALUES
                 ( Value1, Value2 ),
                 ( Value1, Value2 )
 
         Args:
             destination_table (str): The name of the table to insert the data in.
-            metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format. 
+            metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format.
                 Optional.
             data (Sequence[RowMapping]): All the data (to be inserted) belonging to a pgvector collection.
             use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
@@ -712,14 +713,14 @@ class AlloyDBEngine:
         """
         row_number = 0
         params = {}
-        
+
         if use_json_metadata:
             insert_query = f"INSERT INTO {destination_table} (LANGCHAIN_ID, CONTENT, EMBEDDING, LANGCHAIN_METADATA) VALUES"
-            
+
             # Create value clause for the SQL query
             for row in data:
                 insert_query += f" (:langchain_id_{row_number}, :content_{row_number}, :embedding_{row_number}, :langchain_metadata_{row_number})"
-                
+
                 # Add parameters
                 params[f"langchain_id_{row_number}"] = (
                     row.id if self._is_uuid(row.id) else uuid.uuid1()
@@ -727,9 +728,9 @@ class AlloyDBEngine:
                 params[f"content_{row_number}"] = row.document
                 params[f"embedding_{row_number}"] = row.embedding
                 params[f"langchain_metadata_{row_number}"] = row.cmetadata
-                
+
                 row_number += 1
-        
+
         elif metadata_column_names:
             insert_query = (
                 f"INSERT INTO {destination_table} (LANGCHAIN_ID, CONTENT, EMBEDDING"
@@ -737,7 +738,7 @@ class AlloyDBEngine:
             for column in metadata_column_names:
                 insert_query += ", " + column.upper()
             insert_query += ") VALUES"
-            
+
             # Create value clause for the SQL query
             values_clause = ", ".join(
                 [
@@ -764,9 +765,9 @@ class AlloyDBEngine:
                         params[f"{column}_{row_number}"] = row.cmetadata[column]
                     else:
                         params[f"{column}_{row_number}"] = None
-                
+
                 row_number += 1
-        
+
         self._execute(insert_query, params)
 
     def _run_all_batch_inserts(
@@ -779,7 +780,7 @@ class AlloyDBEngine:
         """
         Insert all data in batches of 1000 insert queries at once.
         Looks like:
-            INSERT INTO MyTable ( Column1, Column2 ) 
+            INSERT INTO MyTable ( Column1, Column2 )
             VALUES
                 ( Value1, Value2 ),
                 ( Value1, Value2 )
@@ -787,7 +788,7 @@ class AlloyDBEngine:
         Args:
             data (Sequence[RowMapping]): All the data (to be inserted) belonging to a PGVector collection.
             destination_table (str): The name of the table to insert the data in.
-            metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format. 
+            metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format.
                 Optional.
             use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
                 Default: False. Optional.
@@ -826,7 +827,7 @@ class AlloyDBEngine:
 
         Args:
             collection_name (str): The collection to migrate.
-            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format. 
+            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format.
                 Optional.
             destination_table (str): The name of the table to insert the data in.
                 Optional. defaults to collection_name.
