@@ -34,9 +34,9 @@ import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrategy
 from sqlalchemy import MetaData, RowMapping, Table, text
-from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.exc import InvalidRequestError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-
+import uuid
 from .version import __version__
 
 if TYPE_CHECKING:
@@ -592,3 +592,277 @@ class AlloyDBEngine:
             )
 
         return metadata.tables[table_name]
+
+    async def get_all_pgvector_collection_names(
+        self,
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> List[str]:
+        """
+        Get all collection names present in PGVector table.
+
+        Args:
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+
+        Returns:
+            A list of all collection names.
+        """
+        try:
+            all_rows = await self._afetch(
+                query=f"SELECT name from {pg_collection_table_name}"
+            )
+            return [row["name"] for row in all_rows]
+        except ProgrammingError as e:
+            raise ValueError(
+                "Please provide the correct collection table name: " + str(e)
+            )
+
+    def _get_collection_uuid(
+        self,
+        collection_name: str,
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> str:
+        """
+        Get the collection uuid for a collection present in PGVector tables.
+
+        Args:
+            collection_name (str): The name of the collection to get the uuid for.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+
+        Returns:
+            The uuid corresponding to the collection.
+        """
+        try:
+            collection_info = self._fetch(
+                query=f"SELECT name, uuid FROM {pg_collection_table_name} WHERE name = '{collection_name}'",
+            )
+            return collection_info[0].uuid
+        except IndexError as e:
+            raise ValueError(f"Collection: {collection_name}, does not exist.")
+
+    def extract_pgvector_collection(
+        self,
+        collection_name: str,
+        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> Sequence[RowMapping]:
+        """
+        Extract all data belonging to a PGVector collection.
+
+        Args:
+            collection_name (str): The name of the collection to get the data for.
+            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
+                Default: "langchain_pg_embedding". Optional.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+        Returns:
+            The data present in the collection.
+        """
+        uuid = self._get_collection_uuid(collection_name, pg_collection_table_name)
+        query = (
+            f"SELECT * FROM {pg_embedding_table_name} WHERE collection_id = '{uuid}'"
+        )
+        return self._fetch(
+            query=query,
+        )
+
+    def _is_uuid(self, id: str) -> bool:
+        """Check if a string is of type uuid."""
+        try:
+            uuid.UUID(str(id))
+            return True
+        except:
+            return False
+
+    def _insert_single_batch(
+        self,
+        destination_table: str,
+        metadata_column_names: Optional[List[str]],
+        data: Sequence[RowMapping],
+        use_json_metadata: Optional[bool] = False,
+    ) -> None:
+        """
+        Create a batch insert SQL query to insert multiple rows at once.
+        Looks like:
+            INSERT INTO MyTable ( Column1, Column2 ) 
+            VALUES
+                ( Value1, Value2 ),
+                ( Value1, Value2 )
+
+        Args:
+            destination_table (str): The name of the table to insert the data in.
+            metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format. 
+                Optional.
+            data (Sequence[RowMapping]): All the data (to be inserted) belonging to a pgvector collection.
+            use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
+                Default: False. Optional.
+        """
+        row_number = 0
+        params = {}
+        
+        if use_json_metadata:
+            insert_query = f"INSERT INTO {destination_table} (LANGCHAIN_ID, CONTENT, EMBEDDING, LANGCHAIN_METADATA) VALUES"
+            
+            # Create value clause for the SQL query
+            for row in data:
+                insert_query += f" (:langchain_id_{row_number}, :content_{row_number}, :embedding_{row_number}, :langchain_metadata_{row_number})"
+                
+                # Add parameters
+                params[f"langchain_id_{row_number}"] = (
+                    row.id if self._is_uuid(row.id) else uuid.uuid1()
+                )
+                params[f"content_{row_number}"] = row.document
+                params[f"embedding_{row_number}"] = row.embedding
+                params[f"langchain_metadata_{row_number}"] = row.cmetadata
+                
+                row_number += 1
+        
+        elif metadata_column_names:
+            insert_query = (
+                f"INSERT INTO {destination_table} (LANGCHAIN_ID, CONTENT, EMBEDDING"
+            )
+            for column in metadata_column_names:
+                insert_query += ", " + column.upper()
+            insert_query += ") VALUES"
+            
+            # Create value clause for the SQL query
+            values_clause = ", ".join(
+                [
+                    f"(:langchain_id_{num}, :content_{num}, :embedding_{num}, "
+                    + ", ".join(
+                        [f":{column}_{num}" for column in metadata_column_names]
+                    )
+                    + ")"
+                    for num in range(len(data))
+                ]
+            )
+            insert_query += values_clause
+
+            # Add parameters
+            for row in data:
+                params[f"langchain_id_{row_number}"] = (
+                    row.id if self._is_uuid(row.id) else uuid.uuid1()
+                )
+                params[f"content_{row_number}"] = row.document
+                params[f"embedding_{row_number}"] = row.embedding
+                for column in metadata_column_names:
+                    # In case the key is not present, add a null value
+                    if column in row.cmetadata:
+                        params[f"{column}_{row_number}"] = row.cmetadata[column]
+                    else:
+                        params[f"{column}_{row_number}"] = None
+                
+                row_number += 1
+        
+        self._execute(insert_query, params)
+
+    def _run_all_batch_inserts(
+        self,
+        data: Sequence[RowMapping],
+        destination_table: str,
+        metadata_column_names: Optional[List[str]],
+        use_json_metadata: Optional[bool] = False,
+    ) -> None:
+        """
+        Insert all data in batches of 1000 insert queries at once.
+        Looks like:
+            INSERT INTO MyTable ( Column1, Column2 ) 
+            VALUES
+                ( Value1, Value2 ),
+                ( Value1, Value2 )
+
+        Args:
+            data (Sequence[RowMapping]): All the data (to be inserted) belonging to a PGVector collection.
+            destination_table (str): The name of the table to insert the data in.
+            metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format. 
+                Optional.
+            use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
+                Default: False. Optional.
+        """
+        data_size = len(data)
+        for i in range(data_size // 1000):
+            self._insert_single_batch(
+                destination_table,
+                metadata_column_names,
+                data=data[1000 * i : 1000 * (i + 1)],
+                use_json_metadata=use_json_metadata,
+            )
+        if data_size % 1000:
+            i = data_size // 1000
+            self._insert_single_batch(
+                destination_table,
+                metadata_column_names,
+                data=data[1000 * i : 1000 * i + data_size % 1000],
+                use_json_metadata=use_json_metadata,
+            )
+        print("All rows inserted succesfully.")
+
+    def migrate_pgvector_collection(
+        self,
+        collection_name: str,
+        metadata_columns: Optional[List[Column]],
+        destination_table: Optional[str] = "",
+        use_json_metadata: Optional[bool] = False,
+        delete_pg_collection: Optional[bool] = True,
+        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> None:
+        """
+        Migrate all data present in a PGVector collection to use separate tables for each collection.
+        The new data format is compatible with the AlloyDB interface.
+
+        Args:
+            collection_name (str): The collection to migrate.
+            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format. 
+                Optional.
+            destination_table (str): The name of the table to insert the data in.
+                Optional. defaults to collection_name.
+            use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
+                Default: False. Optional.
+            delete_pg_collection (bool): An option to delete the original data upon migration.
+                Default: True. Optional.
+            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
+                Default: "langchain_pg_embedding". Optional.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+        """
+        if not use_json_metadata and not metadata_columns:
+            raise ValueError(
+                "Schema not defined for new table. Please define the correct schema."
+                "To keep the data in json format, use use_json_metadata=True while running this method."
+            )
+
+        if not destination_table:
+            destination_table = collection_name
+
+        collection_data = self.extract_pgvector_collection(
+            collection_name, pg_embedding_table_name, pg_collection_table_name
+        )
+
+        self._run_all_batch_inserts(
+            data=collection_data,
+            destination_table=destination_table,
+            metadata_column_names=(
+                [column.name for column in metadata_columns]
+                if metadata_columns
+                else None
+            ),
+            use_json_metadata=use_json_metadata,
+        )
+
+        # Validate all data migration and delete old data
+        if delete_pg_collection:
+            table_size = self._fetch(f"SELECT COUNT(*) FROM {destination_table}")
+            if len(collection_data) != table_size[0]["count"]:
+                raise ValueError(
+                    "All data not yet migrated. The pre-existing data would not be deleted."
+                )
+            uuid = self._get_collection_uuid(collection_name, pg_collection_table_name)
+            self._execute(
+                query=f"DELETE FROM {pg_collection_table_name} WHERE name='{collection_name}'"
+            )
+            self._execute(
+                query=f"DELETE FROM {pg_embedding_table_name} WHERE collection_id='{uuid}'"
+            )
+            print("Succesfully deleted old data.")
