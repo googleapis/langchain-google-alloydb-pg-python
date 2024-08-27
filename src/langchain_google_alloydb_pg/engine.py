@@ -606,30 +606,6 @@ class AlloyDBEngine:
 
         return metadata.tables[table_name]
 
-    async def get_all_pgvector_collection_names(
-        self,
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
-    ) -> List[str]:
-        """
-        Get all collection names present in PGVector table.
-
-        Args:
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
-
-        Returns:
-            A list of all collection names.
-        """
-        try:
-            all_rows = await self._afetch(
-                query=f"SELECT name from {pg_collection_table_name}"
-            )
-            return [row["name"] for row in all_rows]
-        except ProgrammingError as e:
-            raise ValueError(
-                "Please provide the correct collection table name: " + str(e)
-            )
-
     def _get_collection_uuid(
         self,
         collection_name: str,
@@ -654,32 +630,6 @@ class AlloyDBEngine:
         except IndexError as e:
             raise ValueError(f"Collection: {collection_name}, does not exist.")
 
-    def extract_pgvector_collection(
-        self,
-        collection_name: str,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
-    ) -> Sequence[RowMapping]:
-        """
-        Extract all data belonging to a PGVector collection.
-
-        Args:
-            collection_name (str): The name of the collection to get the data for.
-            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
-                Default: "langchain_pg_embedding". Optional.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
-        Returns:
-            The data present in the collection.
-        """
-        uuid = self._get_collection_uuid(collection_name, pg_collection_table_name)
-        query = (
-            f"SELECT * FROM {pg_embedding_table_name} WHERE collection_id = '{uuid}'"
-        )
-        return self._fetch(
-            query=query,
-        )
-
     def _is_uuid(self, id: str) -> bool:
         """Check if a string is of type uuid."""
         try:
@@ -697,11 +647,9 @@ class AlloyDBEngine:
     ) -> None:
         """
         Create a batch insert SQL query to insert multiple rows at once.
-        Looks like:
-            INSERT INTO MyTable ( Column1, Column2 )
-            VALUES
-                ( Value1, Value2 ),
-                ( Value1, Value2 )
+        Looks like
+        INSERT INTO MyTable ( Column1, Column2 )
+        VALUES ( Value1, Value2 ), ( Value1, Value2 ), ...
 
         Args:
             destination_table (str): The name of the table to insert the data in.
@@ -779,11 +727,6 @@ class AlloyDBEngine:
     ) -> None:
         """
         Insert all data in batches of 1000 insert queries at once.
-        Looks like:
-            INSERT INTO MyTable ( Column1, Column2 )
-            VALUES
-                ( Value1, Value2 ),
-                ( Value1, Value2 )
 
         Args:
             data (Sequence[RowMapping]): All the data (to be inserted) belonging to a PGVector collection.
@@ -810,6 +753,32 @@ class AlloyDBEngine:
                 use_json_metadata=use_json_metadata,
             )
         print("All rows inserted succesfully.")
+
+    def extract_pgvector_collection(
+        self,
+        collection_name: str,
+        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> Sequence[RowMapping]:
+        """
+        Extract all data belonging to a PGVector collection.
+
+        Args:
+            collection_name (str): The name of the collection to get the data for.
+            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
+                Default: "langchain_pg_embedding". Optional.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+        Returns:
+            The data present in the collection.
+        """
+        uuid = self._get_collection_uuid(collection_name, pg_collection_table_name)
+        query = (
+            f"SELECT * FROM {pg_embedding_table_name} WHERE collection_id = '{uuid}'"
+        )
+        return self._fetch(
+            query=query,
+        )
 
     def migrate_pgvector_collection(
         self,
@@ -879,3 +848,25 @@ class AlloyDBEngine:
                 query=f"DELETE FROM {pg_embedding_table_name} WHERE collection_id='{uuid}'"
             )
             print("Succesfully deleted old data.")
+
+    def get_all_pgvector_collection_names(
+        self,
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> List[str]:
+        """
+        Get all collection names present in PGVector table.
+
+        Args:
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+
+        Returns:
+            A list of all collection names.
+        """
+        try:
+            all_rows = self._fetch(query=f"SELECT name from {pg_collection_table_name}")
+            return [row["name"] for row in all_rows]
+        except ProgrammingError as e:
+            raise ValueError(
+                "Please provide the correct collection table name: " + str(e)
+            )
