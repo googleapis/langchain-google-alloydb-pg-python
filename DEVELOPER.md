@@ -31,6 +31,9 @@ This allows your code to dynamically reflect any changes you make to the library
     pytest
     ```
 
+Notes:
+
+* Tests for private IP can not be run locally
 
 ### AlloyDB Omni Testing
 The `ScaNN` index is an AlloyDB Omni preview and is not available on Cloud AlloyDB. To test for the `ScaNN` index integration, an AlloyDB Omni instance is set up and run on a GCE VM instance. The Omni instance is listening on input traffic on the private IP address of the VM. Integration tests related to the `ScaNN` index are only run against this Omni instance, while all other index tests are run against the Cloud AlloyDB testing instance.
