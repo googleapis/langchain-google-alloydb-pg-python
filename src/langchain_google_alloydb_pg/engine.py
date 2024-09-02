@@ -664,7 +664,7 @@ class AlloyDBEngine:
         params = {}
 
         if use_json_metadata:
-            insert_query = f"INSERT INTO {destination_table} (LANGCHAIN_ID, CONTENT, EMBEDDING, LANGCHAIN_METADATA) VALUES"
+            insert_query = f"INSERT INTO {destination_table} (langchain_id, content, embedding, langchain_metadata) VALUES"
 
             # Create value clause for the SQL query
             values_clause = ", ".join(
@@ -689,10 +689,10 @@ class AlloyDBEngine:
 
         elif metadata_column_names:
             insert_query = (
-                f"INSERT INTO {destination_table} (LANGCHAIN_ID, CONTENT, EMBEDDING"
+                f"INSERT INTO {destination_table} (langchain_id, content, embedding"
             )
             for column in metadata_column_names:
-                insert_query += ", " + column.upper()
+                insert_query += ", " + column
             insert_query += ") VALUES"
 
             # Create value clause for the SQL query
@@ -782,20 +782,18 @@ class AlloyDBEngine:
         """
         uuid = self._get_collection_uuid(collection_name, pg_collection_table_name)
         try:
-            query = (
-            f"SELECT * FROM {pg_embedding_table_name} WHERE collection_id = '{uuid}'"
-        )
+            query = f"SELECT * FROM {pg_embedding_table_name} WHERE collection_id = '{uuid}'"
             return self._fetch(
                 query=query,
             )
         except:
-            raise ValueError(f'Collection: {collection_name} does not exist.')
+            raise ValueError(f"Collection: {collection_name} does not exist.")
 
     def migrate_pgvector_collection(
         self,
         collection_name: str,
         metadata_columns: Optional[List[Column]] = [],
-        destination_table: Optional[str] = "",
+        destination_table: Optional[str] = None,
         use_json_metadata: Optional[bool] = False,
         delete_pg_collection: Optional[bool] = False,
         pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
