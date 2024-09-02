@@ -550,26 +550,6 @@ class TestEngineMigration:
         engine._execute(f"DROP TABLE {embedding_table}")
         engine._execute(f"DROP TABLE {collections_table}")
 
-    def test_get_all_pgvector_collection_names(self, engine, sample_embeddings):
-        embedding_table, collections_table = self._create_pgvector_tables(
-            engine, sample_embeddings
-        )
-        all_collections = engine.get_all_pgvector_collection_names(
-            pg_collection_table_name=collections_table
-        )
-        assert len(all_collections) == 3
-        expected = ["collection_0", "collection_1", "collection_2"]
-        for collection in all_collections:
-            assert collection in expected
-        engine._execute(f"DROP TABLE {embedding_table}")
-        engine._execute(f"DROP TABLE {collections_table}")
-
-    def test_get_all_pgvector_collection_names_error(self, engine):
-        with pytest.raises(ValueError):
-            engine.get_all_pgvector_collection_names(
-                f"langchain_pg_collection12c_{uuid.uuid4()}"
-            )
-
     def test_migrate_pgvector_collection_error(self, engine, sample_embeddings):
         embedding_table, collections_table = self._create_pgvector_tables(
             engine, sample_embeddings
@@ -742,3 +722,61 @@ class TestEngineMigration:
         engine._execute(f"DROP TABLE {embedding_table}")
         engine._execute(f"DROP TABLE {collections_table}")
         engine._execute(f"DROP TABLE {collection_name}")
+
+    def test_migrate_pgvector_collection_batch(self, engine, sample_embeddings):
+        # Set up tables
+        embedding_table, collections_table = self._create_pgvector_tables(
+            engine, sample_embeddings, num_rows=7, num_collections=2
+        )
+        collection_name = "collection_0"
+        engine.init_vectorstore_table(
+            table_name=collection_name,
+            vector_size=768,
+        )
+        engine.migrate_pgvector_collection(
+            collection_name=collection_name,
+            use_json_metadata=True,
+            delete_pg_collection=True,
+            pg_embedding_table_name=embedding_table,
+            pg_collection_table_name=collections_table,
+            insert_batch_size=5,
+        )
+
+        # Check that all data has been migrated
+        migrated_table_count = engine._fetch(f"SELECT COUNT(*) FROM {collection_name}")
+        assert migrated_table_count == [{"count": 7}]
+
+        # Check last row to ensure that the data is inserted correctly
+        migrated_data = engine._fetch(
+            f"SELECT content, embedding, langchain_metadata FROM {collection_name}"
+        )
+        print("Migrated data:", migrated_data)
+        expected_row = {
+            "content": "content_6",
+            "embedding": str(sample_embeddings).replace(" ", ""),
+            "langchain_metadata": self._create_metadata_for_collection(
+                collection_name, 6, num_cols=3
+            ),
+        }
+        print("Expected row: ", expected_row)
+        assert expected_row in migrated_data
+
+    def test_get_all_pgvector_collection_names(self, engine, sample_embeddings):
+        embedding_table, collections_table = self._create_pgvector_tables(
+            engine, sample_embeddings
+        )
+        all_collections = engine.get_all_pgvector_collection_names(
+            pg_collection_table_name=collections_table
+        )
+        assert len(all_collections) == 3
+        expected = ["collection_0", "collection_1", "collection_2"]
+        for collection in all_collections:
+            assert collection in expected
+        engine._execute(f"DROP TABLE {embedding_table}")
+        engine._execute(f"DROP TABLE {collections_table}")
+
+    def test_get_all_pgvector_collection_names_error(self, engine):
+        with pytest.raises(ValueError):
+            engine.get_all_pgvector_collection_names(
+                f"langchain_pg_collection12c_{uuid.uuid4()}"
+            )

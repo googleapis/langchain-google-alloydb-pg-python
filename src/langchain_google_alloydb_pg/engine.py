@@ -732,6 +732,7 @@ class AlloyDBEngine:
         destination_table: str,
         metadata_column_names: Optional[List[str]],
         use_json_metadata: Optional[bool] = False,
+        insert_batch_size: int = 1000,
     ) -> None:
         """
         Insert all data in batches of 1000 insert queries at once.
@@ -743,21 +744,26 @@ class AlloyDBEngine:
                 Optional.
             use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
                 Default: False. Optional.
+            insert_batch_size (int): Number of rows to insert at once in the table.
+                Default: 1000.
         """
         data_size = len(data)
-        for i in range(data_size // 1000):
+        for i in range(data_size // insert_batch_size):
             self._insert_single_batch(
                 destination_table,
                 metadata_column_names,
-                data=data[1000 * i : 1000 * (i + 1)],
+                data=data[insert_batch_size * i : insert_batch_size * (i + 1)],
                 use_json_metadata=use_json_metadata,
             )
-        if data_size % 1000:
-            i = data_size // 1000
+        if data_size % insert_batch_size:
+            i = data_size // insert_batch_size
             self._insert_single_batch(
                 destination_table,
                 metadata_column_names,
-                data=data[1000 * i : 1000 * i + data_size % 1000],
+                data=data[
+                    insert_batch_size * i : insert_batch_size * i
+                    + data_size % insert_batch_size
+                ],
                 use_json_metadata=use_json_metadata,
             )
         print("All rows inserted succesfully.")
@@ -777,6 +783,7 @@ class AlloyDBEngine:
                 Default: "langchain_pg_embedding". Optional.
             pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
                 Default: "langchain_pg_collection". Optional.
+
         Returns:
             The data present in the collection.
         """
@@ -798,6 +805,7 @@ class AlloyDBEngine:
         delete_pg_collection: Optional[bool] = False,
         pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+        insert_batch_size: int = 1000,
     ) -> None:
         """
         Migrate all data present in a PGVector collection to use separate tables for each collection.
@@ -817,6 +825,8 @@ class AlloyDBEngine:
                 Default: "langchain_pg_embedding". Optional.
             pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
                 Default: "langchain_pg_collection". Optional.
+            insert_batch_size (int): Number of rows to insert at once in the table.
+                Default: 1000.
         """
         if not use_json_metadata and not metadata_columns:
             raise ValueError(
@@ -839,6 +849,7 @@ class AlloyDBEngine:
                 if metadata_columns
                 else None
             ),
+            insert_batch_size=insert_batch_size,
             use_json_metadata=use_json_metadata,
         )
 
