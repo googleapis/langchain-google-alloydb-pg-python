@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import uuid
 from dataclasses import dataclass
 from threading import Thread
@@ -666,16 +667,23 @@ class AlloyDBEngine:
             insert_query = f"INSERT INTO {destination_table} (LANGCHAIN_ID, CONTENT, EMBEDDING, LANGCHAIN_METADATA) VALUES"
 
             # Create value clause for the SQL query
-            for row in data:
-                insert_query += f" (:langchain_id_{row_number}, :content_{row_number}, :embedding_{row_number}, :langchain_metadata_{row_number})"
+            values_clause = ", ".join(
+                [
+                    f"(:langchain_id_{num}, :content_{num}, :embedding_{num}, :langchain_metadata_{num})"
+                    for num in range(len(data))
+                ]
+            )
+            insert_query += values_clause
 
-                # Add parameters
+            # Add parameters
+            for row_number in range(len(data)):
+                row = data[row_number]
                 params[f"langchain_id_{row_number}"] = (
                     row.id if self._is_uuid(row.id) else uuid.uuid1()
                 )
                 params[f"content_{row_number}"] = row.document
                 params[f"embedding_{row_number}"] = row.embedding
-                params[f"langchain_metadata_{row_number}"] = row.cmetadata
+                params[f"langchain_metadata_{row_number}"] = json.dumps(row.cmetadata)
 
                 row_number += 1
 
@@ -773,20 +781,23 @@ class AlloyDBEngine:
             The data present in the collection.
         """
         uuid = self._get_collection_uuid(collection_name, pg_collection_table_name)
-        query = (
+        try:
+            query = (
             f"SELECT * FROM {pg_embedding_table_name} WHERE collection_id = '{uuid}'"
         )
-        return self._fetch(
-            query=query,
-        )
+            return self._fetch(
+                query=query,
+            )
+        except:
+            raise ValueError(f'Collection: {collection_name} does not exist.')
 
     def migrate_pgvector_collection(
         self,
         collection_name: str,
-        metadata_columns: Optional[List[Column]],
+        metadata_columns: Optional[List[Column]] = [],
         destination_table: Optional[str] = "",
         use_json_metadata: Optional[bool] = False,
-        delete_pg_collection: Optional[bool] = True,
+        delete_pg_collection: Optional[bool] = False,
         pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> None:
@@ -803,7 +814,7 @@ class AlloyDBEngine:
             use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
                 Default: False. Optional.
             delete_pg_collection (bool): An option to delete the original data upon migration.
-                Default: True. Optional.
+                Default: False. Optional.
             pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
                 Default: "langchain_pg_embedding". Optional.
             pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
