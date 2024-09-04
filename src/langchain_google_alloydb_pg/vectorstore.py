@@ -48,6 +48,7 @@ class AlloyDBVectorStore(VectorStore):
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -65,6 +66,7 @@ class AlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -89,6 +91,7 @@ class AlloyDBVectorStore(VectorStore):
         self.engine = engine
         self.embedding_service = embedding_service
         self.table_name = table_name
+        self.schema_name = schema_name
         self.content_column = content_column
         self.embedding_column = embedding_column
         self.metadata_columns = metadata_columns
@@ -106,6 +109,7 @@ class AlloyDBVectorStore(VectorStore):
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -124,6 +128,7 @@ class AlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -144,7 +149,7 @@ class AlloyDBVectorStore(VectorStore):
                 "Can not use both metadata_columns and ignore_metadata_columns."
             )
         # Get field type information
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}'"
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}' AND table_schema = '{schema_name}'"
         results = await engine._afetch(stmt)
         columns = {}
         for field in results:
@@ -192,6 +197,7 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding_service,
             table_name,
+            schema_name,
             content_column,
             embedding_column,
             metadata_columns,
@@ -210,6 +216,7 @@ class AlloyDBVectorStore(VectorStore):
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -229,6 +236,7 @@ class AlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -248,6 +256,7 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding_service,
             table_name,
+            schema_name,
             content_column,
             embedding_column,
             metadata_columns,
@@ -286,7 +295,7 @@ class AlloyDBVectorStore(VectorStore):
                 if len(self.metadata_columns) > 0
                 else ""
             )
-            insert_stmt = f'INSERT INTO "{self.table_name}"({self.id_column}, {self.content_column}, {self.embedding_column}{metadata_col_names}'
+            insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"({self.id_column}, {self.content_column}, {self.embedding_column}{metadata_col_names}'
             values = {"id": id, "content": content, "embedding": str(embedding)}
             values_stmt = "VALUES (:id, :content, :embedding"
 
@@ -372,7 +381,7 @@ class AlloyDBVectorStore(VectorStore):
             return False
 
         id_list = ", ".join([f"'{id}'" for id in ids])
-        query = f'DELETE FROM "{self.table_name}" WHERE {self.id_column} in ({id_list})'
+        query = f'DELETE FROM "{self.schema_name}"."{self.table_name}" WHERE {self.id_column} in ({id_list})'
         await self.engine._aexecute(query)
         return True
 
@@ -391,6 +400,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
         content_column: str = "content",
@@ -408,6 +418,7 @@ class AlloyDBVectorStore(VectorStore):
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
@@ -424,6 +435,7 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
+            schema_name,
             content_column,
             embedding_column,
             metadata_columns,
@@ -441,6 +453,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         ids: Optional[List[str]] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
@@ -457,6 +470,7 @@ class AlloyDBVectorStore(VectorStore):
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
@@ -474,6 +488,7 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
+            schema_name,
             content_column,
             embedding_column,
             metadata_columns,
@@ -493,6 +508,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
         content_column: str = "content",
@@ -510,6 +526,7 @@ class AlloyDBVectorStore(VectorStore):
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
@@ -527,6 +544,7 @@ class AlloyDBVectorStore(VectorStore):
             embedding,
             engine,
             table_name,
+            schema_name,
             metadatas=metadatas,
             content_column=content_column,
             embedding_column=embedding_column,
@@ -546,6 +564,7 @@ class AlloyDBVectorStore(VectorStore):
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         ids: Optional[List[str]] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
@@ -562,6 +581,7 @@ class AlloyDBVectorStore(VectorStore):
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             metadatas (Optional[List[dict]]): List of metadatas to add to table records.
             ids: (Optional[List[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
@@ -579,6 +599,7 @@ class AlloyDBVectorStore(VectorStore):
             embedding,
             engine,
             table_name,
+            schema_name,
             content_column=content_column,
             embedding_column=embedding_column,
             metadata_columns=metadata_columns,
@@ -603,7 +624,7 @@ class AlloyDBVectorStore(VectorStore):
         search_function = self.distance_strategy.search_function
 
         filter = f"WHERE {filter}" if filter else ""
-        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
+        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.schema_name}\".\"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
         if self.index_query_options:
             query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             results = await self.engine._afetch_with_query_options(
@@ -931,7 +952,7 @@ class AlloyDBVectorStore(VectorStore):
             if index.name == None:
                 index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
             name = index.name
-        stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
+        stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.schema_name}\".\"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
         if concurrently:
             await self.engine._aexecute_outside_tx(stmt)
         else:
@@ -961,7 +982,7 @@ class AlloyDBVectorStore(VectorStore):
         query = f"""
         SELECT tablename, indexname
         FROM pg_indexes
-        WHERE tablename = '{self.table_name}' AND indexname = '{index_name}';
+        WHERE tablename = '{self.table_name}' AND schemaname = '{self.schema_name}' AND indexname = '{index_name}';
         """
         results = await self.engine._afetch(query)
         return bool(len(results) == 1)
