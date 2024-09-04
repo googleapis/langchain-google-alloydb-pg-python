@@ -918,9 +918,9 @@ class AlloyDBVectorStore(VectorStore):
             await self.adrop_vector_index()
             return
 
-        # Create `postgres_ann` extension when a `ScaNN` index is applied
+        # Create `alloydb_scann` extension when a `ScaNN` index is applied
         if isinstance(index, ScaNNIndex):
-            await self.engine._aexecute("CREATE EXTENSION IF NOT EXISTS postgres_ann")
+            await self.engine._aexecute("CREATE EXTENSION IF NOT EXISTS alloydb_scann")
             function = index.distance_strategy.scann_index_function
         else:
             function = index.distance_strategy.index_function
