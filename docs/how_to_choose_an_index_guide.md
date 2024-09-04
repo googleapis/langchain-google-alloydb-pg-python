@@ -28,7 +28,7 @@ HNSW (through the pgvector extension)
 - Tree-based algorithms organize data in a structured, hierarchical manner, making them efficient for lower-dimensional datasets. They offer a structured and often more resource-efficient approach to partitioning space and finding neighbors, but their performance degrades when the embeddings have high dimensionality but low information density. Examples:
 IVF (through the pgvector++ extension)
 IVFFlat (through the pgvector extension)
-ScaNN (through the postgres_ann extension)
+ScaNN (through the alloydb_scann extension available on AlloyDB Omni GA and AlloyDB Cloud private preview)
 
 Here is a comparison table between Graph-based and Tree-based Indexing algorithms:
 
