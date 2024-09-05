@@ -37,6 +37,7 @@ Notes:
 * Tests use both IAM and built-in authentication. 
   * Learn how to set up a built-in databases user at [Manage AlloyDB user roles](https://cloud.google.com/alloydb/docs/database-users/about).
   * Local tests will run against your `gcloud` credentials. Use `gcloud` to login with your personal account or a service account. This account will be used to run IAM tests. Learn how to set up access to the database at [Manage IAM authentication](https://cloud.google.com/alloydb/docs/manage-iam-authn). The "IAM_ACCOUNT" environment variable is also used to test authentication to override the local account. A personal account or a service account can be used for this test.
+  * You may need to grant access to the public schema for your new database user: `GRANT ALL ON SCHEMA public TO myaccount@example.com;`
 
 ### AlloyDB Omni Testing
 The `ScaNN` index is an AlloyDB Omni preview and is not available on Cloud AlloyDB. To test for the `ScaNN` index integration, an AlloyDB Omni instance is set up and run on a GCE VM instance. The Omni instance is listening on input traffic on the private IP address of the VM. Integration tests related to the `ScaNN` index are only run against this Omni instance, while all other index tests are run against the Cloud AlloyDB testing instance.
