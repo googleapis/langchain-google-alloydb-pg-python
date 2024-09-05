@@ -70,7 +70,6 @@ class AlloyDBVectorStore(VectorStore):
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
             id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
             distance_strategy (DistanceStrategy): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
@@ -237,17 +236,17 @@ class AlloyDBVectorStore(VectorStore):
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of an existing table.
             schema_name (str, optional): Name of the database schema. Defaults to "public".
-            content_column (str): Column that represent a Document’s page_content. Defaults to "content".
-            embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
-            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
-            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
-            distance_strategy (DistanceStrategy): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
-            k (int): Number of Documents to return from search. Defaults to 4.
-            fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
-            lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
-            index_query_options (QueryOptions): Index query option.
+            content_column (str, optional): Column that represent a Document’s page_content. Defaults to "content".
+            embedding_column (str, optional): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (List[str]): Column(s) that represent a document's metadata. Defaults to an empty list.
+            ignore_metadata_columns (Optional[List[str]]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str, optional): Column that represents the Document's id. Defaults to "langchain_id".
+            metadata_json_column (str, optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            distance_strategy (DistanceStrategy, optional): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
+            k (int, optional): Number of Documents to return from search. Defaults to 4.
+            fetch_k (int, optional): Number of Documents to fetch to pass to MMR algorithm. Defaults to 20.
+            lambda_mult (float, optional): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
+            index_query_options (Optional[QueryOptions], optional): Index query option. Defaults to None.
 
         Returns:
             AlloyDBVectorStore
@@ -419,14 +418,14 @@ class AlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
             schema_name (str, optional): Name of the database schema. Defaults to "public".
-            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
-            ids: (Optional[List[str]]): List of IDs to add to table records.
-            content_column (str): Column that represent a Document’s page_content. Defaults to "content".
-            embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
-            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
-            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            metadatas (Optional[List[dict]], optional): List of metadatas to add to table records. Defaults to None.
+            ids: (Optional[List[str]], optional): List of IDs to add to table records. Defaults to None.
+            content_column (str, optional): Column that represent a Document’s page_content. Defaults to "content".
+            embedding_column (str, optional): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (List[str], optional): Column(s) that represent a document's metadata. Defaults to an empty list.
+            ignore_metadata_columns (Optional[List[str]], optional): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str, optional): Column that represents the Document's id. Defaults to "langchain_id".
+            metadata_json_column (str, optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
             AlloyDBVectorStore
@@ -471,14 +470,13 @@ class AlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
             schema_name (str, optional): Name of the database schema. Defaults to "public".
-            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
-            ids: (Optional[List[str]]): List of IDs to add to table records.
-            content_column (str): Column that represent a Document’s page_content. Defaults to "content".
-            embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
-            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
-            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            ids: (Optional[List[str]], optional): List of IDs to add to table records. Defaults to None.
+            content_column (str, optional): Column that represent a Document’s page_content. Defaults to "content".
+            embedding_column (str, optional): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (List[str], optional): Column(s) that represent a document's metadata. Defaults to an empty list.
+            ignore_metadata_columns (Optional[List[str]], optional): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str, optional): Column that represents the Document's id. Defaults to "langchain_id".
+            metadata_json_column (str, optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
             AlloyDBVectorStore
@@ -527,14 +525,14 @@ class AlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
             schema_name (str, optional): Name of the database schema. Defaults to "public".
-            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
-            ids: (Optional[List[str]]): List of IDs to add to table records.
-            content_column (str): Column that represent a Document’s page_content. Defaults to "content".
-            embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
-            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
-            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            metadatas (Optional[List[dict]], optional): List of metadatas to add to table records. Defaults to None.
+            ids: (Optional[List[str]], optional): List of IDs to add to table records. Defaults to None.
+            content_column (str, optional): Column that represent a Document’s page_content. Defaults to "content".
+            embedding_column (str, optional): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (List[str], optional): Column(s) that represent a document's metadata. Defaults to empty list.
+            ignore_metadata_columns (Optional[List[str]], optional): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str, optional): Column that represents the Document's id. Defaults to "langchain_id".
+            metadata_json_column (str, optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
             AlloyDBVectorStore
@@ -582,14 +580,13 @@ class AlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
             schema_name (str, optional): Name of the database schema. Defaults to "public".
-            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
-            ids: (Optional[List[str]]): List of IDs to add to table records.
-            content_column (str): Column that represent a Document’s page_content. Defaults to "content".
-            embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
-            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
-            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            ids: (Optional[List[str]], optional): List of IDs to add to table records. Defaults to None.
+            content_column (str, optional): Column that represent a Document’s page_content. Defaults to "content".
+            embedding_column (str, optional): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (List[str], optional): Column(s) that represent a document's metadata. Defaults to an empty list.
+            ignore_metadata_columns (Optional[List[str]], optional): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str, optional): Column that represents the Document's id. Defaults to "langchain_id".
+            metadata_json_column (str, optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
             AlloyDBVectorStore

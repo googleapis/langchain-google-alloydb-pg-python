@@ -600,10 +600,15 @@ class AlloyDBEngine:
         self, table_name: str, schema_name: str = "public"
     ) -> Table:
         """
-        Load table schema from existing table in PgSQL database.
+        Load table schema from an existing table in a PgSQL database, potentially from a specific database schema.
+
+        Args:
+            table_name: The name of the table to load the table schema from.
+            schema_name: The name of the database schema where the table resides.
+                Default: "public".
 
         Returns:
-            (sqlalchemy.Table): The loaded table.
+            (sqlalchemy.Table): The loaded table, including its table schema information.
         """
         metadata = MetaData()
         async with self._engine.connect() as conn:
