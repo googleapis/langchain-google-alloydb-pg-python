@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import Future
 from dataclasses import dataclass
 from threading import Thread
 from typing import (
@@ -23,7 +24,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    Sequence,
     Type,
     TypeVar,
     Union,
@@ -32,8 +32,13 @@ from typing import (
 import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
-from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrategy
+from google.cloud.alloydb.connector import (
+    AsyncConnector,
+    IPTypes,
+    RefreshStrategy,
+)
 from sqlalchemy import MetaData, RowMapping, Table, text
+from sqlalchemy.engine import URL
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -70,7 +75,9 @@ async def _get_iam_principal_email(
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
     if hasattr(credentials, "_service_account_email"):
-        return credentials._service_account_email.replace(".gserviceaccount.com", "")
+        return credentials._service_account_email.replace(
+            ".gserviceaccount.com", ""
+        )
     # call OAuth2 api to get IAM principal email associated with OAuth2 token
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={credentials.token}"
     async with aiohttp.ClientSession() as client:
@@ -109,22 +116,24 @@ class AlloyDBEngine:
     """A class for managing connections to a AlloyDB database."""
 
     _connector: Optional[AsyncConnector] = None
+    _default_loop: Optional[asyncio.AbstractEventLoop] = None
+    _default_thread: Optional[Thread] = None
     __create_key = object()
 
     def __init__(
         self,
         key: object,
-        engine: AsyncEngine,
+        pool: AsyncEngine,
         loop: Optional[asyncio.AbstractEventLoop],
         thread: Optional[Thread],
     ) -> None:
         """AlloyDBEngine constructor.
 
         Args:
-            key(object): Prevent direct constructor usage.
-            engine(AsyncEngine): Async engine connection pool.
+            key (object): Prevent direct constructor usage.
+            engine (AsyncEngine): Async engine connection pool.
             loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
-            thread (Optional[Thread] = None): Thread used to create the engine async.
+            thread (Optional[Thread]): Thread used to create the engine async.
 
         Raises:
             Exception: If the constructor is called directly by the user.
@@ -134,9 +143,45 @@ class AlloyDBEngine:
             raise Exception(
                 "Only create class through 'create' or 'create_sync' methods!"
             )
-        self._engine = engine
+        self._pool = pool
         self._loop = loop
         self._thread = thread
+
+    @classmethod
+    def __start_background_loop(
+        cls,
+        project_id: str,
+        region: str,
+        cluster: str,
+        instance: str,
+        database: str,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
+        iam_account_email: Optional[str] = None,
+    ) -> Future:
+        # Running a loop in a background thread allows us to support
+        # async methods from non-async environments
+        if cls._default_loop is None:
+            cls._default_loop = asyncio.new_event_loop()
+            cls._default_thread = Thread(
+                target=cls._default_loop.run_forever, daemon=True
+            )
+            cls._default_thread.start()
+        coro = cls._create(
+            project_id,
+            region,
+            cluster,
+            instance,
+            database,
+            ip_type,
+            user,
+            password,
+            loop=cls._default_loop,
+            thread=cls._default_thread,
+            iam_account_email=iam_account_email,
+        )
+        return asyncio.run_coroutine_threadsafe(coro, cls._default_loop)
 
     @classmethod
     def from_instance(
@@ -159,33 +204,26 @@ class AlloyDBEngine:
             cluster (str): Cloud AlloyDB cluster name.
             instance (str): Cloud AlloyDB instance name.
             database (str): Database name.
-            user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
-            password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
+            user (Optional[str]): Cloud AlloyDB user name. Defaults to None.
+            password (Optional[str]): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
         """
-        # Running a loop in a background thread allows us to support
-        # async methods from non-async environments
-        loop = asyncio.new_event_loop()
-        thread = Thread(target=loop.run_forever, daemon=True)
-        thread.start()
-        coro = cls._create(
+        future = cls.__start_background_loop(
             project_id,
             region,
             cluster,
             instance,
             database,
-            ip_type,
             user,
             password,
-            loop=loop,
-            thread=thread,
+            ip_type,
             iam_account_email=iam_account_email,
         )
-        return asyncio.run_coroutine_threadsafe(coro, loop).result()
+        return future.result()
 
     @classmethod
     async def _create(
@@ -210,12 +248,12 @@ class AlloyDBEngine:
             cluster (str): Cloud AlloyDB cluster name.
             instance (str): Cloud AlloyDB instance name.
             database (str): Database name.
-            ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
-            user (Optional[str], optional): Cloud AlloyDB user name. Defaults to None.
-            password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
+            ip_type (Union[str, IPTypes]): IP address type. Defaults to IPTypes.PUBLIC.
+            user (Optional[str]): Cloud AlloyDB user name. Defaults to None.
+            password (Optional[str]): Cloud AlloyDB user password. Defaults to None.
             loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
-            thread (Optional[Thread] = None): Thread used to create the engine async.
-            iam_account_email (Optional[str], optional): IAM service account email.
+            thread (Optional[Thread]): Thread used to create the engine async.
+            iam_account_email (Optional[str]): IAM service account email.
 
         Raises:
             ValueError: Raises error if only one of 'user' or 'password' is specified.
@@ -300,71 +338,145 @@ class AlloyDBEngine:
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
         """
-        return await cls._create(
+        future = cls.__start_background_loop(
             project_id,
             region,
             cluster,
             instance,
             database,
-            ip_type,
             user,
             password,
+            ip_type,
             iam_account_email=iam_account_email,
         )
+        return await asyncio.wrap_future(future)
 
     @classmethod
-    def from_engine(cls: Type[AlloyDBEngine], engine: AsyncEngine) -> AlloyDBEngine:
+    def from_engine(
+        cls: Type[AlloyDBEngine],
+        engine: AsyncEngine,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AlloyDBEngine:
         """Create an AlloyDBEngine instance from an AsyncEngine."""
-        return cls(cls.__create_key, engine, None, None)
+        return cls(cls.__create_key, engine, loop, None)
 
-    async def _aexecute(self, query: str, params: Optional[dict] = None) -> None:
-        """Execute a SQL query."""
-        async with self._engine.connect() as conn:
-            await conn.execute(text(query), params)
-            await conn.commit()
+    @classmethod
+    def from_engine_args(
+        cls,
+        url: Union[str | URL],
+        **kwargs: Any,
+    ) -> AlloyDBEngine:
+        """Create an AlloyDBEngine instance from arguments
 
-    async def _aexecute_outside_tx(self, query: str) -> None:
-        """Execute a SQL query in a new transaction."""
-        async with self._engine.connect() as conn:
-            await conn.execute(text("COMMIT"))
-            await conn.execute(text(query))
+        Args:
+            url (Optional[str]): the URL used to connect to a database. Use url or set other arguments.
 
-    async def _afetch_with_query_options(
-        self, query: str, query_options: str
-    ) -> Sequence[RowMapping]:
-        """Set temporary database flags and fetch results from a SQL query."""
-        async with self._engine.connect() as conn:
-            await conn.execute(text(query_options))
-            result = await conn.execute(text(query))
-            result_map = result.mappings()
-            result_fetch = result_map.fetchall()
+        Raises:
+            ValueError: If not all database url arguments are specified
 
-        return result_fetch
+        Returns:
+            AlloyDBEngine
+        """
+        # Running a loop in a background thread allows us to support
+        # async methods from non-async environments
+        if cls._default_loop is None:
+            cls._default_loop = asyncio.new_event_loop()
+            cls._default_thread = Thread(
+                target=cls._default_loop.run_forever, daemon=True
+            )
+            cls._default_thread.start()
 
-    async def _afetch(
-        self, query: str, params: Optional[dict] = None
-    ) -> Sequence[RowMapping]:
-        """Fetch results from a SQL query."""
-        async with self._engine.connect() as conn:
-            result = await conn.execute(text(query), params)
-            result_map = result.mappings()
-            result_fetch = result_map.fetchall()
+        driver = "postgresql+asyncpg"
+        if (isinstance(url, str) and not url.startswith(driver)) or (
+            isinstance(url, URL) and url.drivername != driver
+        ):
+            raise ValueError("Driver must be type 'postgresql+asyncpg'")
 
-        return result_fetch
+        engine = create_async_engine(url, **kwargs)
+        return cls(
+            cls.__create_key, engine, cls._default_loop, cls._default_thread
+        )
 
-    def _execute(self, query: str, params: Optional[dict] = None) -> None:
-        """Execute a SQL query."""
-        return self._run_as_sync(self._aexecute(query, params))
-
-    def _fetch(self, query: str, params: Optional[dict] = None) -> Sequence[RowMapping]:
-        """Fetch results from a SQL query."""
-        return self._run_as_sync(self._afetch(query, params))
+    async def _run_as_async(self, coro: Awaitable[T]) -> T:
+        """Run an async coroutine asynchronously"""
+        # If a loop has not been provided, attempt to run in current thread
+        if not self._loop:
+            return await coro
+        # Otherwise, run in the background thread
+        return await asyncio.wrap_future(
+            asyncio.run_coroutine_threadsafe(coro, self._loop)
+        )
 
     def _run_as_sync(self, coro: Awaitable[T]) -> T:
         """Run an async coroutine synchronously"""
         if not self._loop:
-            raise Exception("Engine was initialized async.")
+            raise Exception(
+                "Engine was initialized without a background loop and cannot call sync methods."
+            )
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+
+    async def close(self) -> None:
+        """Dispose of connection pool"""
+        await self._pool.dispose()
+
+    async def _ainit_vectorstore_table(
+        self,
+        table_name: str,
+        vector_size: int,
+        content_column: str = "content",
+        embedding_column: str = "embedding",
+        metadata_columns: List[Column] = [],
+        metadata_json_column: str = "langchain_metadata",
+        id_column: str = "langchain_id",
+        overwrite_existing: bool = False,
+        store_metadata: bool = True,
+    ) -> None:
+        """
+        Create a table for saving of vectors to be used with AlloyDBVectorStore.
+
+        Args:
+            table_name (str): The Postgres database table name.
+            vector_size (int): Vector size for the embedding model to be used.
+            content_column (str): Name of the column to store document content.
+                Default: "page_content".
+            embedding_column (str) : Name of the column to store vector embeddings.
+                Default: "embedding".
+            metadata_columns (List[Column]): A list of Columns to create for custom
+                metadata. Default: []. Optional.
+            metadata_json_column (str): The column to store extra metadata in JSON format.
+                Default: "langchain_metadata". Optional.
+            id_column (str):  Name of the column to store ids.
+                Default: "langchain_id". Optional,
+            overwrite_existing (bool): Whether to drop existing table. Default: False.
+            store_metadata (bool): Whether to store metadata in the table.
+                Default: True.
+
+        Raises:
+            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists and overwrite flag is not set.
+        """
+        async with self._pool.connect() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.commit()
+
+        if overwrite_existing:
+            async with self._pool.connect() as conn:
+                await conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+                await conn.commit()
+
+        query = f"""CREATE TABLE "{table_name}"(
+            "{id_column}" UUID PRIMARY KEY,
+            "{content_column}" TEXT NOT NULL,
+            "{embedding_column}" vector({vector_size}) NOT NULL"""
+        for column in metadata_columns:
+            nullable = "NOT NULL" if not column.nullable else ""
+            query += f',\n"{column.name}" {column.data_type} {nullable}'
+        if store_metadata:
+            query += f""",\n"{metadata_json_column}" JSON"""
+        query += "\n);"
+
+        async with self._pool.connect() as conn:
+            await conn.execute(text(query))
+            await conn.commit()
 
     async def ainit_vectorstore_table(
         self,
@@ -380,11 +492,10 @@ class AlloyDBEngine:
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of vectors to be used with AlloyDB.
-        If table already exists and overwrite flag is not set, a TABLE_ALREADY_EXISTS error is thrown.
+        Create a table for saving of vectors to be used with AlloyDBVectorStore.
 
         Args:
-            table_name (str): The table name.
+            table_name (str): The Postgres database table name.
             vector_size (int): Vector size for the embedding model to be used.
             schema_name (str): The schema name.
                 Default: "public".
@@ -398,30 +509,24 @@ class AlloyDBEngine:
                 Default: "langchain_metadata". Optional.
             id_column (str):  Name of the column to store ids.
                 Default: "langchain_id". Optional,
-            overwrite_existing (bool): Whether to drop the existing table before insertion.
-                Default: False.
-            store_metadata (bool): Whether to store metadata in a JSON column if not specified by `metadata_columns`.
+            overwrite_existing (bool): Whether to drop existing table. Default: False.
+            store_metadata (bool): Whether to store metadata in the table.
                 Default: True.
-        Raises:
-            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
         """
-        await self._aexecute("CREATE EXTENSION IF NOT EXISTS vector")
-
-        if overwrite_existing:
-            await self._aexecute(f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}"')
-
-        query = f"""CREATE TABLE "{schema_name}"."{table_name}"(
-            "{id_column}" UUID PRIMARY KEY,
-            "{content_column}" TEXT NOT NULL,
-            "{embedding_column}" vector({vector_size}) NOT NULL"""
-        for column in metadata_columns:
-            nullable = "NOT NULL" if not column.nullable else ""
-            query += f',\n"{column.name}" {column.data_type} {nullable}'
-        if store_metadata:
-            query += f',\n"{metadata_json_column}" JSON'
-        query += "\n);"
-
-        await self._aexecute(query)
+        await self._run_as_async(
+            self._ainit_vectorstore_table(
+                table_name,
+                vector_size,
+                schema_name,
+                content_column,
+                embedding_column,
+                metadata_columns,
+                metadata_json_column,
+                id_column,
+                overwrite_existing,
+                store_metadata,
+            )
+        )
 
     def init_vectorstore_table(
         self,
@@ -437,11 +542,10 @@ class AlloyDBEngine:
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of vectors to be used with AlloyDB.
-        If table already exists and overwrite flag is not set, a TABLE_ALREADY_EXISTS error is thrown.
+        Create a table for saving of vectors to be used with AlloyDBVectorStore.
 
         Args:
-            table_name (str): The table name.
+            table_name (str): The Postgres database table name.
             vector_size (int): Vector size for the embedding model to be used.
             schema_name (str): The schema name.
                 Default: "public".
@@ -455,15 +559,12 @@ class AlloyDBEngine:
                 Default: "langchain_metadata". Optional.
             id_column (str):  Name of the column to store ids.
                 Default: "langchain_id". Optional,
-            overwrite_existing (bool): Whether to drop the existing table before insertion.
-                Default: False.
-            store_metadata (bool): Whether to store metadata in a JSON column if not specified by `metadata_columns`.
+            overwrite_existing (bool): Whether to drop existing table. Default: False.
+            store_metadata (bool): Whether to store metadata in the table.
                 Default: True.
-        Raises:
-            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
         """
-        return self._run_as_sync(
-            self.ainit_vectorstore_table(
+        self._run_as_sync(
+            self._ainit_vectorstore_table(
                 table_name,
                 vector_size,
                 schema_name,
@@ -477,7 +578,7 @@ class AlloyDBEngine:
             )
         )
 
-    async def ainit_chat_history_table(
+    async def _ainit_chat_history_table(
         self, table_name: str, schema_name: str = "public"
     ) -> None:
         """
@@ -497,13 +598,14 @@ class AlloyDBEngine:
             data JSONB NOT NULL,
             type TEXT NOT NULL
         );"""
-        await self._aexecute(create_table_query)
+        async with self._pool.connect() as conn:
+            await conn.execute(text(create_table_query))
+            await conn.commit()
 
-    def init_chat_history_table(
+    async def ainit_chat_history_table(
         self, table_name: str, schema_name: str = "public"
     ) -> None:
-        """
-        Create an AlloyDB table to save chat history messages.
+        """Create an AlloyDB table to save chat history messages.
 
         Args:
             table_name (str): The table name to store chat history.
@@ -513,14 +615,29 @@ class AlloyDBEngine:
         Returns:
             None
         """
-        return self._run_as_sync(
-            self.ainit_chat_history_table(
+        await self._run_as_async(
+            self._ainit_chat_history_table(
                 table_name,
                 schema_name,
             )
         )
 
-    async def ainit_document_table(
+    def init_chat_history_table(self, table_name: str) -> None:
+        """Create a Cloud SQL table to store chat history.
+
+        Args:
+            table_name (str): Table name to store chat history.
+
+        Returns:
+            None
+        """
+        self._run_as_sync(
+            self._ainit_chat_history_table(
+                table_name,
+            )
+        )
+
+    async def _ainit_document_table(
         self,
         table_name: str,
         schema_name: str = "public",
@@ -557,7 +674,44 @@ class AlloyDBEngine:
             query += f',\n"{metadata_json_column}" JSON'
         query += "\n);"
 
-        await self._aexecute(query)
+        async with self._pool.connect() as conn:
+            await conn.execute(text(query))
+            await conn.commit()
+
+    async def ainit_document_table(
+        self,
+        table_name: str,
+        content_column: str = "page_content",
+        metadata_columns: List[Column] = [],
+        metadata_json_column: str = "langchain_metadata",
+        store_metadata: bool = True,
+    ) -> None:
+        """
+        Create a table for saving of langchain documents.
+
+        Args:
+            table_name (str): The PgSQL database table name.
+            content_column (str): Name of the column to store document content.
+                Default: "page_content".
+            metadata_columns (List[sqlalchemy.Column]): A list of SQLAlchemy Columns
+                to create for custom metadata. Optional.
+            metadata_json_column (str): The column to store extra metadata in JSON format.
+                Default: "langchain_metadata". Optional.
+            store_metadata (bool): Whether to store extra metadata in a metadata column
+                if not described in 'metadata' field list (Default: True).
+
+        Raises:
+            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
+        """
+        await self._run_as_async(
+            self._ainit_document_table(
+                table_name,
+                content_column,
+                metadata_columns,
+                metadata_json_column,
+                store_metadata,
+            )
+        )
 
     def init_document_table(
         self,
@@ -570,7 +724,6 @@ class AlloyDBEngine:
     ) -> None:
         """
         Create a table for saving of langchain documents.
-        If table already exists, a DuplicateTableError error is thrown.
 
         Args:
             table_name (str): The PgSQL database table name.
@@ -578,15 +731,18 @@ class AlloyDBEngine:
                 Default: "public".
             content_column (str): Name of the column to store document content.
                 Default: "page_content".
-            metadata_columns (List[Column]): A list of Columns
+            metadata_columns (List[sqlalchemy.Column]): A list of SQLAlchemy Columns
                 to create for custom metadata. Optional.
             metadata_json_column (str): The column to store extra metadata in JSON format.
                 Default: "langchain_metadata". Optional.
             store_metadata (bool): Whether to store extra metadata in a metadata column
                 if not described in 'metadata' field list (Default: True).
+
+        Raises:
+            :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
         """
-        return self._run_as_sync(
-            self.ainit_document_table(
+        self._run_as_sync(
+            self._ainit_document_table(
                 table_name,
                 schema_name,
                 content_column,
@@ -611,14 +767,15 @@ class AlloyDBEngine:
             (sqlalchemy.Table): The loaded table, including its table schema information.
         """
         metadata = MetaData()
-        async with self._engine.connect() as conn:
+        async with self._pool.connect() as conn:
             try:
                 await conn.run_sync(
                     metadata.reflect, schema=schema_name, only=[table_name]
                 )
             except InvalidRequestError as e:
                 raise ValueError(
-                    f"Table, '{schema_name}'.'{table_name}', does not exist: " + str(e)
+                    f"Table, '{schema_name}'.'{table_name}', does not exist: "
+                    + str(e)
                 )
 
         table = Table(table_name, metadata, schema=schema_name)
