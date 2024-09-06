@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import os
 import sys
 import uuid
@@ -21,6 +22,7 @@ import pytest_asyncio
 import sqlalchemy
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
@@ -41,9 +43,12 @@ embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 texts = ["foo", "bar", "baz"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
-metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
+metadatas = [
+    {"page": str(i), "source": "google.com"} for i in range(len(texts))
+]
 docs = [
-    Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
+    Document(page_content=texts[i], metadata=metadatas[i])
+    for i in range(len(texts))
 ]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
@@ -54,6 +59,18 @@ def get_env_var(key: str, desc: str) -> str:
     if v is None:
         raise ValueError(f"Must set env var {key} to: {desc}")
     return v
+
+
+async def aexecute(
+    engine: AlloyDBEngine,
+    query: str,
+) -> None:
+    async def run(engine, query):
+        async with engine._pool.connect() as conn:
+            await conn.execute(text(query))
+            await conn.commit()
+
+    await engine._run_as_async(run(engine, query))
 
 
 @pytest.mark.asyncio(scope="class")
@@ -68,26 +85,115 @@ class TestIndex:
 
     @pytest.fixture(scope="module")
     def db_cluster(self) -> str:
-        return get_env_var("CLUSTER_ID", "cluster for AlloyDB instance")
+        return get_env_var("CLUSTER_ID", "cluster for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_instance(self) -> str:
-        return get_env_var("INSTANCE_ID", "instance for alloydb")
+        return get_env_var("INSTANCE_ID", "instance for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_name(self) -> str:
-        return get_env_var("DATABASE_ID", "database name for AlloyDB")
+        return get_env_var("DATABASE_ID", "instance for AlloyDB")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_instance, db_cluster, db_name):
-        engine = await AlloyDBEngine.afrom_instance(
+    async def engine(
+        self, db_project, db_region, db_cluster, db_instance, db_name
+    ):
+        engine = AlloyDBEngine.from_instance(
             project_id=db_project,
+            cluster=db_cluster,
             instance=db_instance,
             region=db_region,
-            cluster=db_cluster,
             database=db_name,
         )
         yield engine
+        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
+        await engine.close()
+
+    @pytest_asyncio.fixture(scope="class")
+    async def vs(self, engine):
+        engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        vs = AlloyDBVectorStore.create_sync(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=DEFAULT_TABLE,
+        )
+
+        vs.add_texts(texts, ids=ids)
+        vs.drop_vector_index()
+        yield vs
+
+    async def test_aapply_vector_index(self, vs):
+        index = HNSWIndex()
+        vs.apply_vector_index(index)
+        assert vs.is_valid_index(DEFAULT_INDEX_NAME)
+
+    async def test_areindex(self, vs):
+        if not vs.is_valid_index(DEFAULT_INDEX_NAME):
+            index = HNSWIndex()
+            vs.apply_vector_index(index)
+        vs.reindex()
+        vs.reindex(DEFAULT_INDEX_NAME)
+        assert vs.is_valid_index(DEFAULT_INDEX_NAME)
+
+    async def test_dropindex(self, vs):
+        vs.drop_vector_index()
+        result = vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert not result
+
+    async def test_aapply_vector_index_ivfflat(self, vs):
+        index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        vs.apply_vector_index(index, concurrently=True)
+        assert vs.is_valid_index(DEFAULT_INDEX_NAME)
+        index = IVFFlatIndex(
+            name="secondindex",
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+        )
+        vs.apply_vector_index(index)
+        assert vs.is_valid_index("secondindex")
+        vs.drop_vector_index("secondindex")
+
+    async def test_is_valid_index(self, vs):
+        is_valid = vs.is_valid_index("invalid_index")
+        assert is_valid == False
+
+
+@pytest.mark.asyncio(scope="class")
+class TestAsyncIndex:
+    @pytest.fixture(scope="module")
+    def db_project(self) -> str:
+        return get_env_var("PROJECT_ID", "project id for google cloud")
+
+    @pytest.fixture(scope="module")
+    def db_region(self) -> str:
+        return get_env_var("REGION", "region for AlloyDB instance")
+
+    @pytest.fixture(scope="module")
+    def db_cluster(self) -> str:
+        return get_env_var("CLUSTER_ID", "cluster for AlloyDB")
+
+    @pytest.fixture(scope="module")
+    def db_instance(self) -> str:
+        return get_env_var("INSTANCE_ID", "instance for AlloyDB")
+
+    @pytest.fixture(scope="module")
+    def db_name(self) -> str:
+        return get_env_var("DATABASE_ID", "instance for AlloyDB")
+
+    @pytest_asyncio.fixture(scope="class")
+    async def engine(
+        self, db_project, db_region, db_cluster, db_instance, db_name
+    ):
+        engine = await AlloyDBEngine.afrom_instance(
+            project_id=db_project,
+            instance=db_instance,
+            cluster=db_cluster,
+            region=db_region,
+            database=db_name,
+        )
+        yield engine
+        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
+        await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
@@ -101,8 +207,6 @@ class TestIndex:
         await vs.aadd_texts(texts, ids=ids)
         await vs.adrop_vector_index()
         yield vs
-        await engine._aexecute(f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
-        await engine._engine.dispose()
 
     @pytest.fixture(scope="module")
     def omni_host(self) -> str:
@@ -130,6 +234,8 @@ class TestIndex:
         async_engine = sqlalchemy.ext.asyncio.create_async_engine(connstring)
         omni_engine = AlloyDBEngine.from_engine(async_engine)
         yield omni_engine
+        await aexecute(omni_engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
+        await omni_engine.close()
 
     @pytest_asyncio.fixture(scope="class")
     async def omni_vs(self, omni_engine):
@@ -140,39 +246,40 @@ class TestIndex:
             table_name=DEFAULT_TABLE,
         )
         yield vs
-        await omni_engine._aexecute(f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
-        await omni_engine._engine.dispose()
 
     async def test_aapply_vector_index(self, vs):
         index = HNSWIndex()
         await vs.aapply_vector_index(index)
-        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
 
     async def test_areindex(self, vs):
-        if not await vs.is_valid_index(DEFAULT_INDEX_NAME):
+        if not await vs.ais_valid_index(DEFAULT_INDEX_NAME):
             index = HNSWIndex()
             await vs.aapply_vector_index(index)
         await vs.areindex()
         await vs.areindex(DEFAULT_INDEX_NAME)
-        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
 
     async def test_dropindex(self, vs):
         await vs.adrop_vector_index()
-        result = await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        result = await vs.ais_valid_index(DEFAULT_INDEX_NAME)
         assert not result
 
     async def test_aapply_vector_index_ivfflat(self, vs):
         index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
-        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
         index = IVFFlatIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
         )
         await vs.aapply_vector_index(index)
-        assert await vs.is_valid_index("secondindex")
+        assert await vs.ais_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
-        await vs.adrop_vector_index()
+
+    async def test_is_valid_index(self, vs):
+        is_valid = await vs.ais_valid_index("invalid_index")
+        assert is_valid == False
 
     async def test_aapply_vector_index_ivf(self, vs):
         index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
@@ -183,11 +290,11 @@ class TestIndex:
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
         )
         await vs.aapply_vector_index(index)
-        assert await vs.is_valid_index("secondindex")
+        assert await vs.ais_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
         await vs.adrop_vector_index()
 
-    async def test_aapply_alloydb_scann_index_ScaNN(self, omni_vs):
+    async def test_aapply_postgres_ann_index_ScaNN(self, omni_vs):
         index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
@@ -197,6 +304,6 @@ class TestIndex:
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
         await omni_vs.aapply_vector_index(index)
-        assert await omni_vs.is_valid_index("secondindex")
+        assert await omni_vs.ais_valid_index("secondindex")
         await omni_vs.adrop_vector_index("secondindex")
         await omni_vs.adrop_vector_index()
