@@ -28,7 +28,7 @@ steps:
     entrypoint: sh
     args:
       - -c
-      - "wget -O /workspace/alloydb-auth-proxy https://storage.googleapis.com/alloydb-auth-proxy/v1.11./alloydb-auth-proxy.linux.amd64 &&  chmod +x /workspace/alloydb-auth-proxy"
+      - "wget -O /workspace/alloydb-auth-proxy https://storage.googleapis.com/alloydb-auth-proxy/v1.11.0/alloydb-auth-proxy.linux.386 &&  chmod +x /workspace/alloydb-auth-proxy"
 
   - id: Run integration tests
     name: "${_IMAGE_NAME}-proxy"
