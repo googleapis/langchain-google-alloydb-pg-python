@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import List, Sequence
 
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import BaseMessage, messages_from_dict
+from langchain_core.messages import BaseMessage
 
 from .async_chat_message_history import AsyncAlloyDBChatMessageHistory
 from .engine import AlloyDBEngine
@@ -49,7 +49,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
                 "Only create class through 'create' or 'create_sync' methods!"
             )
         self._engine = engine
-        self._history = history
+        self.__history = history
 
     @classmethod
     async def create(
@@ -74,7 +74,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
             AlloyDBChatMessageHistory: A newly created instance of AlloyDBChatMessageHistory.
         """
         coro = AsyncAlloyDBChatMessageHistory.create(
-            engine, session_id, table_name
+            engine, session_id, table_name, schema_name
         )
         history = await engine._run_as_async(coro)
         return cls(cls.__create_key, engine, history)
@@ -102,7 +102,7 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
             AlloyDBChatMessageHistory: A newly created instance of AlloyDBChatMessageHistory.
         """
         coro = AsyncAlloyDBChatMessageHistory.create(
-            engine, session_id, table_name
+            engine, session_id, table_name, schema_name
         )
         history = engine._run_as_sync(coro)
         return cls(cls.__create_key, engine, history)
@@ -110,28 +110,28 @@ class AlloyDBChatMessageHistory(BaseChatMessageHistory):
     @property  # type: ignore[override]
     def messages(self) -> List[BaseMessage]:
         """The abstraction required a property."""
-        return self._engine._run_as_sync(self._history._aget_messages())
+        return self._engine._run_as_sync(self.__history._aget_messages())
 
     async def aadd_message(self, message: BaseMessage) -> None:
-        """Append the message to the record in PostgreSQL"""
-        await self._engine._run_as_async(self._history.aadd_message(message))
+        """Append the message to the record in AlloyDB"""
+        await self._engine._run_as_async(self.__history.aadd_message(message))
 
     def add_message(self, message: BaseMessage) -> None:
-        """Append the message to the record in PostgreSQL"""
-        self._engine._run_as_sync(self._history.aadd_message(message))
+        """Append the message to the record in AlloyDB"""
+        self._engine._run_as_sync(self.__history.aadd_message(message))
 
     async def aadd_messages(self, messages: Sequence[BaseMessage]) -> None:
-        """Append a list of messages to the record in PostgreSQL"""
-        await self._engine._run_as_async(self._history.aadd_messages(messages))
+        """Append a list of messages to the record in AlloyDB"""
+        await self._engine._run_as_async(self.__history.aadd_messages(messages))
 
     def add_messages(self, messages: Sequence[BaseMessage]) -> None:
-        """Append a list of messages to the record in PostgreSQL"""
-        self._engine._run_as_sync(self._history.aadd_messages(messages))
+        """Append a list of messages to the record in AlloyDB"""
+        self._engine._run_as_sync(self.__history.aadd_messages(messages))
 
     async def aclear(self) -> None:
-        """Clear session memory from PostgreSQL"""
-        await self._engine._run_as_async(self._history.aclear())
+        """Clear session memory from AlloyDB"""
+        await self._engine._run_as_async(self.__history.aclear())
 
     def clear(self) -> None:
-        """Clear session memory from PostgreSQL"""
-        self._engine._run_as_sync(self._history.aclear())
+        """Clear session memory from AlloyDB"""
+        self._engine._run_as_sync(self.__history.aclear())

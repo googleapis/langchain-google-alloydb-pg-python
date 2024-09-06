@@ -24,9 +24,7 @@ from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine
-from langchain_google_alloydb_pg.async_vectorstore import (
-    AsyncAlloyDBVectorStore,
-)
+from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
     DEFAULT_INDEX_NAME_SUFFIX,
     DistanceStrategy,
@@ -43,12 +41,9 @@ embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 texts = ["foo", "bar", "baz"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
-metadatas = [
-    {"page": str(i), "source": "google.com"} for i in range(len(texts))
-]
+metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
-    Document(page_content=texts[i], metadata=metadatas[i])
-    for i in range(len(texts))
+    Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
@@ -90,9 +85,7 @@ class TestIndex:
         return get_env_var("DATABASE_ID", "instance for AlloyDB")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,

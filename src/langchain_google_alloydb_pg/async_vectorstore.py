@@ -17,17 +17,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 from langchain_core.documents import Document
@@ -59,6 +49,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         engine: AsyncEngine,
         embedding_service: Embeddings,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -76,6 +67,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of the existing table or the table to be created.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -99,6 +91,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self.engine = engine
         self.embedding_service = embedding_service
         self.table_name = table_name
+        self.schema_name = schema_name
         self.content_column = content_column
         self.embedding_column = embedding_column
         self.metadata_columns = metadata_columns
@@ -116,6 +109,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -134,6 +128,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             embedding_service (Embeddings): Text embedding model to use.
             table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
             metadata_columns (List[str]): Column(s) that represent a document's metadata.
@@ -154,7 +149,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 "Can not use both metadata_columns and ignore_metadata_columns."
             )
         # Get field type information
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}'"
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}' AND table_schema = '{schema_name}'"
         async with engine._pool.connect() as conn:
             result = await conn.execute(text(stmt))
             result_map = result.mappings()
@@ -167,27 +162,21 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if id_column not in columns:
             raise ValueError(f"Id column, {id_column}, does not exist.")
         if content_column not in columns:
-            raise ValueError(
-                f"Content column, {content_column}, does not exist."
-            )
+            raise ValueError(f"Content column, {content_column}, does not exist.")
         content_type = columns[content_column]
         if content_type != "text" and "char" not in content_type:
             raise ValueError(
                 f"Content column, {content_column}, is type, {content_type}. It must be a type of character string."
             )
         if embedding_column not in columns:
-            raise ValueError(
-                f"Embedding column, {embedding_column}, does not exist."
-            )
+            raise ValueError(f"Embedding column, {embedding_column}, does not exist.")
         if columns[embedding_column] != "USER-DEFINED":
             raise ValueError(
                 f"Embedding column, {embedding_column}, is not type Vector."
             )
 
         metadata_json_column = (
-            None
-            if metadata_json_column not in columns
-            else metadata_json_column
+            None if metadata_json_column not in columns else metadata_json_column
         )
 
         # If using metadata_columns check to make sure column exists
@@ -211,16 +200,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
             engine._pool,
             embedding_service,
             table_name,
-            content_column,
-            embedding_column,
-            metadata_columns,
-            id_column,
-            metadata_json_column,
-            distance_strategy,
-            k,
-            fetch_k,
-            lambda_mult,
-            index_query_options,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            id_column=id_column,
+            metadata_json_column=metadata_json_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
         )
 
     @property
@@ -241,15 +231,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if not metadatas:
             metadatas = [{} for _ in texts]
         # Insert embeddings
-        for id, content, embedding, metadata in zip(
-            ids, texts, embeddings, metadatas
-        ):
+        for id, content, embedding, metadata in zip(ids, texts, embeddings, metadatas):
             metadata_col_names = (
                 ", " + ", ".join(self.metadata_columns)
                 if len(self.metadata_columns) > 0
                 else ""
             )
-            insert_stmt = f'INSERT INTO "{self.table_name}"({self.id_column}, {self.content_column}, {self.embedding_column}{metadata_col_names}'
+            insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"({self.id_column}, {self.content_column}, {self.embedding_column}{metadata_col_names}'
             values = {"id": id, "content": content, "embedding": str(embedding)}
             values_stmt = "VALUES (:id, :content, :embedding"
 
@@ -265,9 +253,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
             # Add JSON column and/or close statement
             insert_stmt += (
-                f", {self.metadata_json_column})"
-                if self.metadata_json_column
-                else ")"
+                f", {self.metadata_json_column})" if self.metadata_json_column else ")"
             )
             if self.metadata_json_column:
                 values_stmt += ", :extra)"
@@ -305,9 +291,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """Embed documents and add to the table."""
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
-        ids = await self.aadd_texts(
-            texts, metadatas=metadatas, ids=ids, **kwargs
-        )
+        ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
         return ids
 
     async def adelete(
@@ -320,7 +304,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             return False
 
         id_list = ", ".join([f"'{id}'" for id in ids])
-        query = f'DELETE FROM "{self.table_name}" WHERE {self.id_column} in ({id_list})'
+        query = f'DELETE FROM "{self.schema_name}"."{self.table_name}" WHERE {self.id_column} in ({id_list})'
         async with self.engine.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
@@ -333,6 +317,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
         content_column: str = "content",
@@ -376,17 +361,18 @@ class AsyncAlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
-            content_column,
-            embedding_column,
-            metadata_columns,
-            ignore_metadata_columns,
-            id_column,
-            metadata_json_column,
-            distance_strategy,
-            k,
-            fetch_k,
-            lambda_mult,
-            index_query_options,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            ignore_metadata_columns=ignore_metadata_columns,
+            id_column=id_column,
+            metadata_json_column=metadata_json_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
         )
         await vs.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
         return vs
@@ -398,6 +384,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         ids: Optional[List[str]] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
@@ -441,17 +428,18 @@ class AsyncAlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
-            content_column,
-            embedding_column,
-            metadata_columns,
-            ignore_metadata_columns,
-            id_column,
-            metadata_json_column,
-            distance_strategy,
-            k,
-            fetch_k,
-            lambda_mult,
-            index_query_options,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            ignore_metadata_columns=ignore_metadata_columns,
+            id_column=id_column,
+            metadata_json_column=metadata_json_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
         )
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
@@ -471,11 +459,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
         search_function = self.distance_strategy.search_function
 
         filter = f"WHERE {filter}" if filter else ""
-        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
+        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.schema_name}\".\"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
         if self.index_query_options:
-            query_options_stmt = (
-                f"SET LOCAL {self.index_query_options.to_string()};"
-            )
+            query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
                 await conn.execute(text(query_options_stmt))
                 result = await conn.execute(text(stmt))
@@ -635,9 +621,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k = k if k else self.k
         fetch_k = fetch_k if fetch_k else self.fetch_k
         lambda_mult = lambda_mult if lambda_mult else self.lambda_mult
-        embedding_list = [
-            json.loads(row[self.embedding_column]) for row in results
-        ]
+        embedding_list = [json.loads(row[self.embedding_column]) for row in results]
         mmr_selected = maximal_marginal_relevance(
             np.array(embedding, dtype=np.float32),
             embedding_list,
@@ -664,13 +648,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 )
             )
 
-        return [
-            r for i, r in enumerate(documents_with_scores) if i in mmr_selected
-        ]
+        return [r for i, r in enumerate(documents_with_scores) if i in mmr_selected]
 
-    async def set_maintenance_work_mem(
-        self, num_leaves: int, vector_size: int
-    ) -> None:
+    async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
         # Required index memory in MB
         buffer = 1
@@ -693,26 +673,22 @@ class AsyncAlloyDBVectorStore(VectorStore):
             await self.adrop_vector_index()
             return
 
-        # Create `postgres_ann` extension when a `ScaNN` index is applied
+        # Create `alloydb_scann` extension when a `ScaNN` index is applied
         if isinstance(index, ScaNNIndex):
             async with self.engine.connect() as conn:
-                await conn.execute(
-                    text("CREATE EXTENSION IF NOT EXISTS postgres_ann")
-                )
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS alloydb_scann"))
                 await conn.commit()
             function = index.distance_strategy.scann_index_function
         else:
             function = index.distance_strategy.index_function
 
-        filter = (
-            f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
-        )
+        filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
         if name is None:
             if index.name == None:
                 index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
             name = index.name
-        stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
+        stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.schema_name}\".\"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
         if concurrently:
             async with self.engine.connect() as conn:
                 await conn.execute(text("COMMIT"))

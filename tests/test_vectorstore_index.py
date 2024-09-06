@@ -35,6 +35,8 @@ from langchain_google_alloydb_pg.indexes import (
 )
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_ASYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_OMNI = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
 VECTOR_SIZE = 768
@@ -43,12 +45,9 @@ embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 texts = ["foo", "bar", "baz"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
-metadatas = [
-    {"page": str(i), "source": "google.com"} for i in range(len(texts))
-]
+metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
-    Document(page_content=texts[i], metadata=metadatas[i])
-    for i in range(len(texts))
+    Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
@@ -96,9 +95,7 @@ class TestIndex:
         return get_env_var("DATABASE_ID", "instance for AlloyDB")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             cluster=db_cluster,
@@ -181,9 +178,7 @@ class TestAsyncIndex:
         return get_env_var("DATABASE_ID", "instance for AlloyDB")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,
@@ -192,16 +187,16 @@ class TestAsyncIndex:
             database=db_name,
         )
         yield engine
-        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE_ASYNC}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
-        await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        await engine.ainit_vectorstore_table(DEFAULT_TABLE_ASYNC, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             engine,
             embedding_service=embeddings_service,
-            table_name=DEFAULT_TABLE,
+            table_name=DEFAULT_TABLE_ASYNC,
         )
 
         await vs.aadd_texts(texts, ids=ids)
@@ -234,16 +229,16 @@ class TestAsyncIndex:
         async_engine = sqlalchemy.ext.asyncio.create_async_engine(connstring)
         omni_engine = AlloyDBEngine.from_engine(async_engine)
         yield omni_engine
-        await aexecute(omni_engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
+        await aexecute(omni_engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE_OMNI}")
         await omni_engine.close()
 
     @pytest_asyncio.fixture(scope="class")
     async def omni_vs(self, omni_engine):
-        await omni_engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        await omni_engine.ainit_vectorstore_table(DEFAULT_TABLE_OMNI, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             omni_engine,
             embedding_service=embeddings_service,
-            table_name=DEFAULT_TABLE,
+            table_name=DEFAULT_TABLE_OMNI,
         )
         yield vs
 
@@ -294,7 +289,7 @@ class TestAsyncIndex:
         await vs.adrop_vector_index("secondindex")
         await vs.adrop_vector_index()
 
-    async def test_aapply_postgres_ann_index_ScaNN(self, omni_vs):
+    async def test_aapply_alloydb_scann_index_ScaNN(self, omni_vs):
         index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)

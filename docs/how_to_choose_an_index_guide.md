@@ -36,7 +36,7 @@ Here is a comparison table between Graph-based and Tree-based Indexing algorithm
 |---------|-----------------------|----------------------|
 |Latency |Generally offers higher search efficiency, especially in high-dimensional spaces due to its ability to skip over irrelevant regions of the graph. Write latency is generally higher.| Efficiency depends on dataset distribution characteristics.|
 | Accuracy | Can achieve high levels of accuracy by adjusting the graph's complexity (e.g., the number of edges per node), allowing for fine-tuning based on the dataset.| Accuracy is influenced by the tree's depth and branching factor. While very accurate in lower dimensions, accuracy decreases on embeddings with high dimensionality but low information density.|
-| Examples | HNSW (through pgvector) | IVF (through pgvector++), IVFFlat (through pgvector),  and ScaNN (through alloydb_ann)|
+| Examples | HNSW (through pgvector) | IVF (through pgvector++), IVFFlat (through pgvector),  and ScaNN (through alloydb_scann)|
 | Index Creation Time| Slower | Faster|
 | Memory used | More | Less |
 

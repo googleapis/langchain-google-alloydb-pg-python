@@ -36,9 +36,7 @@ class AlloyDBVectorStore(VectorStore):
 
     __create_key = object()
 
-    def __init__(
-        self, key: object, engine: AlloyDBEngine, vs: AsyncAlloyDBVectorStore
-    ):
+    def __init__(self, key: object, engine: AlloyDBEngine, vs: AsyncAlloyDBVectorStore):
         """AlloyDBVectorStore constructor.
         Args:
             key (object): Prevent direct constructor usage.
@@ -102,18 +100,18 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding_service,
             table_name,
-            schema_name,
-            content_column,
-            embedding_column,
-            metadata_columns,
-            ignore_metadata_columns,
-            id_column,
-            metadata_json_column,
-            distance_strategy,
-            k,
-            fetch_k,
-            lambda_mult,
-            index_query_options,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            ignore_metadata_columns=ignore_metadata_columns,
+            metadata_json_column=metadata_json_column,
+            id_column=id_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
         )
         vs = await engine._run_as_async(coro)
         return cls(cls.__create_key, engine, vs)
@@ -164,18 +162,18 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding_service,
             table_name,
-            schema_name,
-            content_column,
-            embedding_column,
-            metadata_columns,
-            ignore_metadata_columns,
-            id_column,
-            metadata_json_column,
-            distance_strategy,
-            k,
-            fetch_k,
-            lambda_mult,
-            index_query_options,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            ignore_metadata_columns=ignore_metadata_columns,
+            metadata_json_column=metadata_json_column,
+            id_column=id_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
         )
         vs = engine._run_as_sync(coro)
         return cls(cls.__create_key, engine, vs)
@@ -236,9 +234,7 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> Optional[bool]:
         """Delete records from the table."""
-        return await self._engine._run_as_async(
-            self.__vs.adelete(ids, **kwargs)
-        )
+        return await self._engine._run_as_async(self.__vs.adelete(ids, **kwargs))
 
     def delete(
         self,
@@ -300,18 +296,18 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
-            schema_name,
-            content_column,
-            embedding_column,
-            metadata_columns,
-            ignore_metadata_columns,
-            id_column,
-            metadata_json_column,
-            distance_strategy,
-            k,
-            fetch_k,
-            lambda_mult,
-            index_query_options,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            ignore_metadata_columns=ignore_metadata_columns,
+            metadata_json_column=metadata_json_column,
+            id_column=id_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
         )
         await vs.aadd_texts(texts, metadatas=metadatas, ids=ids)
         return vs
@@ -367,20 +363,18 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
-            schema_name,
+            schema_name=schema_name,
             content_column=content_column,
             embedding_column=embedding_column,
             metadata_columns=metadata_columns,
             ignore_metadata_columns=ignore_metadata_columns,
             metadata_json_column=metadata_json_column,
             id_column=id_column,
-            ids=ids,
             distance_strategy=distance_strategy,
             k=k,
             fetch_k=fetch_k,
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
-            **kwargs,
         )
         await vs.aadd_documents(documents, ids=ids)
         return vs
@@ -437,14 +431,13 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
-            schema_name,
+            schema_name=schema_name,
             content_column=content_column,
             embedding_column=embedding_column,
             metadata_columns=metadata_columns,
             ignore_metadata_columns=ignore_metadata_columns,
             metadata_json_column=metadata_json_column,
             id_column=id_column,
-            ids=ids,
             distance_strategy=distance_strategy,
             k=k,
             fetch_k=fetch_k,
@@ -505,14 +498,13 @@ class AlloyDBVectorStore(VectorStore):
             engine,
             embedding,
             table_name,
-            schema_name,
+            schema_name=schema_name,
             content_column=content_column,
             embedding_column=embedding_column,
             metadata_columns=metadata_columns,
             ignore_metadata_columns=ignore_metadata_columns,
             metadata_json_column=metadata_json_column,
             id_column=id_column,
-            ids=ids,
             distance_strategy=distance_strategy,
             k=k,
             fetch_k=fetch_k,
@@ -579,9 +571,7 @@ class AlloyDBVectorStore(VectorStore):
     ) -> List[Document]:
         """Return docs selected by vector similarity search."""
         return await self._engine._run_as_async(
-            self.__vs.asimilarity_search_by_vector(
-                embedding, k, filter, **kwargs
-            )
+            self.__vs.asimilarity_search_by_vector(embedding, k, filter, **kwargs)
         )
 
     async def asimilarity_search_with_score_by_vector(
@@ -667,9 +657,7 @@ class AlloyDBVectorStore(VectorStore):
     ) -> List[Document]:
         """Return docs selected by vector similarity search."""
         return self._engine._run_as_sync(
-            self.__vs.asimilarity_search_by_vector(
-                embedding, k, filter, **kwargs
-            )
+            self.__vs.asimilarity_search_by_vector(embedding, k, filter, **kwargs)
         )
 
     def similarity_search_with_score_by_vector(
@@ -742,9 +730,7 @@ class AlloyDBVectorStore(VectorStore):
             self.__vs.set_maintenance_work_mem(num_leaves, vector_size)
         )
 
-    def set_maintenance_work_mem(
-        self, num_leaves: int, vector_size: int
-    ) -> None:
+    def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
         self._engine._run_as_sync(
             self.__vs.set_maintenance_work_mem(num_leaves, vector_size)
@@ -794,18 +780,14 @@ class AlloyDBVectorStore(VectorStore):
         index_name: Optional[str] = None,
     ) -> None:
         """Drop the vector index."""
-        return self._engine._run_as_sync(
-            self.__vs.adrop_vector_index(index_name)
-        )
+        return self._engine._run_as_sync(self.__vs.adrop_vector_index(index_name))
 
     async def ais_valid_index(
         self,
         index_name: Optional[str] = None,
     ) -> bool:
         """Check if index exists in the table."""
-        return await self._engine._run_as_async(
-            self.__vs.is_valid_index(index_name)
-        )
+        return await self._engine._run_as_async(self.__vs.is_valid_index(index_name))
 
     def is_valid_index(
         self,

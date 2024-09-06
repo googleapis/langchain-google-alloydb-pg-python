@@ -32,11 +32,7 @@ from typing import (
 import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
-from google.cloud.alloydb.connector import (
-    AsyncConnector,
-    IPTypes,
-    RefreshStrategy,
-)
+from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrategy
 from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import InvalidRequestError
@@ -75,9 +71,7 @@ async def _get_iam_principal_email(
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
     if hasattr(credentials, "_service_account_email"):
-        return credentials._service_account_email.replace(
-            ".gserviceaccount.com", ""
-        )
+        return credentials._service_account_email.replace(".gserviceaccount.com", "")
     # call OAuth2 api to get IAM principal email associated with OAuth2 token
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={credentials.token}"
     async with aiohttp.ClientSession() as client:
@@ -393,9 +387,7 @@ class AlloyDBEngine:
             raise ValueError("Driver must be type 'postgresql+asyncpg'")
 
         engine = create_async_engine(url, **kwargs)
-        return cls(
-            cls.__create_key, engine, cls._default_loop, cls._default_thread
-        )
+        return cls(cls.__create_key, engine, cls._default_loop, cls._default_thread)
 
     async def _run_as_async(self, coro: Awaitable[T]) -> T:
         """Run an async coroutine asynchronously"""
@@ -423,6 +415,7 @@ class AlloyDBEngine:
         self,
         table_name: str,
         vector_size: int,
+        schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[Column] = [],
@@ -437,6 +430,8 @@ class AlloyDBEngine:
         Args:
             table_name (str): The Postgres database table name.
             vector_size (int): Vector size for the embedding model to be used.
+            schema_name (str): The schema name.
+                Default: "public".
             content_column (str): Name of the column to store document content.
                 Default: "page_content".
             embedding_column (str) : Name of the column to store vector embeddings.
@@ -460,10 +455,12 @@ class AlloyDBEngine:
 
         if overwrite_existing:
             async with self._pool.connect() as conn:
-                await conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+                await conn.execute(
+                    text(f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}"')
+                )
                 await conn.commit()
 
-        query = f"""CREATE TABLE "{table_name}"(
+        query = f"""CREATE TABLE "{schema_name}"."{table_name}"(
             "{id_column}" UUID PRIMARY KEY,
             "{content_column}" TEXT NOT NULL,
             "{embedding_column}" vector({vector_size}) NOT NULL"""
@@ -495,7 +492,7 @@ class AlloyDBEngine:
         Create a table for saving of vectors to be used with AlloyDBVectorStore.
 
         Args:
-            table_name (str): The Postgres database table name.
+            table_name (str): The database table name.
             vector_size (int): Vector size for the embedding model to be used.
             schema_name (str): The schema name.
                 Default: "public".
@@ -545,7 +542,7 @@ class AlloyDBEngine:
         Create a table for saving of vectors to be used with AlloyDBVectorStore.
 
         Args:
-            table_name (str): The Postgres database table name.
+            table_name (str): The database table name.
             vector_size (int): Vector size for the embedding model to be used.
             schema_name (str): The schema name.
                 Default: "public".
@@ -622,20 +619,20 @@ class AlloyDBEngine:
             )
         )
 
-    def init_chat_history_table(self, table_name: str) -> None:
+    def init_chat_history_table(
+        self, table_name: str, schema_name: str = "public"
+    ) -> None:
         """Create a Cloud SQL table to store chat history.
 
         Args:
             table_name (str): Table name to store chat history.
+            schema_name (str): The schema name to store chat history table.
+                Default: "public".
 
         Returns:
             None
         """
-        self._run_as_sync(
-            self._ainit_chat_history_table(
-                table_name,
-            )
-        )
+        self._run_as_sync(self._ainit_chat_history_table(table_name, schema_name))
 
     async def _ainit_document_table(
         self,
@@ -681,6 +678,7 @@ class AlloyDBEngine:
     async def ainit_document_table(
         self,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = "page_content",
         metadata_columns: List[Column] = [],
         metadata_json_column: str = "langchain_metadata",
@@ -691,6 +689,8 @@ class AlloyDBEngine:
 
         Args:
             table_name (str): The PgSQL database table name.
+            schema_name (str): The schema name.
+                Default: "public".
             content_column (str): Name of the column to store document content.
                 Default: "page_content".
             metadata_columns (List[sqlalchemy.Column]): A list of SQLAlchemy Columns
@@ -706,6 +706,7 @@ class AlloyDBEngine:
         await self._run_as_async(
             self._ainit_document_table(
                 table_name,
+                schema_name,
                 content_column,
                 metadata_columns,
                 metadata_json_column,
@@ -774,8 +775,7 @@ class AlloyDBEngine:
                 )
             except InvalidRequestError as e:
                 raise ValueError(
-                    f"Table, '{schema_name}'.'{table_name}', does not exist: "
-                    + str(e)
+                    f"Table, '{schema_name}'.'{table_name}', does not exist: " + str(e)
                 )
 
         table = Table(table_name, metadata, schema=schema_name)

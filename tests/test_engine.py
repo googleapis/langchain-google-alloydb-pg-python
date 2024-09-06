@@ -19,7 +19,7 @@ from typing import Sequence
 import asyncpg  # type: ignore
 import pytest
 import pytest_asyncio
-from google.cloud.alloydb.connector import Connector, IPTypes
+from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import VARCHAR, text
 from sqlalchemy.engine import URL
@@ -104,9 +104,7 @@ class TestEngineAsync:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             cluster=db_cluster,
@@ -178,16 +176,17 @@ class TestEngineAsync:
         self,
         db_project,
         db_region,
+        db_cluster,
         db_instance,
         db_name,
         user,
         password,
     ):
-        async with Connector() as connector:
+        async with AsyncConnector() as connector:
 
             async def getconn() -> asyncpg.Connection:
-                conn = await connector.connect_async(  # type: ignore
-                    f"{db_project}:{db_region}:{db_instance}",
+                conn = await connector.connect(  # type: ignore
+                    f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
                     "asyncpg",
                     user=user,
                     password=password,
@@ -223,9 +222,7 @@ class TestEngineAsync:
         engine.close()
 
         engine = AlloyDBEngine.from_engine_args(
-            URL.create(
-                "postgresql+asyncpg", user, password, host, port, db_name
-            )
+            URL.create("postgresql+asyncpg", user, password, host, port, db_name)
         )
         await aexecute(engine, "SELECT 1")
         engine.close()
@@ -246,9 +243,7 @@ class TestEngineAsync:
             )
         with pytest.raises(ValueError):
             AlloyDBEngine.from_engine_args(
-                URL.create(
-                    "postgresql+pg8000", user, password, host, port, db_name
-                )
+                URL.create("postgresql+pg8000", user, password, host, port, db_name)
             )
 
     async def test_column(self, engine):
@@ -314,9 +309,7 @@ class TestEngineSync:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             instance=db_instance,
@@ -379,7 +372,6 @@ class TestEngineSync:
             database=db_name,
             user=user,
             password=password,
-            quota_project=db_project,
         )
         assert engine
         await aexecute(engine, "SELECT 1")

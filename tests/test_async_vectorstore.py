@@ -24,9 +24,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
-from langchain_google_alloydb_pg.async_vectorstore import (
-    AsyncAlloyDBVectorStore,
-)
+from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -36,17 +34,12 @@ VECTOR_SIZE = 768
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 texts = ["foo", "bar", "baz"]
-metadatas = [
-    {"page": str(i), "source": "google.com"} for i in range(len(texts))
-]
+metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
-    Document(page_content=texts[i], metadata=metadatas[i])
-    for i in range(len(texts))
+    Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
-embeddings = [
-    embeddings_service.embed_query(texts[i]) for i in range(len(texts))
-]
+embeddings = [embeddings_service.embed_query(texts[i]) for i in range(len(texts))]
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -93,9 +86,7 @@ class TestVectorStore:
         return get_env_var("DATABASE_ID", "database name on AlloyDB instance")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,

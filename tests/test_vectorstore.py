@@ -20,18 +20,14 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
-from google.cloud.alloydb.connector import Connector, IPTypes
+from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from langchain_google_alloydb_pg import (
-    AlloyDBEngine,
-    AlloyDBVectorStore,
-    Column,
-)
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -42,17 +38,12 @@ embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 host = os.environ["IP_ADDRESS"]
 
 texts = ["foo", "bar", "baz"]
-metadatas = [
-    {"page": str(i), "source": "google.com"} for i in range(len(texts))
-]
+metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
-    Document(page_content=texts[i], metadata=metadatas[i])
-    for i in range(len(texts))
+    Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
-embeddings = [
-    embeddings_service.embed_query(texts[i]) for i in range(len(texts))
-]
+embeddings = [embeddings_service.embed_query(texts[i]) for i in range(len(texts))]
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -116,9 +107,7 @@ class TestVectorStore:
         return get_env_var("DB_PASSWORD", "database password for AlloyDB")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name
-    ):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             cluster=db_cluster,
@@ -154,9 +143,7 @@ class TestVectorStore:
         )
         yield engine_sync
 
-        await aexecute(
-            engine_sync, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE_SYNC}"'
-        )
+        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE_SYNC}"')
         await engine_sync.close()
 
     @pytest_asyncio.fixture(scope="class")
@@ -316,27 +303,21 @@ class TestVectorStore:
     async def test_add_docs(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         vs_sync.add_documents(docs, ids=ids)
-        results = await afetch(
-            engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"'
-        )
+        results = await afetch(engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
         vs_sync.delete(ids)
 
     async def test_add_texts(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         vs_sync.add_texts(texts, ids=ids)
-        results = await afetch(
-            engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"'
-        )
+        results = await afetch(engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
         await vs_sync.adelete(ids)
 
     async def test_cross_env(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         await vs_sync.aadd_texts(texts, ids=ids)
-        results = await afetch(
-            engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"'
-        )
+        results = await afetch(engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
         await vs_sync.adelete(ids)
 
@@ -386,16 +367,17 @@ class TestVectorStore:
         self,
         db_project,
         db_region,
+        db_cluster,
         db_instance,
         db_name,
         user,
         password,
     ):
-        async with Connector() as connector:
+        async with AsyncConnector() as connector:
 
             async def getconn():
-                conn = await connector.connect_async(  # type: ignore
-                    f"{db_project}:{db_region}:{db_instance}",
+                conn = await connector.connect(  # type: ignore
+                    f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
                     "asyncpg",
                     user=user,
                     password=password,
@@ -428,15 +410,18 @@ class TestVectorStore:
         self,
         db_project,
         db_region,
+        db_cluster,
         db_instance,
         db_name,
         user,
         password,
     ):
-        async def init_connection_pool(connector: Connector) -> AsyncEngine:
+        async def init_connection_pool(
+            connector: AsyncConnector,
+        ) -> AsyncEngine:
             async def getconn():
-                conn = await connector.connect_async(
-                    f"{db_project}:{db_region}:{db_instance}",
+                conn = await connector.connect(
+                    f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
                     "asyncpg",
                     user=user,
                     password=password,
@@ -456,7 +441,7 @@ class TestVectorStore:
         thread = Thread(target=loop.run_forever, daemon=True)
         thread.start()
 
-        connector = Connector(loop=loop)
+        connector = AsyncConnector()
         coro = init_connection_pool(connector)
         pool = asyncio.run_coroutine_threadsafe(coro, loop).result()
         engine = AlloyDBEngine.from_engine(pool, loop)
@@ -473,6 +458,7 @@ class TestVectorStore:
         assert len(results) == 2
 
         await aexecute(engine, f"TRUNCATE TABLE {table_name}")
+        await engine.close()
 
         vs = AlloyDBVectorStore.create_sync(
             engine,
@@ -518,6 +504,7 @@ class TestVectorStore:
         results = await afetch(engine, f"SELECT * FROM {table_name}")
         assert len(results) == 2
         await aexecute(engine, f"DROP TABLE {table_name}")
+        await engine.close()
 
     async def test_from_engine_loop(
         self,
@@ -557,3 +544,4 @@ class TestVectorStore:
         results = await afetch(engine, f"SELECT * FROM {table_name}")
         assert len(results) == 2
         await aexecute(engine, f"DROP TABLE {table_name}")
+        await engine.close()
