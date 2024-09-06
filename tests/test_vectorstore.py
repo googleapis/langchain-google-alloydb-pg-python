@@ -20,7 +20,7 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
-from google.cloud.alloydb.connector import AsyncConnector, IPTypes
+from google.cloud.alloydb.connector import AsyncConnector, Connector, IPTypes
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import text
@@ -437,14 +437,14 @@ class TestVectorStore:
             )
             return pool
 
-        loop = asyncio.new_event_loop()
-        thread = Thread(target=loop.run_forever, daemon=True)
-        thread.start()
+        # loop = asyncio.new_event_loop()
+        # thread = Thread(target=loop.run_forever, daemon=True)
+        # thread.start()
 
-        connector = AsyncConnector()
+        connector = Connector()
         coro = init_connection_pool(connector)
-        pool = asyncio.run_coroutine_threadsafe(coro, loop).result()
-        engine = AlloyDBEngine.from_engine(pool, loop)
+        pool = asyncio.run_coroutine_threadsafe(coro, connector._loop).result()
+        engine = AlloyDBEngine.from_engine(pool, connector._loop)
         table_name = "test_table" + str(uuid.uuid4()).replace("-", "_")
         await engine.ainit_vectorstore_table(table_name, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(

@@ -39,6 +39,7 @@ DEFAULT_TABLE_ASYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_OMNI = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
+DEFAULT_INDEX_NAME_ASYNC = DEFAULT_TABLE_ASYNC + DEFAULT_INDEX_NAME_SUFFIX
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -245,25 +246,25 @@ class TestAsyncIndex:
     async def test_aapply_vector_index(self, vs):
         index = HNSWIndex()
         await vs.aapply_vector_index(index)
-        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
 
     async def test_areindex(self, vs):
-        if not await vs.ais_valid_index(DEFAULT_INDEX_NAME):
+        if not await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC):
             index = HNSWIndex()
             await vs.aapply_vector_index(index)
         await vs.areindex()
         await vs.areindex(DEFAULT_INDEX_NAME)
-        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
 
     async def test_dropindex(self, vs):
         await vs.adrop_vector_index()
-        result = await vs.ais_valid_index(DEFAULT_INDEX_NAME)
+        result = await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         assert not result
 
     async def test_aapply_vector_index_ivfflat(self, vs):
         index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
-        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         index = IVFFlatIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
@@ -279,7 +280,7 @@ class TestAsyncIndex:
     async def test_aapply_vector_index_ivf(self, vs):
         index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
-        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.is_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         index = IVFIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
@@ -293,7 +294,7 @@ class TestAsyncIndex:
         index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
-        assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         index = ScaNNIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,

@@ -33,7 +33,6 @@ from langchain_google_alloydb_pg.indexes import (
 )
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
-CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
 VECTOR_SIZE = 768
 
