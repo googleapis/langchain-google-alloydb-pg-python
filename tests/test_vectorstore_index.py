@@ -40,6 +40,7 @@ DEFAULT_TABLE_OMNI = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
 DEFAULT_INDEX_NAME_ASYNC = DEFAULT_TABLE_ASYNC + DEFAULT_INDEX_NAME_SUFFIX
+DEFAULT_INDEX_NAME_OMNI = DEFAULT_TABLE_OMNI + DEFAULT_INDEX_NAME_SUFFIX
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -253,7 +254,7 @@ class TestAsyncIndex:
             index = HNSWIndex()
             await vs.aapply_vector_index(index)
         await vs.areindex()
-        await vs.areindex(DEFAULT_INDEX_NAME)
+        await vs.areindex(DEFAULT_INDEX_NAME_ASYNC)
         assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
 
     async def test_dropindex(self, vs):
@@ -294,7 +295,7 @@ class TestAsyncIndex:
         index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.set_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
-        assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME_ASYNC)
+        assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME_OMNI)
         index = ScaNNIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
