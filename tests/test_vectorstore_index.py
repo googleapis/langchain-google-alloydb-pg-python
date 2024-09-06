@@ -73,7 +73,7 @@ async def aexecute(
     await engine._run_as_async(run(engine, query))
 
 
-@pytest.mark.asyncio(scope="class")
+@pytest.mark.asyncio(loop_scope="class")
 class TestIndex:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
@@ -156,7 +156,7 @@ class TestIndex:
         assert is_valid == False
 
 
-@pytest.mark.asyncio(scope="class")
+@pytest.mark.asyncio(loop_scope="class")
 class TestAsyncIndex:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:

@@ -76,7 +76,7 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
     return await engine._run_as_async(run(engine, query))
 
 
-@pytest.mark.asyncio(scope="class")
+@pytest.mark.asyncio(loop_scope="class")
 class TestVectorStore:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
@@ -437,14 +437,14 @@ class TestVectorStore:
             )
             return pool
 
-        # loop = asyncio.new_event_loop()
-        # thread = Thread(target=loop.run_forever, daemon=True)
-        # thread.start()
+        loop = asyncio.new_event_loop()
+        thread = Thread(target=loop.run_forever, daemon=True)
+        thread.start()
 
-        connector = Connector()
+        connector = AsyncConnector()
         coro = init_connection_pool(connector)
-        pool = asyncio.run_coroutine_threadsafe(coro, connector._loop).result()
-        engine = AlloyDBEngine.from_engine(pool, connector._loop)
+        pool = asyncio.run_coroutine_threadsafe(coro, loop).result()
+        engine = AlloyDBEngine.from_engine(pool, loop)
         table_name = "test_table" + str(uuid.uuid4()).replace("-", "_")
         await engine.ainit_vectorstore_table(table_name, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(

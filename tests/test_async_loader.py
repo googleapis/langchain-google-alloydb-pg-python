@@ -41,7 +41,7 @@ async def aexecute(engine: AlloyDBEngine, query: str) -> None:
         await conn.commit()
 
 
-@pytest.mark.asyncio(scope="class")
+@pytest.mark.asyncio(loop_scope="class")
 class TestLoaderAsync:
 
     @pytest_asyncio.fixture(scope="class")

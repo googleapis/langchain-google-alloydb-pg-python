@@ -57,7 +57,7 @@ async def aexecute(
         await conn.commit()
 
 
-@pytest.mark.asyncio(scope="class")
+@pytest.mark.asyncio(loop_scope="class")
 class TestVectorStoreSearch:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:

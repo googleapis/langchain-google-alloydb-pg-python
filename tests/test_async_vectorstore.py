@@ -63,7 +63,7 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
     return result_fetch
 
 
-@pytest.mark.asyncio(scope="class")
+@pytest.mark.asyncio(loop_scope="class")
 class TestVectorStore:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
