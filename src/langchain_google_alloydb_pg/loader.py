@@ -158,6 +158,7 @@ class AlloyDBLoader(BaseLoader):
         engine: AlloyDBEngine,
         query: Optional[str] = None,
         table_name: Optional[str] = None,
+        schema_name: str = "public",
         content_columns: Optional[List[str]] = None,
         metadata_columns: Optional[List[str]] = None,
         metadata_json_column: Optional[str] = None,
@@ -170,6 +171,7 @@ class AlloyDBLoader(BaseLoader):
             engine (AlloyDBEngine):AsyncEngine with pool connection to the postgres database
             query (Optional[str], optional): SQL query. Defaults to None.
             table_name (Optional[str], optional): Name of table to query. Defaults to None.
+            schema_name (str, optional): Name of the schema where table is located. Defaults to "public".
             content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
             metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to None.
             metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
@@ -177,7 +179,7 @@ class AlloyDBLoader(BaseLoader):
             formatter (Optional[Callable], optional): A function to format page content (OneOf: format, formatter). Defaults to None.
 
         Raises:
-            Exception: if called directly by user.
+            Exception: If called directly by user.
         """
         if table_name and query:
             raise ValueError("Only one of 'table_name' or 'query' should be specified.")
@@ -202,7 +204,7 @@ class AlloyDBLoader(BaseLoader):
             formatter = text_formatter
 
         if not query:
-            query = f'SELECT * FROM "{table_name}"'
+            query = f'SELECT * FROM "{schema_name}"."{table_name}"'
         stmt = sqlalchemy.text(query)
 
         async with engine._engine.connect() as connection:
@@ -251,6 +253,7 @@ class AlloyDBLoader(BaseLoader):
         engine: AlloyDBEngine,
         query: Optional[str] = None,
         table_name: Optional[str] = None,
+        schema_name: str = "public",
         content_columns: Optional[List[str]] = None,
         metadata_columns: Optional[List[str]] = None,
         metadata_json_column: Optional[str] = None,
@@ -263,6 +266,7 @@ class AlloyDBLoader(BaseLoader):
             engine (AlloyDBEngine):AsyncEngine with pool connection to the postgres database
             query (Optional[str], optional): SQL query. Defaults to None.
             table_name (Optional[str], optional): Name of table to query. Defaults to None.
+            schema_name (str, optional): Name of the schema where table is located. Defaults to "public".
             content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
             metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to None.
             metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
@@ -276,6 +280,7 @@ class AlloyDBLoader(BaseLoader):
             engine,
             query,
             table_name,
+            schema_name,
             content_columns,
             metadata_columns,
             metadata_json_column,
@@ -347,6 +352,7 @@ class AlloyDBDocumentSaver:
         engine: AlloyDBEngine,
         table_name: str,
         content_column: str,
+        schema_name: str = "public",
         metadata_columns: List[str] = [],
         metadata_json_column: Optional[str] = None,
     ) -> None:
@@ -355,10 +361,11 @@ class AlloyDBDocumentSaver:
         Args:
             key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): AsyncEngine with pool connection to the postgres database
-            table_name (Optional[str], optional): Name of table to query. Defaults to None.
-            content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
-            metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to None.
-            metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            table_name (str): Name of table to query.
+            content_column (str): Column that represent a Document's page_content.
+            schema_name (str, optional): Name of the schema where table is located. Defaults to "public".
+            metadata_columns (List[str], optional): Column(s) that represent a Document's metadata. Defaults to empty list.
+            metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to None.
 
         Raises:
             Exception: if called directly by user.
@@ -370,6 +377,7 @@ class AlloyDBDocumentSaver:
         self.engine = engine
         self.table_name = table_name
         self.content_column = content_column
+        self.schema_name = schema_name
         self.metadata_columns = metadata_columns
         self.metadata_json_column = metadata_json_column
 
@@ -378,6 +386,7 @@ class AlloyDBDocumentSaver:
         cls: Type[AlloyDBDocumentSaver],
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = DEFAULT_CONTENT_COL,
         metadata_columns: List[str] = [],
         metadata_json_column: Optional[str] = DEFAULT_METADATA_COL,
@@ -386,15 +395,16 @@ class AlloyDBDocumentSaver:
 
         Args:
             engine (AlloyDBEngine):AsyncEngine with pool connection to the postgres database
-            table_name (Optional[str], optional): Name of table to query. Defaults to None.
-            content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
-            metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to an empty list.
+            table_name (str): Name of table to query.
+            schema_name (str, optional): Name of schema where the table is located. Defaults to "public".
+            content_column (str, optional): Column that represent a Document's page_content. Defaults to "page_content".
+            metadata_columns (List[str], optional): Column(s) that represent a Document's metadata. Defaults to an empty list.
             metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
             AlloyDBDocumentSaver
         """
-        table_schema = await engine._aload_table_schema(table_name)
+        table_schema = await engine._aload_table_schema(table_name, schema_name)
         column_names = table_schema.columns.keys()
         if content_column not in column_names:
             raise ValueError(f"Content column, {content_column}, does not exist.")
@@ -426,6 +436,7 @@ class AlloyDBDocumentSaver:
             engine,
             table_name,
             content_column,
+            schema_name,
             metadata_columns,
             metadata_json_column,
         )
@@ -435,6 +446,7 @@ class AlloyDBDocumentSaver:
         cls: Type[AlloyDBDocumentSaver],
         engine: AlloyDBEngine,
         table_name: str,
+        schema_name: str = "public",
         content_column: str = DEFAULT_CONTENT_COL,
         metadata_columns: List[str] = [],
         metadata_json_column: str = DEFAULT_METADATA_COL,
@@ -443,10 +455,11 @@ class AlloyDBDocumentSaver:
 
         Args:
             engine (AlloyDBEngine):AsyncEngine with pool connection to the postgres database
-            table_name (Optional[str], optional): Name of table to query. Defaults to None.
-            content_columns (Optional[List[str]], optional): Column that represent a Document's page_content. Defaults to the first column.
-            metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to None.
-            metadata_json_column (Optional[str], optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            table_name (str): Name of table to query.
+            schema_name (str, optional): Name of schema where the table is located. Defaults to "public".
+            content_column (str, optional): Column that represent a Document's page_content. Defaults to "page_content".
+            metadata_columns (Optional[List[str]], optional): Column(s) that represent a Document's metadata. Defaults to an empty list.
+            metadata_json_column (str, optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
 
         Returns:
             AlloyDBDocumentSaver
@@ -454,6 +467,7 @@ class AlloyDBDocumentSaver:
         coro = cls.create(
             engine,
             table_name,
+            schema_name,
             content_column,
             metadata_columns,
             metadata_json_column,
@@ -481,7 +495,7 @@ class AlloyDBDocumentSaver:
                     row[key] = json.dumps(value)
 
             # Create list of column names
-            insert_stmt = f'INSERT INTO "{self.table_name}"({self.content_column}'
+            insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"({self.content_column}'
             values_stmt = f"VALUES (:{self.content_column}"
 
             # Add metadata
@@ -539,7 +553,7 @@ class AlloyDBDocumentSaver:
                     where_conditions_list.append(f"{key} = :{key}")
 
             where_conditions = " AND ".join(where_conditions_list)
-            stmt = f'DELETE FROM "{self.table_name}" WHERE {where_conditions};'
+            stmt = f'DELETE FROM "{self.schema_name}"."{self.table_name}" WHERE {where_conditions};'
             values = {}
             for key, value in row.items():
                 if type(value) is int:
