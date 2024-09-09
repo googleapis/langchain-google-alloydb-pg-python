@@ -417,8 +417,10 @@ class TestVectorStore:
         password,
     ):
         async def init_connection_pool(
-            connector: AsyncConnector,
+            # connector: AsyncConnector,
         ) -> AsyncEngine:
+            connector = AsyncConnector()
+
             async def getconn():
                 conn = await connector.connect(
                     f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
@@ -441,8 +443,9 @@ class TestVectorStore:
         thread = Thread(target=loop.run_forever, daemon=True)
         thread.start()
 
-        connector = AsyncConnector()
-        coro = init_connection_pool(connector)
+        # connector = AsyncConnector()
+        # coro = init_connection_pool(connector)
+        coro = init_connection_pool()
         pool = asyncio.run_coroutine_threadsafe(coro, loop).result()
         engine = AlloyDBEngine.from_engine(pool, loop)
         table_name = "test_table" + str(uuid.uuid4()).replace("-", "_")
