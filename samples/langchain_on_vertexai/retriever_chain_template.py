@@ -140,9 +140,7 @@ class AlloyDBRetriever(reasoning_engines.Queryable):
 # print(app.query(input="movies about engineers"))
 
 # Initialize VertexAI
-vertexai.init(
-    project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET
-)
+vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBRetriever"
