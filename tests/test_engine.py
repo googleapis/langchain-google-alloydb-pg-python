@@ -203,7 +203,7 @@ class TestEngineAsync:
 
             engine = AlloyDBEngine.from_engine(engine)
             await aexecute(engine, "SELECT 1")
-            engine.close()
+            await engine.close()
 
     async def test_from_engine_args_url(
         self,
@@ -219,13 +219,13 @@ class TestEngineAsync:
             poolclass=NullPool,
         )
         await aexecute(engine, "SELECT 1")
-        engine.close()
+        await engine.close()
 
         engine = AlloyDBEngine.from_engine_args(
             URL.create("postgresql+asyncpg", user, password, host, port, db_name)
         )
         await aexecute(engine, "SELECT 1")
-        engine.close()
+        await engine.close()
 
     async def test_from_engine_args_url_error(
         self,

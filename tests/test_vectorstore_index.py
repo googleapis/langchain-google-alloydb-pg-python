@@ -282,7 +282,7 @@ class TestAsyncIndex:
     async def test_aapply_vector_index_ivf(self, vs):
         index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
-        assert await vs.is_valid_index(DEFAULT_INDEX_NAME_ASYNC)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         index = IVFIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
