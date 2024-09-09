@@ -405,6 +405,7 @@ class TestVectorStore:
             assert len(results) == 1
 
             await aexecute(engine, f"DROP TABLE {table_name}")
+            await engine.close()
 
     async def test_from_engine_loop_connector(
         self,

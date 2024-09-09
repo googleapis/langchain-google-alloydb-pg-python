@@ -296,7 +296,7 @@ class TestAsyncIndex:
         index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.aset_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
-        assert await omni_vs.is_valid_index(DEFAULT_INDEX_NAME_OMNI)
+        assert await omni_vs.ais_valid_index(DEFAULT_INDEX_NAME_OMNI)
         index = ScaNNIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,

@@ -171,6 +171,7 @@ class TestEngineAsync:
         assert engine
         await aexecute(engine, "SELECT 1")
         AlloyDBEngine._connector = None
+        await engine.close()
 
     async def test_from_engine(
         self,
@@ -376,6 +377,7 @@ class TestEngineSync:
         assert engine
         await aexecute(engine, "SELECT 1")
         AlloyDBEngine._connector = None
+        await engine.close()
 
     async def test_engine_constructor_key(
         self,

@@ -62,8 +62,10 @@ class TestLoaderAsync:
         )
         yield engine
 
+        await engine.close()
+
     @pytest_asyncio.fixture
-    def sync_engine(self):
+    async def sync_engine(self):
         AlloyDBEngine._connector = None
         engine = AlloyDBEngine.from_instance(
             project_id=project_id,
@@ -73,6 +75,8 @@ class TestLoaderAsync:
             database=db_name,
         )
         yield engine
+
+        await engine.close()
 
     async def _collect_async_items(self, docs_generator):
         """Collects items from an async generator."""
@@ -808,7 +812,7 @@ class TestLoaderAsync:
         await saver.adelete(docs)
         assert len(await self._collect_async_items(loader.alazy_load())) == 0
 
-    def test_sync_engine(self):
+    async def test_sync_engine(self):
         AlloyDBEngine._connector = None
         engine = AlloyDBEngine.from_instance(
             project_id=project_id,
@@ -818,6 +822,7 @@ class TestLoaderAsync:
             database=db_name,
         )
         assert engine
+        await engine.close()
 
     async def test_load_from_query_default_sync(self, sync_engine):
         try:
