@@ -31,5 +31,3 @@ Build and deploy an Agent with RAG tool and Memory | [retriever_agent_with_histo
 1. Use `create_embeddings.py` to add data to your vector store.
 
 Learn more at [Deploying a RAG Application with AlloyDB to LangChain on Vertex AI](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/reasoning-engine/tutorial_alloydb_rag_agent.ipynb).
-
-
