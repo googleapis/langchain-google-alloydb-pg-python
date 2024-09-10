@@ -14,13 +14,17 @@
 
 import os
 import uuid
+from typing import Sequence
 
 import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from sqlalchemy import text
+from sqlalchemy.engine.row import RowMapping
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg import AlloyDBEngine, Column
+from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4()).replace("-", "_")
@@ -36,7 +40,7 @@ docs = [
     Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
-embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
+embeddings = [embeddings_service.embed_query(texts[i]) for i in range(len(texts))]
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -44,6 +48,20 @@ def get_env_var(key: str, desc: str) -> str:
     if v is None:
         raise ValueError(f"Must set env var {key} to: {desc}")
     return v
+
+
+async def aexecute(engine: AlloyDBEngine, query: str) -> None:
+    async with engine._pool.connect() as conn:
+        await conn.execute(text(query))
+        await conn.commit()
+
+
+async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
+    async with engine._pool.connect() as conn:
+        result = await conn.execute(text(query))
+        result_map = result.mappings()
+        result_fetch = result_map.fetchall()
+    return result_fetch
 
 
 @pytest.mark.asyncio
@@ -58,27 +76,27 @@ class TestVectorStoreFromMethods:
 
     @pytest.fixture(scope="module")
     def db_cluster(self) -> str:
-        return get_env_var("CLUSTER_ID", "cluster for AlloyDB instance")
+        return get_env_var("CLUSTER_ID", "cluster for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_instance(self) -> str:
-        return get_env_var("INSTANCE_ID", "instance for alloydb")
+        return get_env_var("INSTANCE_ID", "instance for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_name(self) -> str:
-        return get_env_var("DATABASE_ID", "database name for AlloyDB")
+        return get_env_var("DATABASE_ID", "database name on AlloyDB instance")
 
     @pytest_asyncio.fixture
-    async def engine(self, db_project, db_region, db_instance, db_cluster, db_name):
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
+            cluster=db_cluster,
             instance=db_instance,
             region=db_region,
-            cluster=db_cluster,
             database=db_name,
         )
-        await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
-        await engine.ainit_vectorstore_table(
+        await engine._ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        await engine._ainit_vectorstore_table(
             CUSTOM_TABLE,
             VECTOR_SIZE,
             id_column="myid",
@@ -88,29 +106,13 @@ class TestVectorStoreFromMethods:
             store_metadata=False,
         )
         yield engine
-        await engine._aexecute(f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
-        await engine._aexecute(f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
-        await engine._engine.dispose()
-
-    @pytest_asyncio.fixture
-    def engine_sync(self, db_project, db_region, db_instance, db_cluster, db_name):
-        engine = AlloyDBEngine.from_instance(
-            project_id=db_project,
-            instance=db_instance,
-            region=db_region,
-            cluster=db_cluster,
-            database=db_name,
-        )
-
-        engine.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
-
-        yield engine
-        engine._execute(f"DROP TABLE IF EXISTS {DEFAULT_TABLE_SYNC}")
-        engine._engine.dispose()
+        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
+        await engine.close()
 
     async def test_afrom_texts(self, engine):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
-        await AlloyDBVectorStore.afrom_texts(
+        await AsyncAlloyDBVectorStore.afrom_texts(
             texts,
             embeddings_service,
             engine,
@@ -118,55 +120,26 @@ class TestVectorStoreFromMethods:
             metadatas=metadatas,
             ids=ids,
         )
-        results = await engine._afetch(f"SELECT * FROM {DEFAULT_TABLE}")
+        results = await afetch(engine, f"SELECT * FROM {DEFAULT_TABLE}")
         assert len(results) == 3
-        await engine._aexecute(f"TRUNCATE TABLE {DEFAULT_TABLE}")
-
-    async def test_from_texts(self, engine_sync):
-        ids = [str(uuid.uuid4()) for i in range(len(texts))]
-        AlloyDBVectorStore.from_texts(
-            texts,
-            embeddings_service,
-            engine_sync,
-            DEFAULT_TABLE_SYNC,
-            metadatas=metadatas,
-            ids=ids,
-        )
-        results = engine_sync._fetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
-
-        assert len(results) == 3
-        engine_sync._execute(f"TRUNCATE TABLE {DEFAULT_TABLE_SYNC}")
+        await aexecute(engine, f"TRUNCATE TABLE {DEFAULT_TABLE}")
 
     async def test_afrom_docs(self, engine):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
-        await AlloyDBVectorStore.afrom_documents(
+        await AsyncAlloyDBVectorStore.afrom_documents(
             docs,
             embeddings_service,
             engine,
             DEFAULT_TABLE,
             ids=ids,
         )
-        results = await engine._afetch(f"SELECT * FROM {DEFAULT_TABLE}")
+        results = await afetch(engine, f"SELECT * FROM {DEFAULT_TABLE}")
         assert len(results) == 3
-        await engine._aexecute(f"TRUNCATE TABLE {DEFAULT_TABLE}")
-
-    async def test_from_docs(self, engine_sync):
-        ids = [str(uuid.uuid4()) for i in range(len(texts))]
-        AlloyDBVectorStore.from_documents(
-            docs,
-            embeddings_service,
-            engine_sync,
-            DEFAULT_TABLE_SYNC,
-            ids=ids,
-        )
-        results = engine_sync._fetch(f"SELECT * FROM {DEFAULT_TABLE_SYNC}")
-
-        assert len(results) == 3
-        engine_sync._aexecute(f"TRUNCATE TABLE {DEFAULT_TABLE_SYNC}")
+        await aexecute(engine, f"TRUNCATE TABLE {DEFAULT_TABLE}")
 
     async def test_afrom_texts_custom(self, engine):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
-        await AlloyDBVectorStore.afrom_texts(
+        await AsyncAlloyDBVectorStore.afrom_texts(
             texts,
             embeddings_service,
             engine,
@@ -177,14 +150,12 @@ class TestVectorStoreFromMethods:
             embedding_column="myembedding",
             metadata_columns=["page", "source"],
         )
-        results = await engine._afetch(f"SELECT * FROM {CUSTOM_TABLE}")
+        results = await afetch(engine, f"SELECT * FROM {CUSTOM_TABLE}")
         assert len(results) == 3
         assert results[0]["mycontent"] == "foo"
         assert results[0]["myembedding"]
         assert results[0]["page"] is None
         assert results[0]["source"] is None
-
-        ids = [str(uuid.uuid4()) for i in range(len(texts))]
 
     async def test_afrom_docs_custom(self, engine):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -195,7 +166,7 @@ class TestVectorStoreFromMethods:
             )
             for i in range(len(texts))
         ]
-        await AlloyDBVectorStore.afrom_documents(
+        await AsyncAlloyDBVectorStore.afrom_documents(
             docs,
             embeddings_service,
             engine,
@@ -207,10 +178,10 @@ class TestVectorStoreFromMethods:
             metadata_columns=["page", "source"],
         )
 
-        results = await engine._afetch(f"SELECT * FROM {CUSTOM_TABLE}")
+        results = await afetch(engine, f"SELECT * FROM {CUSTOM_TABLE}")
         assert len(results) == 3
         assert results[0]["mycontent"] == "foo"
         assert results[0]["myembedding"]
         assert results[0]["page"] == "0"
         assert results[0]["source"] == "google.com"
-        await engine._aexecute(f"TRUNCATE TABLE {CUSTOM_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {CUSTOM_TABLE}")

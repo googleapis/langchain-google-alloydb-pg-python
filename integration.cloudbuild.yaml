@@ -23,10 +23,23 @@ steps:
     entrypoint: pip
     args: ["install", ".[test]", "--user"]
 
+  - id: proxy-install
+    name: alpine:3.10
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        wget -O /workspace/alloydb-auth-proxy https://storage.googleapis.com/alloydb-auth-proxy/v1.11.0/alloydb-auth-proxy.linux.386
+        chmod +x /workspace/alloydb-auth-proxy
+
   - id: Run integration tests
     name: python:${_VERSION}
-    entrypoint: python
-    args: ["-m", "pytest", "--cov=langchain_google_alloydb_pg", "--cov-config=.coveragerc", "tests/"]
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        /workspace/alloydb-auth-proxy --port ${_DATABASE_PORT} ${_INSTANCE_CONNECTION_NAME} & sleep 2;
+        python -m pytest --cov=langchain_google_alloydb_pg --cov-config=.coveragerc tests/
     env:
       - "PROJECT_ID=$PROJECT_ID"
       - "INSTANCE_ID=$_INSTANCE_ID"
@@ -34,7 +47,16 @@ steps:
       - "DATABASE_ID=$_DATABASE_ID"
       - "REGION=$_REGION"
       - "OMNI_DATABASE_ID=$_OMNI_DATABASE_ID"
-    secretEnv: ["DB_USER", "DB_PASSWORD", "OMNI_HOST", "OMNI_USER", "OMNI_PASSWORD", "IAM_ACCOUNT"]
+      - "IP_ADDRESS=$_IP_ADDRESS"
+    secretEnv:
+      [
+        "DB_USER",
+        "DB_PASSWORD",
+        "OMNI_HOST",
+        "OMNI_USER",
+        "OMNI_PASSWORD",
+        "IAM_ACCOUNT",
+      ]
 
 availableSecrets:
   secretManager:
@@ -53,6 +75,9 @@ availableSecrets:
 
 substitutions:
   _VERSION: "3.8"
+  _INSTANCE_CONNECTION_NAME: projects/${PROJECT_ID}/locations/${_REGION}/clusters/${_CLUSTER_ID}/instances/${_INSTANCE_ID}
+  _DATABASE_PORT: "5432"
+  _IP_ADDRESS: "127.0.0.1"
 
 options:
   pool:

@@ -14,40 +14,29 @@
 
 import os
 import uuid
-from typing import List
+from typing import Sequence
 
 import asyncpg  # type: ignore
 import pytest
 import pytest_asyncio
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
-from langchain_core.embeddings import FakeEmbeddings
-from sqlalchemy import VARCHAR
+from langchain_core.embeddings import DeterministicFakeEmbedding
+from sqlalchemy import VARCHAR, text
+from sqlalchemy.engine import URL
+from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
+CUSTOM_TABLE_SYNC = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
-
-class FakeEmbeddingsWithDimension(FakeEmbeddings):
-    """Fake embeddings functionality for testing."""
-
-    size: int = VECTOR_SIZE
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Return simple embeddings."""
-        return [
-            [float(1.0)] * (VECTOR_SIZE - 1) + [float(i)] for i in range(len(texts))
-        ]
-
-    def embed_query(self, text: str = "default") -> List[float]:
-        """Return simple embeddings."""
-        return [float(1.0)] * (VECTOR_SIZE - 1) + [float(0.0)]
-
-
-embeddings_service = FakeEmbeddingsWithDimension()
+embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
+host = os.environ["IP_ADDRESS"]
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -55,6 +44,29 @@ def get_env_var(key: str, desc: str) -> str:
     if v is None:
         raise ValueError(f"Must set env var {key} to: {desc}")
     return v
+
+
+async def aexecute(
+    engine: AlloyDBEngine,
+    query: str,
+) -> None:
+    async def run(engine, query):
+        async with engine._pool.connect() as conn:
+            await conn.execute(text(query))
+            await conn.commit()
+
+    await engine._run_as_async(run(engine, query))
+
+
+async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
+    async def run(engine, query):
+        async with engine._pool.connect() as conn:
+            result = await conn.execute(text(query))
+            result_map = result.mappings()
+            result_fetch = result_map.fetchall()
+        return result_fetch
+
+    return await engine._run_as_async(run(engine, query))
 
 
 @pytest.mark.asyncio
@@ -69,41 +81,177 @@ class TestEngineAsync:
 
     @pytest.fixture(scope="module")
     def db_cluster(self) -> str:
-        return get_env_var("CLUSTER_ID", "cluster for AlloyDB instance")
+        return get_env_var("CLUSTER_ID", "cluster for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_instance(self) -> str:
-        return get_env_var("INSTANCE_ID", "instance for alloydb")
+        return get_env_var("INSTANCE_ID", "instance for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_name(self) -> str:
-        return get_env_var("DATABASE_ID", "database name for AlloyDB")
+        return get_env_var("DATABASE_ID", "instance for AlloyDB")
 
     @pytest.fixture(scope="module")
     def user(self) -> str:
-        return get_env_var("DB_USER", "user for AlloyDB")
+        return get_env_var("DB_USER", "database user for AlloyDB")
 
     @pytest.fixture(scope="module")
     def password(self) -> str:
-        return get_env_var("DB_PASSWORD", "password for AlloyDB")
+        return get_env_var("DB_PASSWORD", "database password for AlloyDB")
 
     @pytest.fixture(scope="module")
     def iam_account(self) -> str:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
-    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
-    async def engine(
-        self, request, db_project, db_region, db_cluster, db_instance, db_name
+    @pytest_asyncio.fixture(scope="class")
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
+        engine = await AlloyDBEngine.afrom_instance(
+            project_id=db_project,
+            cluster=db_cluster,
+            instance=db_instance,
+            region=db_region,
+            database=db_name,
+        )
+        yield engine
+        await aexecute(engine, f'DROP TABLE "{CUSTOM_TABLE}"')
+        await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE}"')
+        await engine.close()
+
+    async def test_init_table(self, engine):
+        await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        id = str(uuid.uuid4())
+        content = "coffee"
+        embedding = await embeddings_service.aembed_query(content)
+        stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
+        await aexecute(engine, stmt)
+
+    async def test_init_table_custom(self, engine):
+        await engine.ainit_vectorstore_table(
+            CUSTOM_TABLE,
+            VECTOR_SIZE,
+            id_column="uuid",
+            content_column="my-content",
+            embedding_column="my_embedding",
+            metadata_columns=[Column("page", "TEXT"), Column("source", "TEXT")],
+            store_metadata=True,
+        )
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CUSTOM_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "uuid", "data_type": "uuid"},
+            {"column_name": "my_embedding", "data_type": "USER-DEFINED"},
+            {"column_name": "langchain_metadata", "data_type": "json"},
+            {"column_name": "my-content", "data_type": "text"},
+            {"column_name": "page", "data_type": "text"},
+            {"column_name": "source", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+
+    async def test_password(
+        self,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        user,
+        password,
     ):
+        AlloyDBEngine._connector = None
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             instance=db_instance,
             region=db_region,
             cluster=db_cluster,
             database=db_name,
-            ip_type=request.param,
+            user=user,
+            password=password,
         )
-        yield engine
+        assert engine
+        await aexecute(engine, "SELECT 1")
+        AlloyDBEngine._connector = None
+        await engine.close()
+
+    async def test_from_engine(
+        self,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        user,
+        password,
+    ):
+        async with AsyncConnector() as connector:
+
+            async def getconn() -> asyncpg.Connection:
+                conn = await connector.connect(  # type: ignore
+                    f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
+                    "asyncpg",
+                    user=user,
+                    password=password,
+                    db=db_name,
+                    enable_iam_auth=False,
+                    ip_type=IPTypes.PUBLIC,
+                )
+                return conn
+
+            engine = create_async_engine(
+                "postgresql+asyncpg://",
+                async_creator=getconn,
+            )
+
+            engine = AlloyDBEngine.from_engine(engine)
+            await aexecute(engine, "SELECT 1")
+            await engine.close()
+
+    async def test_from_engine_args_url(
+        self,
+        db_name,
+        user,
+        password,
+    ):
+        port = "5432"
+        url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
+        engine = AlloyDBEngine.from_engine_args(
+            url,
+            echo=True,
+            poolclass=NullPool,
+        )
+        await aexecute(engine, "SELECT 1")
+        await engine.close()
+
+        engine = AlloyDBEngine.from_engine_args(
+            URL.create("postgresql+asyncpg", user, password, host, port, db_name)
+        )
+        await aexecute(engine, "SELECT 1")
+        await engine.close()
+
+    async def test_from_engine_args_url_error(
+        self,
+        db_name,
+        user,
+        password,
+    ):
+        port = "5432"
+        url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
+        with pytest.raises(TypeError):
+            engine = AlloyDBEngine.from_engine_args(url, random=False)
+        with pytest.raises(ValueError):
+            AlloyDBEngine.from_engine_args(
+                f"postgresql+pg8000://{user}:{password}@{host}:{port}/{db_name}",
+            )
+        with pytest.raises(ValueError):
+            AlloyDBEngine.from_engine_args(
+                URL.create("postgresql+pg8000", user, password, host, port, db_name)
+            )
+
+    async def test_column(self, engine):
+        with pytest.raises(ValueError):
+            Column("test", VARCHAR)
+        with pytest.raises(ValueError):
+            Column(1, "INTEGER")
 
     async def test_iam_account_override(
         self,
@@ -123,126 +271,8 @@ class TestEngineAsync:
             iam_account_email=iam_account,
         )
         assert engine
-        await engine._aexecute("SELECT 1")
-        await engine._connector.close()
-        await engine._engine.dispose()
-
-    async def test_execute(self, engine):
-        await engine._aexecute("SELECT 1")
-
-    async def test_init_table(self, engine):
-        try:
-            await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
-        except:
-            print("Table already deleted.")
-
-        await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
-        id = str(uuid.uuid4())
-        content = "coffee"
-        embedding = await embeddings_service.aembed_query(content)
-        stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
-        await engine._aexecute(stmt)
-
-        results = await engine._afetch(f"SELECT * FROM {DEFAULT_TABLE}")
-        assert len(results) > 0
-        await engine._aexecute(f"DROP TABLE {DEFAULT_TABLE}")
-
-    async def test_init_table_custom(self, engine):
-        try:
-            await engine._aexecute(f"DROP TABLE {CUSTOM_TABLE}")
-        except:
-            print("Table already deleted.")
-
-        await engine.ainit_vectorstore_table(
-            CUSTOM_TABLE,
-            VECTOR_SIZE,
-            id_column="uuid",
-            content_column="my-content",
-            embedding_column="my_embedding",
-            metadata_columns=[
-                Column("page", "TEXT", False),
-                Column("source", "TEXT"),
-            ],
-            store_metadata=True,
-        )
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CUSTOM_TABLE}';"
-        results = await engine._afetch(stmt)
-        expected = [
-            {"column_name": "uuid", "data_type": "uuid"},
-            {"column_name": "my_embedding", "data_type": "USER-DEFINED"},
-            {"column_name": "langchain_metadata", "data_type": "json"},
-            {"column_name": "my-content", "data_type": "text"},
-            {"column_name": "page", "data_type": "text"},
-            {"column_name": "source", "data_type": "text"},
-        ]
-        for row in results:
-            assert row in expected
-
-        await engine._aexecute(f"DROP TABLE {CUSTOM_TABLE}")
-
-    async def test_password(
-        self,
-        db_project,
-        db_region,
-        db_cluster,
-        db_instance,
-        db_name,
-        user,
-        password,
-    ):
-        engine = await AlloyDBEngine.afrom_instance(
-            project_id=db_project,
-            instance=db_instance,
-            region=db_region,
-            cluster=db_cluster,
-            database=db_name,
-            user=user,
-            password=password,
-            ip_type="PRIVATE",
-        )
-        assert engine
-        await engine._aexecute("SELECT 1")
-
-    async def test_from_engine(
-        self,
-        db_project,
-        db_region,
-        db_cluster,
-        db_instance,
-        db_name,
-        user,
-        password,
-    ):
-        async def init_connection_pool(connector):
-            async def getconn():
-                conn = await connector.connect(  # type: ignore
-                    f"projects/{db_project}/locations/{db_region}/clusters/{db_cluster}/instances/{db_instance}",
-                    "asyncpg",
-                    user=user,
-                    password=password,
-                    db=db_name,
-                    enable_iam_auth=False,
-                    ip_type=IPTypes.PRIVATE,
-                )
-                return conn
-
-            pool = create_async_engine(
-                "postgresql+asyncpg://",
-                async_creator=getconn,
-            )
-            return pool
-
-        async with AsyncConnector() as connector:
-            pool = await init_connection_pool(connector)
-
-            engine = AlloyDBEngine.from_engine(pool)
-            await engine._aexecute("SELECT 1")
-
-    async def test_column(self):
-        with pytest.raises(ValueError):
-            Column(32, "VARCHAR")
-        with pytest.raises(ValueError):
-            Column("test", VARCHAR)
+        await aexecute(engine, "SELECT 1")
+        await engine.close()
 
 
 @pytest.mark.asyncio
@@ -257,39 +287,105 @@ class TestEngineSync:
 
     @pytest.fixture(scope="module")
     def db_cluster(self) -> str:
-        return get_env_var("CLUSTER_ID", "cluster for AlloyDB instance")
+        return get_env_var("CLUSTER_ID", "cluster for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_instance(self) -> str:
-        return get_env_var("INSTANCE_ID", "instance for alloydb")
+        return get_env_var("INSTANCE_ID", "instance for AlloyDB")
 
     @pytest.fixture(scope="module")
     def db_name(self) -> str:
-        return get_env_var("DATABASE_ID", "database name for AlloyDB")
+        return get_env_var("DATABASE_ID", "instance for AlloyDB")
 
     @pytest.fixture(scope="module")
     def user(self) -> str:
-        return get_env_var("DB_USER", "user for AlloyDB")
+        return get_env_var("DB_USER", "database user for AlloyDB")
 
     @pytest.fixture(scope="module")
     def password(self) -> str:
-        return get_env_var("DB_PASSWORD", "password for AlloyDB")
+        return get_env_var("DB_PASSWORD", "database password for AlloyDB")
 
     @pytest.fixture(scope="module")
     def iam_account(self) -> str:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
-    @pytest.fixture(params=["PUBLIC", "PRIVATE"])
-    def engine(self, request, db_project, db_region, db_cluster, db_instance, db_name):
+    @pytest_asyncio.fixture(scope="class")
+    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
+        engine = AlloyDBEngine.from_instance(
+            project_id=db_project,
+            instance=db_instance,
+            cluster=db_cluster,
+            region=db_region,
+            database=db_name,
+        )
+        yield engine
+        await aexecute(engine, f'DROP TABLE "{CUSTOM_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE_SYNC}"')
+        await engine.close()
+
+    async def test_init_table(self, engine):
+        engine.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
+        id = str(uuid.uuid4())
+        content = "coffee"
+        embedding = await embeddings_service.aembed_query(content)
+        stmt = f"INSERT INTO {DEFAULT_TABLE_SYNC} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
+        await aexecute(engine, stmt)
+
+    async def test_init_table_custom(self, engine):
+        engine.init_vectorstore_table(
+            CUSTOM_TABLE_SYNC,
+            VECTOR_SIZE,
+            id_column="uuid",
+            content_column="my-content",
+            embedding_column="my_embedding",
+            metadata_columns=[Column("page", "TEXT"), Column("source", "TEXT")],
+            store_metadata=True,
+        )
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CUSTOM_TABLE_SYNC}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "uuid", "data_type": "uuid"},
+            {"column_name": "my_embedding", "data_type": "USER-DEFINED"},
+            {"column_name": "langchain_metadata", "data_type": "json"},
+            {"column_name": "my-content", "data_type": "text"},
+            {"column_name": "page", "data_type": "text"},
+            {"column_name": "source", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+
+    async def test_password(
+        self,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        user,
+        password,
+    ):
+        AlloyDBEngine._connector = None
         engine = AlloyDBEngine.from_instance(
             project_id=db_project,
             instance=db_instance,
             region=db_region,
-            database=db_name,
             cluster=db_cluster,
-            ip_type=request.param,
+            database=db_name,
+            user=user,
+            password=password,
         )
-        yield engine
+        assert engine
+        await aexecute(engine, "SELECT 1")
+        AlloyDBEngine._connector = None
+        await engine.close()
+
+    async def test_engine_constructor_key(
+        self,
+        engine,
+    ):
+        key = object()
+        with pytest.raises(Exception):
+            AlloyDBEngine(key, engine)
 
     async def test_iam_account_override(
         self,
@@ -309,77 +405,5 @@ class TestEngineSync:
             iam_account_email=iam_account,
         )
         assert engine
-        engine._execute("SELECT 1")
-        await engine._connector.close()
-        await engine._engine.dispose()
-
-    def test_execute(self, engine):
-        engine._execute("SELECT 1")
-
-    async def test_init_table(self, engine):
-        try:
-            engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
-        except:
-            print("Table already deleted.")
-        engine.init_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
-        id = str(uuid.uuid4())
-        content = "coffee"
-        embedding = await embeddings_service.aembed_query(content)
-        stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
-        engine._execute(stmt)
-
-        results = engine._fetch(f"SELECT * FROM {DEFAULT_TABLE}")
-        assert len(results) > 0
-        engine._execute(f"DROP TABLE {DEFAULT_TABLE}")
-
-    def test_init_table_custom(self, engine):
-        try:
-            engine._execute(f"DROP TABLE {CUSTOM_TABLE}")
-        except:
-            print("Table already deleted.")
-
-        engine.init_vectorstore_table(
-            CUSTOM_TABLE,
-            VECTOR_SIZE,
-            id_column="uuid",
-            content_column="my-content",
-            embedding_column="my_embedding",
-            metadata_columns=[Column("page", "TEXT"), Column("source", "TEXT")],
-            store_metadata=True,
-        )
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CUSTOM_TABLE}';"
-        results = engine._fetch(stmt)
-        expected = [
-            {"column_name": "uuid", "data_type": "uuid"},
-            {"column_name": "my_embedding", "data_type": "USER-DEFINED"},
-            {"column_name": "langchain_metadata", "data_type": "json"},
-            {"column_name": "my-content", "data_type": "text"},
-            {"column_name": "page", "data_type": "text"},
-            {"column_name": "source", "data_type": "text"},
-        ]
-        for row in results:
-            assert row in expected
-
-        engine._execute(f"DROP TABLE {CUSTOM_TABLE}")
-
-    async def test_password(
-        self,
-        db_project,
-        db_region,
-        db_cluster,
-        db_instance,
-        db_name,
-        user,
-        password,
-    ):
-        engine = AlloyDBEngine.from_instance(
-            project_id=db_project,
-            instance=db_instance,
-            region=db_region,
-            cluster=db_cluster,
-            database=db_name,
-            user=user,
-            password=password,
-        )
-        assert engine
-        engine._execute("SELECT 1")
+        await aexecute(engine, "SELECT 1")
+        await engine.close()
