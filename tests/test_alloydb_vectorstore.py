@@ -21,7 +21,6 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
-from langchain_google_alloydb_pg.vectorstore import cosine_similarity
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
