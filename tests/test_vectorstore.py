@@ -241,6 +241,31 @@ class TestVectorStore:
         assert len(results) == 3
         await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
 
+    async def test_aadd_embeddings(self, engine):
+        TABLE_NAME = f"{DEFAULT_TABLE}_embeddings"
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{TABLE_NAME}"')
+        engine.init_vectorstore_table(
+            TABLE_NAME,
+            VECTOR_SIZE,
+            metadata_columns=[Column("page", "VARCHAR"), Column("source", "VARCHAR")],
+        )
+        vs = AlloyDBVectorStore.create_sync(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=TABLE_NAME,
+            metadata_columns=["page", "source"],
+        )
+        await vs.aadd_embeddings(
+            texts=texts, embeddings=embeddings, metadatas=metadatas
+        )
+        results = await afetch(engine, f'SELECT * FROM "{TABLE_NAME}"')
+        assert len(results) == 3
+        assert results[0]["content"] == "foo"
+        assert results[0]["embedding"]
+        assert results[0]["page"] == "0"
+        assert results[0]["source"] == "google.com"
+        await aexecute(engine, f'DROP TABLE "{TABLE_NAME}"')
+
     async def test_adelete(self, engine, vs):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         await vs.aadd_texts(texts, ids=ids)
@@ -320,6 +345,35 @@ class TestVectorStore:
         results = await afetch(engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
         await vs_sync.adelete(ids)
+
+    async def test_add_embeddings(self, engine_sync):
+        TABLE_NAME = f"{DEFAULT_TABLE}_embeddings"
+        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{TABLE_NAME}"')
+        engine_sync.init_vectorstore_table(
+            TABLE_NAME,
+            VECTOR_SIZE,
+            metadata_columns=[Column("page", "VARCHAR"), Column("source", "VARCHAR")],
+        )
+        vs_sync = AlloyDBVectorStore.create_sync(
+            engine_sync,
+            embedding_service=embeddings_service,
+            table_name=TABLE_NAME,
+            metadata_columns=["page", "source"],
+        )
+        vs_sync.add_embeddings(
+            texts=texts,
+            embeddings=embeddings,
+            metadatas=[
+                {"page": str(i), "source": "google.com"} for i in range(len(texts))
+            ],
+        )
+        results = await afetch(engine_sync, f'SELECT * FROM "{TABLE_NAME}"')
+        assert len(results) == 3
+        assert results[0]["content"] == "foo"
+        assert results[0]["embedding"]
+        assert results[0]["page"] == "0"
+        assert results[0]["source"] == "google.com"
+        await aexecute(engine_sync, f'DROP TABLE "{TABLE_NAME}"')
 
     async def test_create_vectorstore_with_invalid_parameters(self, engine):
         with pytest.raises(ValueError):

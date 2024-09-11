@@ -205,7 +205,31 @@ class TestVectorStore:
         result = await vs.adelete()
         assert result == False
 
-    ##### Custom Vector Store  #####
+    #### Custom Vector Store  #####
+    async def test_aadd_embeddings(self, engine):
+        TABLE_NAME = f"{DEFAULT_TABLE}_embeddings"
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{TABLE_NAME}"')
+        await engine._ainit_vectorstore_table(
+            TABLE_NAME,
+            VECTOR_SIZE,
+            metadata_columns=[Column("page", "VARCHAR"), Column("source", "VARCHAR")],
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=TABLE_NAME,
+            metadata_columns=["page", "source"],
+        )
+        await vs.aadd_embeddings(
+            texts=texts, embeddings=embeddings, metadatas=metadatas
+        )
+        results = await afetch(engine, f'SELECT * FROM "{TABLE_NAME}"')
+        assert len(results) == 3
+        assert results[0]["content"] == "foo"
+        assert results[0]["embedding"]
+        assert results[0]["page"] == "0"
+        assert results[0]["source"] == "google.com"
+        await aexecute(engine, f'DROP TABLE "{TABLE_NAME}"')
 
     async def test_aadd_texts_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
