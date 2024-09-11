@@ -36,6 +36,7 @@ from .indexes import (
     QueryOptions,
     ScaNNIndex,
 )
+from .mem_embeddings import MemEmbeddings
 
 
 class AsyncAlloyDBVectorStore(VectorStore):
@@ -240,6 +241,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
             insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"({self.id_column}, {self.content_column}, {self.embedding_column}{metadata_col_names}'
             values = {"id": id, "content": content, "embedding": str(embedding)}
             values_stmt = "VALUES (:id, :content, :embedding"
+            if not embedding and isinstance(self.embedding_service, MemEmbeddings):
+                values_stmt = f"VALUES (:id, :content, {self.embedding_service.embed_query_inline(content)}"
 
             # Add metadata
             extra = metadata
@@ -276,7 +279,10 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[str]:
         """Embed texts and add to the table."""
-        embeddings = self.embedding_service.embed_documents(list(texts))
+        if isinstance(self.embedding_service, MemEmbeddings):
+            embeddings = [[] for _ in list(texts)]
+        else:
+            embeddings = self.embedding_service.embed_documents(list(texts))
         ids = await self.__aadd_embeddings(
             texts, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
@@ -459,7 +465,15 @@ class AsyncAlloyDBVectorStore(VectorStore):
         search_function = self.distance_strategy.search_function
 
         filter = f"WHERE {filter}" if filter else ""
-        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.schema_name}\".\"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
+        if (
+            not embedding
+            and isinstance(self.embedding_service, MemEmbeddings)
+            and "query" in kwargs
+        ):
+            embedding = self.embedding_service.embed_query_inline(kwargs["query"])
+        else:
+            embedding = f"'{str(embedding)}'"
+        stmt = f'SELECT *, {search_function}({self.embedding_column}, {embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {embedding} LIMIT {k};'
         if self.index_query_options:
             query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
@@ -482,7 +496,12 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs selected by similarity search on query."""
-        embedding = self.embedding_service.embed_query(text=query)
+        embedding = (
+            []
+            if isinstance(self.embedding_service, MemEmbeddings)
+            else self.embedding_service.embed_query(text=query)
+        )
+        kwargs["query"] = query
 
         return await self.asimilarity_search_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
@@ -507,7 +526,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
-        embedding = self.embedding_service.embed_query(query)
+        embedding = (
+            []
+            if isinstance(self.embedding_service, MemEmbeddings)
+            else self.embedding_service.embed_query(text=query)
+        )
+        kwargs["query"] = query
+
         docs = await self.asimilarity_search_with_score_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
         )
@@ -570,7 +595,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs selected using the maximal marginal relevance."""
-        embedding = self.embedding_service.embed_query(text=query)
+        embedding = await self.embedding_service.aembed_query(text=query)
 
         return await self.amax_marginal_relevance_search_by_vector(
             embedding=embedding,
