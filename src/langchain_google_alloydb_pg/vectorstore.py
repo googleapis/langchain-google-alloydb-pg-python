@@ -181,7 +181,7 @@ class AlloyDBVectorStore(VectorStore):
     @property
     def embeddings(self) -> Embeddings:
         return self.__vs.embedding_service
-    
+
     async def aadd_embeddings(
         self,
         texts: Iterable[str],
@@ -194,7 +194,6 @@ class AlloyDBVectorStore(VectorStore):
         return await self._engine._run_as_async(
             self.__vs.aadd_embeddings(texts, embeddings, metadatas, ids, **kwargs)
         )
-
 
     async def aadd_texts(
         self,
@@ -218,7 +217,7 @@ class AlloyDBVectorStore(VectorStore):
         return await self._engine._run_as_async(
             self.__vs.aadd_documents(documents, ids, **kwargs)
         )
-    
+
     def add_embeddings(
         self,
         texts: Iterable[str],

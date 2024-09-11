@@ -765,7 +765,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
-    
+
     def add_embeddings(
         self,
         texts: Iterable[str],
