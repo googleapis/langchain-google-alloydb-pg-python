@@ -217,7 +217,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
     def embeddings(self) -> Embeddings:
         return self.embedding_service
 
-    async def __aadd_embeddings(
+    async def aadd_embeddings(
         self,
         texts: Iterable[str],
         embeddings: List[List[float]],
@@ -225,7 +225,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Add embeddings to the table."""
+        """Add data along with embeddings to the table."""
         if not ids:
             ids = [str(uuid.uuid4()) for _ in texts]
         if not metadatas:
@@ -277,7 +277,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
     ) -> List[str]:
         """Embed texts and add to the table."""
         embeddings = self.embedding_service.embed_documents(list(texts))
-        ids = await self.__aadd_embeddings(
+        ids = await self.aadd_embeddings(
             texts, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
         return ids
@@ -759,6 +759,18 @@ class AsyncAlloyDBVectorStore(VectorStore):
     def add_documents(
         self,
         documents: List[Document],
+        ids: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
+        )
+    
+    def add_embeddings(
+        self,
+        texts: Iterable[str],
+        embeddings: List[List[float]],
+        metadatas: Optional[List[dict]] = None,
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
