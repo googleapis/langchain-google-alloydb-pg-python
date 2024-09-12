@@ -16,8 +16,7 @@ Supported Vector Stores
 
     The process of getting data from vector stores varies depending on the specific database. Below are code snippets illustrating the process for some common stores:
 
-
-    ### Pinecone
+   ### Pinecone
 
     Get pinecone index
 
@@ -80,7 +79,7 @@ Supported Vector Stores
             pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vertexai
             ```
 
-        2. Define embeddings service. 
+        2. Define embeddings service.
 
             In case you're using a different embeddings service, choose one from <https://python.langchain.com/v0.2/docs/integrations/text_embedding/>
 
@@ -167,7 +166,9 @@ Supported Vector Stores
         ```
 
     2. Delete existing data in the collection
-        ## Pinecone
+
+       ## Pinecone
+
        ```python
         index.delete(ids=ids)
        ```
