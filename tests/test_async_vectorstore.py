@@ -204,6 +204,7 @@ class TestVectorStore:
         # delete with no ids
         result = await vs.adelete()
         assert result == False
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
 
     ##### Custom Vector Store  #####
     async def test_aadd_embeddings(self, engine, vs_custom):
@@ -266,6 +267,7 @@ class TestVectorStore:
         content = [result["mycontent"] for result in results]
         assert len(results) == 2
         assert "foo" not in content
+        await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
 
     async def test_ignore_metadata_columns(self, engine):
         column_to_ignore = "source"

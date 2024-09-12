@@ -225,6 +225,7 @@ class TestVectorStore:
         results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
         assert len(results) == 3
         vs.delete(ids)
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
 
     async def test_aadd_texts_edge_cases(self, engine, vs):
         texts = ["Taylor's", '"Swift"', "best-friend"]
@@ -262,6 +263,7 @@ class TestVectorStore:
         await vs.adelete([ids[0]])
         results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
         assert len(results) == 2
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
 
     async def test_aadd_texts_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -311,6 +313,7 @@ class TestVectorStore:
         content = [result["mycontent"] for result in results]
         assert len(results) == 2
         assert "foo" not in content
+        await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
 
     async def test_add_docs(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -318,6 +321,7 @@ class TestVectorStore:
         results = await afetch(engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
         vs_sync.delete(ids)
+        await aexecute(engine_sync, f'TRUNCATE TABLE "{DEFAULT_TABLE_SYNC}"')
 
     async def test_add_texts(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -325,6 +329,7 @@ class TestVectorStore:
         results = await afetch(engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
         await vs_sync.adelete(ids)
+        await aexecute(engine_sync, f'TRUNCATE TABLE "{DEFAULT_TABLE_SYNC}"')
 
     async def test_cross_env(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -332,6 +337,7 @@ class TestVectorStore:
         results = await afetch(engine_sync, f'SELECT * FROM "{DEFAULT_TABLE_SYNC}"')
         assert len(results) == 3
         await vs_sync.adelete(ids)
+        await aexecute(engine_sync, f'TRUNCATE TABLE "{DEFAULT_TABLE_SYNC}"')
 
     async def test_add_embeddings(self, engine_sync, vs_custom):
         vs_custom.add_embeddings(
