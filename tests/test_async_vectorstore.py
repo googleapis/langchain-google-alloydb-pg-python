@@ -220,7 +220,7 @@ class TestVectorStore:
             table_name=TABLE_NAME,
             metadata_columns=["page", "source"],
         )
-        await vs.aadd_embeddings(
+        await vs.__aadd_embeddings(
             texts=texts, embeddings=embeddings, metadatas=metadatas
         )
         results = await afetch(engine, f'SELECT * FROM "{TABLE_NAME}"')
