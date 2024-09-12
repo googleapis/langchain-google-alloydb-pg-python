@@ -14,11 +14,13 @@
 
 import os
 import uuid
+from typing import List
 
 import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from PIL import Image
 from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
@@ -27,6 +29,7 @@ from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptio
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
+IMAGE_TABLE_SYNC = "test_iamge_table" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -39,6 +42,15 @@ docs = [
 ]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
+
+
+class FakeImageEmbedding(DeterministicFakeEmbedding):
+
+    def embed_image(self, image_paths: List[str]) -> List[List[float]]:
+        return [self.embed_query(path) for path in image_paths]
+
+
+image_embedding_service = FakeImageEmbedding(size=VECTOR_SIZE)
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -151,12 +163,47 @@ class TestVectorStoreSearch:
         vs_custom.add_documents(docs, ids=ids)
         yield vs_custom
 
+    @pytest_asyncio.fixture(scope="class")
+    async def image_uris(self):
+        image = Image.new("RGB", (100, 100), color="red")
+        image.save("test_image_red_search.jpg")
+        image = Image.new("RGB", (100, 100), color="green")
+        image.save("test_image_green_search.jpg")
+        image = Image.new("RGB", (100, 100), color="blue")
+        image.save("test_image_blue_search.jpg")
+        image_uris = [
+            "test_image_red_search.jpg",
+            "test_image_green_search.jpg",
+            "test_image_blue_search.jpg",
+        ]
+        yield image_uris
+        for uri in image_uris:
+            os.remove(uri)
+
+    @pytest_asyncio.fixture(scope="class")
+    async def image_vs(self, engine, image_uris):
+        engine.ainit_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
+        vs = AlloyDBVectorStore.create(
+            engine,
+            embedding_service=image_embedding_service,
+            table_name=IMAGE_TABLE_SYNC,
+            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+        )
+        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
+        vs.add_images(image_uris, ids=ids)
+        yield vs
+
     async def test_asimilarity_search(self, vs):
         results = await vs.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo")]
         results = await vs.asimilarity_search("foo", k=1, filter="content = 'bar'")
         assert results == [Document(page_content="bar")]
+
+    async def test_asimilarity_search_image(self, image_vs, image_uris):
+        results = await image_vs.asimilarity_search_image(image_uris[0], k=1)
+        assert len(results) == 1
+        assert results[0].metadata["image_uri"] == image_uris[0]
 
     async def test_asimilarity_search_score(self, vs):
         results = await vs.asimilarity_search_with_score("foo")
@@ -305,6 +352,11 @@ class TestVectorStoreSearchSync:
         assert results == [Document(page_content="foo")]
         results = vs_custom.similarity_search("foo", k=1, filter="mycontent = 'bar'")
         assert results == [Document(page_content="bar")]
+
+    async def test_similarity_search_image(self, image_vs, image_uris):
+        results = await image_vs.similarity_search_image(image_uris[0], k=1)
+        assert len(results) == 1
+        assert results[0].metadata["image_uri"] == image_uris[0]
 
     def test_similarity_search_score(self, vs_custom):
         results = vs_custom.similarity_search_with_score("foo")

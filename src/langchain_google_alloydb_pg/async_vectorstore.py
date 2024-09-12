@@ -15,6 +15,7 @@
 # TODO: Remove below import when minimum supported Python version is 3.10
 from __future__ import annotations
 
+import base64
 import json
 import uuid
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type, Union
@@ -306,6 +307,33 @@ class AsyncAlloyDBVectorStore(VectorStore):
         ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
         return ids
 
+    def _encode_image(self, uri: str) -> str:
+        """Get base64 string from image URI."""
+        with open(uri, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode("utf-8")
+
+    async def aadd_images(
+        self,
+        uris: List[str],
+        metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        """Embed images and add to the table."""
+        encoded_images = []
+        if metadatas is None:
+            metadatas = [{"image_uri": uri} for uri in uris]
+
+        for uri in uris:
+            encoded_image = self._encode_image(uri)
+            encoded_images.append(encoded_image)
+
+        embeddings = self._images_embedding_helper(uris)
+        ids = await self._aadd_embeddings(
+            encoded_images, embeddings, metadatas=metadatas, ids=ids, **kwargs
+        )
+        return ids
+
     async def adelete(
         self,
         ids: Optional[List] = None,
@@ -508,6 +536,35 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
         return await self.asimilarity_search_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
+        )
+
+    def _images_embedding_helper(self, image_uris: List[str]) -> List[List[float]]:
+        # check if `embed_image()` API is supported by the embedding service used
+        if hasattr(self.embedding_service, "embed_image"):
+            try:
+                embeddings = self.embedding_service.embed_image(image_uris)
+            except Exception as e:
+                raise Exception(
+                    f"Make sure your selected embedding model supports list of image URIs as input. {str(e)}"
+                )
+        else:
+            raise ValueError(
+                "Please use an embedding model that supports image embedding."
+            )
+        return embeddings
+
+    async def asimilarity_search_image(
+        self,
+        image_uri: str,
+        k: Optional[int] = None,
+        filter: Optional[str] = None,
+        **kwargs: Any,
+    ) -> List[Document]:
+        """Return docs selected by similarity search on query."""
+        embedding = self._images_embedding_helper([image_uri])[0]
+
+        return self._engine._run_as_sync(
+            self.__vs.asimilarity_search_by_vector(embedding, k, filter, **kwargs)
         )
 
     def _select_relevance_score_fn(self) -> Callable[[float], float]:
@@ -756,17 +813,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
             results = result_map.fetchall()
         return bool(len(results) == 1)
 
-    def similarity_search(
-        self,
-        query: str,
-        k: Optional[int] = None,
-        filter: Optional[str] = None,
-        **kwargs: Any,
-    ) -> List[Document]:
-        raise NotImplementedError(
-            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
-        )
-
     def add_texts(
         self,
         texts: Iterable[str],
@@ -782,6 +828,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         documents: List[Document],
         ids: Optional[List] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
+        )
+
+    def add_images(
+        self,
+        uris: List[str],
+        metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
         raise NotImplementedError(
@@ -834,6 +891,28 @@ class AsyncAlloyDBVectorStore(VectorStore):
         metadata_json_column: str = "langchain_metadata",
         **kwargs: Any,
     ) -> AsyncAlloyDBVectorStore:
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
+        )
+
+    def similarity_search(
+        self,
+        query: str,
+        k: Optional[int] = None,
+        filter: Optional[str] = None,
+        **kwargs: Any,
+    ) -> List[Document]:
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
+        )
+
+    def similarity_search_image(
+        self,
+        image_uri: str,
+        k: Optional[int] = None,
+        filter: Optional[str] = None,
+        **kwargs: Any,
+    ) -> List[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
