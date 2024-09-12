@@ -192,7 +192,7 @@ class AlloyDBVectorStore(VectorStore):
     ) -> List[str]:
         """Add data along with embeddings to the table."""
         return await self._engine._run_as_async(
-            self.__vs.__aadd_embeddings(texts, embeddings, metadatas, ids, **kwargs)
+            self.__vs.aadd_embeddings(texts, embeddings, metadatas, ids, **kwargs)
         )
 
     async def aadd_texts(
@@ -228,7 +228,7 @@ class AlloyDBVectorStore(VectorStore):
     ) -> List[str]:
         """Add data along with embeddings to the table."""
         return self._engine._run_as_sync(
-            self.__vs.__aadd_embeddings(texts, embeddings, metadatas, ids, **kwargs)
+            self.__vs.aadd_embeddings(texts, embeddings, metadatas, ids, **kwargs)
         )
 
     def add_texts(
