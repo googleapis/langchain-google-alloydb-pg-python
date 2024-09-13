@@ -44,8 +44,6 @@ class MemEmbeddings(Embeddings):
         )
 
     def embed_query(self, text: str) -> List[float]:
-        # coro = self._getEmbeddingsFromDb(text)
-        # return self._engine._run_as_sync(coro)
         raise NotImplementedError(
             "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
         )
@@ -66,9 +64,6 @@ class MemEmbeddings(Embeddings):
     async def aembed_query(self, text: str) -> List[float]:
         embed = await self._getEmbeddingsFromDb(text)
         return embed
-        # raise NotImplementedError(
-        #     "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
-        # )
 
     def embed_query_inline(self, text: str) -> str:
         return f"embedding('{self.model_id}', '{text}')::vector"
