@@ -36,7 +36,7 @@ from .indexes import (
     QueryOptions,
     ScaNNIndex,
 )
-from .mem_embeddings import MemEmbeddings
+from .mem_embeddings import AlloyDBMemEmbeddings
 
 
 class AsyncAlloyDBVectorStore(VectorStore):
@@ -241,7 +241,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
             insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"({self.id_column}, {self.content_column}, {self.embedding_column}{metadata_col_names}'
             values = {"id": id, "content": content, "embedding": str(embedding)}
             values_stmt = "VALUES (:id, :content, :embedding"
-            if not embedding and isinstance(self.embedding_service, MemEmbeddings):
+            if not embedding and isinstance(
+                self.embedding_service, AlloyDBMemEmbeddings
+            ):
                 values_stmt = f"VALUES (:id, :content, {self.embedding_service.embed_query_inline(content)}"
 
             # Add metadata
@@ -279,7 +281,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[str]:
         """Embed texts and add to the table."""
-        if isinstance(self.embedding_service, MemEmbeddings):
+        if isinstance(self.embedding_service, AlloyDBMemEmbeddings):
             embeddings = [[] for _ in list(texts)]
         else:
             embeddings = self.embedding_service.embed_documents(list(texts))
@@ -467,7 +469,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         filter = f"WHERE {filter}" if filter else ""
         if (
             not embedding
-            and isinstance(self.embedding_service, MemEmbeddings)
+            and isinstance(self.embedding_service, AlloyDBMemEmbeddings)
             and "query" in kwargs
         ):
             embedding = self.embedding_service.embed_query_inline(kwargs["query"])
@@ -498,7 +500,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """Return docs selected by similarity search on query."""
         embedding = (
             []
-            if isinstance(self.embedding_service, MemEmbeddings)
+            if isinstance(self.embedding_service, AlloyDBMemEmbeddings)
             else self.embedding_service.embed_query(text=query)
         )
         kwargs["query"] = query
@@ -528,7 +530,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """Return docs and distance scores selected by similarity search on query."""
         embedding = (
             []
-            if isinstance(self.embedding_service, MemEmbeddings)
+            if isinstance(self.embedding_service, AlloyDBMemEmbeddings)
             else self.embedding_service.embed_query(text=query)
         )
         kwargs["query"] = query

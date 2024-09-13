@@ -19,7 +19,7 @@ from typing import Sequence
 import pytest
 import pytest_asyncio
 
-from langchain_google_alloydb_pg import AlloyDBEngine, MemEmbeddings
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBMemEmbeddings
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
@@ -30,7 +30,7 @@ table_name = "test-table" + str(uuid.uuid4())
 
 
 @pytest.mark.asyncio
-class TestMemEmbeddings:
+class TestAlloyDBMemEmbeddings:
 
     @pytest_asyncio.fixture
     async def engine(self):
@@ -66,7 +66,7 @@ class TestMemEmbeddings:
 
     @pytest_asyncio.fixture
     def mem_embeddings(self, engine, model_id):
-        return MemEmbeddings(engine=engine, model_id=model_id)
+        return AlloyDBMemEmbeddings(engine=engine, model_id=model_id)
 
     async def test_aembed_documents(self, mem_embeddings):
         with pytest.raises(NotImplementedError):

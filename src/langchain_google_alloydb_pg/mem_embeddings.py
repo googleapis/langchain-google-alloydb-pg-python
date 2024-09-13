@@ -24,11 +24,12 @@ from langchain_core.embeddings import Embeddings
 from .engine import AlloyDBEngine
 from sqlalchemy import RowMapping, text
 
-class MemEmbeddings(Embeddings):
+
+class AlloyDBMemEmbeddings(Embeddings):
     """Google AlloyDB Model Endpoint Management for Embeddings."""
 
     def __init__(self, engine: AlloyDBEngine, model_id: str):
-        """MemEmbeddings constructor.
+        """AlloyDBMemEmbeddings constructor.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
             model_id (str): The model id used for generating embeddings.
