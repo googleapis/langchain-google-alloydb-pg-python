@@ -166,17 +166,16 @@ class TestVectorStoreSearch:
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
+        red_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_red.jpg"
+        green_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_green.jpg"
+        blue_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_blue.jpg"
         image = Image.new("RGB", (100, 100), color="red")
-        image.save("test_image_red_search_async.jpg")
+        image.save(red_uri)
         image = Image.new("RGB", (100, 100), color="green")
-        image.save("test_image_green_search_async.jpg")
+        image.save(green_uri)
         image = Image.new("RGB", (100, 100), color="blue")
-        image.save("test_image_blue_search_async.jpg")
-        image_uris = [
-            "test_image_red_search_async.jpg",
-            "test_image_green_search_async.jpg",
-            "test_image_blue_search_async.jpg",
-        ]
+        image.save(blue_uri)
+        image_uris = [red_uri, green_uri, blue_uri]
         yield image_uris
         for uri in image_uris:
             os.remove(uri)
@@ -349,9 +348,9 @@ class TestVectorStoreSearchSync:
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
-        red_uri = "test_image_red.jpg" + str(uuid.uuid4()).replace("-", "_")
-        green_uri = "test_image_green.jpg" + str(uuid.uuid4()).replace("-", "_")
-        blue_uri = "test_image_blue.jpg" + str(uuid.uuid4()).replace("-", "_")
+        red_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_red.jpg"
+        green_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_green.jpg"
+        blue_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_blue.jpg"
         image = Image.new("RGB", (100, 100), color="red")
         image.save(red_uri)
         image = Image.new("RGB", (100, 100), color="green")
