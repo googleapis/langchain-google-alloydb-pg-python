@@ -78,14 +78,119 @@ pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vert
 
    ### Weaviate
 
+   Install any prerequisites using the [docs](https://weaviate.io/developers/weaviate/client-libraries/python#installation)
+
+    Create client
+
+   ```python
+   import weaviate
+
+   client = weaviate.connect_to_weaviate_cloud(
+        cluster_url='db_url',
+        auth_credentials=weaviate.auth.AuthApiKey(WEAVIATE_API_KEY),
+        headers={"X-Cohere-Api-Key": EMBEDDINGS_API_KEY},
+    )
+   ```
+
+   You can choose other embeddings types as well. ([ref](https://weaviate.io/developers/weaviate/model-providers#api-based))
+
+   Get all data from collection
+
+   ```python
+   def get_all_data():
+    try:
+        client = weaviate.connect_to_weaviate_cloud(
+            cluster_url=URL,
+            auth_credentials=weaviate.auth.AuthApiKey(API_KEY),
+            headers={"X-Cohere-Api-Key": EMBEDDINGS_API_KEY},
+        )
+        ids = []
+        content = []
+        embeddings = []
+        metadatas = []
+        collection = client.collections.get(COLLECTION_NAME)
+        for item in collection.iterator(include_vector=True):
+            ids.append(str(item.uuid))
+            content.append(item.properties["page_content"])
+            embeddings.append(item.vector["default"])
+            metadatas.append(item.properties["metadata"])
+    finally:
+        client.close()
+    return ids, content, embeddings, metadatas
+   ```
+
+    > **_NOTE:_**  Remember to always close the Weaviate client after use.
+
    ### ChromaDB
 
+   Install any prerequisites using the [docs](https://pypi.org/project/langchain-chroma/).
+
+   Define the embeddings service that was used to create the VectorStore.
+
+   Eg. To use VertexAI embedding service, use
+
+   ```python
+    from langchain_google_vertexai import VertexAIEmbeddings
+
+    embeddings_service = VertexAIEmbeddings(
+        model_name="textembedding-gecko@003", project=PROJECT_ID
+    )
+   ```
+
+    In case you're using a different embeddings service, choose one from <https://python.langchain.com/v0.2/docs/integrations/text_embedding/>
+
+   Create client
+
+    ```python
+    from langchain_chroma import Chroma
+
+    vector_store = Chroma(
+        collection_name='collection_name',
+        embedding_function=embeddings_service,
+        persist_directory="./chroma_langchain_db",  # Where to save data locally, remove if not neccesary
+    )
+   ```
+
+   Get all data from collection
+
+   ```python
+   def get_all_data():
+        docs = vector_store.get(include=["metadatas", "documents", "embeddings"])
+        return docs["ids"], docs["documents"], docs["embeddings"], docs["metadatas"]
+   ```
+
    ### Qdrant
+
+   Install any pre-requisites using the [docs](https://python-client.qdrant.tech/).
+
+   Create client
+
+    ```python
+    from qdrant_client import QdrantClient
+
+    client = QdrantClient(path="qdrant_db_path")
+    ```
+
+    Get all data from collection
+
+    ```python
+    def get_all_data():
+        docs = client.scroll(collection_name='collection_name', with_vectors=True)
+        ids = []
+        content = []
+        vector = []
+        metadatas = []
+        for doc in docs[0]:
+            ids.append(doc.id)
+            content.append(doc.payload["page_content"])
+            vector.append(doc.vector)
+            metadatas.append(doc.payload["metadata"])
+        return ids, content, vector, metadatas
+     ```
 
    ### Milvus
 
    Install any prerequisites using the [docs](https://milvus.io/docs/install-pymilvus.md).
-
 
    Create client
 
@@ -211,23 +316,52 @@ pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vert
 
     2. Delete existing data in the collection
 
-       ## Pinecone
+       ### Pinecone
+
        [Source doc](https://docs.pinecone.io/guides/indexes/delete-an-index)
 
        ```python
         pc.delete_index('index_name')
        ```
 
-       ## ChromaDB
+       ### ChromaDB
 
-       ## Qdrant
+       [Source doc](https://python.langchain.com/v0.2/api_reference/chroma/vectorstores/langchain_chroma.vectorstores.Chroma.html#langchain_chroma.vectorstores.Chroma.delete_collection)
 
-       ## Milvus
+       ```python
+       vector_store.delete_collection('collection_name')
+       ```
+
+       ### Qdrant
+
+       [Source doc](https://python-client.qdrant.tech/qdrant_client.qdrant_client)
+
+       ```python
+       client.delete_collection('collection_name')
+       ```
+
+       ### Milvus
+
        [Source doc](https://milvus.io/docs/v2.0.x/drop_collection.md)
 
         ```python
         from pymilvus import utility
+        
         utility.drop_collection('collection_name')
         ```
 
-       ## Weaviate
+       ### Weaviate
+
+       [Source doc](https://weaviate.io/developers/weaviate/manage-data/collections#delete-a-collection)
+
+       ```python
+       try:
+            client = weaviate.connect_to_weaviate_cloud(
+                cluster_url=URL,
+                auth_credentials=weaviate.auth.AuthApiKey(API_KEY),
+                headers={"X-Cohere-Api-Key": EMBEDDINGS_API_KEY},
+            )
+            client.collections.delete('collection_name')
+       finally:
+            client.close()
+       ```
