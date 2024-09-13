@@ -10,6 +10,24 @@ Supported Vector Stores
 - Qdrant
 - Milvus
 
+## Prerequisites
+
+There needs to be an AlloyDB database set up for the migration process.
+
+How to set up AlloyDB:
+
+- [Create a Google Cloud Project](https://developers.google.com/workspace/guides/create-project)
+- [Enable the AlloyDB API](https://console.cloud.google.com/flows/enableapi?apiid=alloydb.googleapis.com)
+- [Create a AlloyDB cluster and instance.](https://cloud.google.com/alloydb/docs/cluster-create)
+- [Create a AlloyDB database.](https://cloud.google.com/alloydb/docs/quickstart/create-and-connect)
+- [Add a User to the database.](https://cloud.google.com/alloydb/docs/database-users/about)
+
+Install required libraries
+
+```bash
+pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vertexai
+```
+
 ## How to Migrate
 
 1. **Retrieve Data from Existing Vector Database**
@@ -17,6 +35,8 @@ Supported Vector Stores
     The process of getting data from vector stores varies depending on the specific database. Below are code snippets illustrating the process for some common stores:
 
    ### Pinecone
+
+   Install any prerequisites using the [docs](https://docs.pinecone.io/reference/python-sdk).
 
     Get pinecone index
 
@@ -41,7 +61,7 @@ Supported Vector Stores
         return ids
 
     def get_all_data(index):
-        all_data = index.fetch(ids=get_all_pinecone_ids(index))
+        all_data = index.fetch(ids=get_all_ids(index))
         ids = []
         embeddings = []
         content = []
@@ -65,90 +85,79 @@ Supported Vector Stores
    ### Milvus
 
 2. **Copy the data to AlloyDB**
-    1. Set up an AlloyDB database
-        - [Create a Google Cloud Project](https://developers.google.com/workspace/guides/create-project)
-        - [Enable the AlloyDB API](https://console.cloud.google.com/flows/enableapi?apiid=alloydb.googleapis.com)
-        - [Create a AlloyDB cluster and instance.](https://cloud.google.com/alloydb/docs/cluster-create)
-        - [Create a AlloyDB database.](https://cloud.google.com/alloydb/docs/quickstart/create-and-connect)
-        - [Add a User to the database.](https://cloud.google.com/alloydb/docs/database-users/about)
-    2. Transfer data
+    1. Define embeddings service.
 
-        1. Install libraries
+        In case you're using a different embeddings service, choose one from <https://python.langchain.com/v0.2/docs/integrations/text_embedding/>
 
-            ```bash
-            pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vertexai
-            ```
+        ```python
+        from langchain_google_vertexai import VertexAIEmbeddings
 
-        2. Define embeddings service.
+        embeddings_service = VertexAIEmbeddings(
+            model_name="textembedding-gecko@003", project=PROJECT_ID
+        )
+        ```
 
-            In case you're using a different embeddings service, choose one from <https://python.langchain.com/v0.2/docs/integrations/text_embedding/>
+        > **_NOTE:_**  The embeddings service defined here is not used to generate the embeddings, but required by the vectorstore.
+        > Embeddings are directly copied from the original table.
 
-            ```python
-            from langchain_google_vertexai import VertexAIEmbeddings
+    2. Create AlloyDB table and Vector Store
 
-            embeddings_service = VertexAIEmbeddings(
-                model_name="textembedding-gecko@003", project=PROJECT_ID
-            )
-            ```
+        ```python
+        from langchain_google_alloydb_pg import (
+            AlloyDBEngine,
+            Column,
+            AlloyDBVectorStore,
+        )
 
-        3. Create AlloyDB table and Vector Store
+        # Replace these variable values
+        engine = await AlloyDBEngine.afrom_instance(
+            project_id=PROJECT_ID,
+            instance=INSTANCE_NAME,
+            region=REGION,
+            cluster=CLUSTER,
+            database=DATABASE,
+            user=USER,
+            password=PASSWORD,
+        )
 
-            ```python
-            from langchain_google_alloydb_pg import (
-                AlloyDBEngine,
-                Column,
-                AlloyDBVectorStore,
-            )
+        # Create an AlloyDB table
+        await engine.ainit_vectorstore_table(
+            table_name='collection_name', 
+            
+            # VertexAI embeddings use a vector size of 768. If you're choosing another vector embeddings service, choose their corresponding vector size
+            vector_size=768,
 
-            # Replace these variable values
-            engine = await AlloyDBEngine.afrom_instance(
-                project_id=PROJECT_ID,
-                instance=INSTANCE_NAME,
-                region=REGION,
-                cluster=CLUSTER,
-                database=DATABASE,
-                user=USER,
-                password=PASSWORD,
-            )
+            # Define your metadata columns
+            metadata_columns=[
+                Column("source", "VARCHAR"), 
+                Column("location", "VARCHAR")
+            ],
+        )
 
-            # Create an AlloyDB table
-            await engine.ainit_vectorstore_table(
-                table_name='collection_name', 
-                
-                # VertexAI embeddings use a vector size of 768. If you're choosing another vector embeddings service, choose their corresponding vector size
-                vector_size=768,
+        # Create a vector store instance
+        vector_store = await AlloyDBVectorStore.create(
+            engine=engine,
+            embedding_service=embeddings_service,
+            table_name='collection_name',
 
-                # Define your metadata columns
-                metadata_columns=[
-                    Column("source", "VARCHAR"), 
-                    Column("location", "VARCHAR")
-                ],
-            )
+            # Metadata column names
+            metadata_columns=["source", "location"],
+        )
+        ```
 
-            # Create a vector store instance
-            vector_store = await AlloyDBVectorStore.create(
-                engine=engine,
-                embedding_service=embeddings_service,
-                table_name='collection_name',
+    3. Insert data to AlloyDB
 
-                # Metadata column names
-                metadata_columns=["source", "location"],
-            )
-            ```
+        ```python
+        ids, embeddings, content, metadatas = get_all_data('collection_name')
+        await vector_store.aadd_embeddings(
+            texts=content,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
+        )
+        ```
 
-        4. Insert data to AlloyDB
-
-            ```python
-            ids, embeddings, content, metadatas = get_all_data('collection_name')
-            await vector_store.aadd_embeddings(
-                texts=content,
-                embeddings=embeddings,
-                metadatas=metadatas,
-                ids=ids,
-            )
-            ```
-
-3. Delete data from existing Vector Database
+3. **Delete data from existing Vector Database**
     1. Verify data copy
 
         ```python
@@ -168,9 +177,10 @@ Supported Vector Stores
     2. Delete existing data in the collection
 
        ## Pinecone
+       [Source doc](https://docs.pinecone.io/guides/indexes/delete-an-index)
 
        ```python
-        index.delete(ids=ids)
+        pc.delete_index('index_name')
        ```
 
        ## ChromaDB
