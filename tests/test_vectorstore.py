@@ -339,17 +339,17 @@ class TestVectorStore:
         assert results[0]["source"] == "google.com"
         await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
 
-    async def test_aadd_images(self, engine, image_vs, image_uris):
+    async def test_aadd_images(self, engine, image_vs_sync, image_uris):
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         metadatas = [
             {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
         ]
-        await image_vs.aadd_images(image_uris, metadatas, ids)
-        results = await engine._afetch(f'SELECT * FROM "{IMAGE_TABLE_SYNC}"')
+        await image_vs_sync.aadd_images(image_uris, metadatas, ids)
+        results = await afetch(engine, f'SELECT * FROM "{IMAGE_TABLE_SYNC}"')
         assert len(results) == 3
         assert results[0]["image_id"] == 0
         assert results[0]["source"] == "google.com"
-        await engine._aexecute(f'TRUNCATE TABLE "{IMAGE_TABLE_SYNC}"')
+        await aexecute(engine, f'TRUNCATE TABLE "{IMAGE_TABLE_SYNC}"')
 
     async def test_adelete_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -385,7 +385,7 @@ class TestVectorStore:
     async def test_add_images(self, engine_sync, image_vs_sync, image_uris):
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         image_vs_sync.add_images(image_uris, ids=ids)
-        results = engine_sync._fetch(f'SELECT * FROM "{IMAGE_TABLE_SYNC}"')
+        results = await afetch(engine_sync, (f'SELECT * FROM "{IMAGE_TABLE_SYNC}"'))
         assert len(results) == 3
         await image_vs_sync.adelete(ids)
 

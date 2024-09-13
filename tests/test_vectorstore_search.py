@@ -181,10 +181,10 @@ class TestVectorStoreSearch:
             os.remove(uri)
 
     @pytest_asyncio.fixture(scope="class")
-    async def image_vs(self, engine, image_uris):
-        engine.init_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
-        vs = AlloyDBVectorStore.create(
-            engine,
+    async def image_vs(self, engine_sync, image_uris):
+        engine_sync.init_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
+        vs = AlloyDBVectorStore.create_sync(
+            engine_sync,
             embedding_service=image_embedding_service,
             table_name=IMAGE_TABLE_SYNC,
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
