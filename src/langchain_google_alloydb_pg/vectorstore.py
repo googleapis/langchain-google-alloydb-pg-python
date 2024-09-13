@@ -290,7 +290,7 @@ class AlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[str]:
         """Embed images and add to the table."""
-        return self.engine._run_as_sync(
+        return self._engine._run_as_sync(
             self.__vs.aadd_images(uris, metadatas, ids, **kwargs)
         )
 

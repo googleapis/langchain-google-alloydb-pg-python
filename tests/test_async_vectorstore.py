@@ -146,7 +146,7 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def image_vs(self, engine):
-        await engine.ainit_vectorstore_table(
+        await engine._ainit_vectorstore_table(
             IMAGE_TABLE,
             VECTOR_SIZE,
             metadata_columns=[Column("image_id", "INTEGER"), Column("source", "TEXT")],

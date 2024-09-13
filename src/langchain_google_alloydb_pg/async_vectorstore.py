@@ -329,7 +329,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             encoded_images.append(encoded_image)
 
         embeddings = self._images_embedding_helper(uris)
-        ids = await self._aadd_embeddings(
+        ids = await self.__aadd_embeddings(
             encoded_images, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
         return ids
@@ -563,8 +563,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """Return docs selected by similarity search on query."""
         embedding = self._images_embedding_helper([image_uri])[0]
 
-        return self._engine._run_as_sync(
-            self.__vs.asimilarity_search_by_vector(embedding, k, filter, **kwargs)
+        return await self.asimilarity_search_by_vector(
+            embedding=embedding, k=k, filter=filter, **kwargs
         )
 
     def _select_relevance_score_fn(self) -> Callable[[float], float]:

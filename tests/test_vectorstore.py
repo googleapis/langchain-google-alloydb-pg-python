@@ -201,8 +201,7 @@ class TestVectorStore:
             table_name=IMAGE_TABLE_SYNC,
         )
         yield vs
-        engine_sync._execute(f'DROP TABLE IF EXISTS "{IMAGE_TABLE_SYNC}"')
-        engine_sync._engine.dispose()
+        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE_SYNC}"')
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
