@@ -160,11 +160,7 @@ remote_app = reasoning_engines.ReasoningEngine.create(
         user=USER,
         password=PASSWORD,
     ),
-    requirements=[
-        "google-cloud-aiplatform[reasoningengine,langchain]==1.57.0",
-        "langchain-google-alloydb-pg==0.4.1",
-        "langchain-google-vertexai==1.0.4",
-    ],
+    requirements="requirements.txt",
     display_name=DISPLAY_NAME,
     sys_version="3.11",
     extra_packages=["config.py"],
