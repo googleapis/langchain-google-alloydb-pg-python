@@ -38,32 +38,28 @@ class MemEmbeddings(Embeddings):
         self._engine = engine
         self.model_id = model_id
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, documents: List[str]) -> List[List[float]]:
         raise NotImplementedError(
             "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
         )
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, query: str) -> List[float]:
         raise NotImplementedError(
             "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
         )
 
-    async def _getEmbeddingsFromDb(self, content: str) -> List[float]:
-        query = f" SELECT embedding('{self.model_id}', '{content}')::vector "
+    async def aembed_documents(self, documents: List[str]) -> List[List[float]]:
+        raise NotImplementedError(
+            "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
+        )
+
+    async def aembed_query(self, query: str) -> List[float]:
+        query = f" SELECT embedding('{self.model_id}', '{query}')::vector "
         async with self._engine._pool.connect() as conn:
             result = await conn.execute(text(query))
             result_map = result.mappings()
             results = result_map.fetchall()
-        return json.loads(results[0]['embedding'])
+        return json.loads(results[0]["embedding"])
 
-    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
-        raise NotImplementedError(
-            "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
-        )
-
-    async def aembed_query(self, text: str) -> List[float]:
-        embed = await self._getEmbeddingsFromDb(text)
-        return embed
-
-    def embed_query_inline(self, text: str) -> str:
-        return f"embedding('{self.model_id}', '{text}')::vector"
+    def embed_query_inline(self, query: str) -> str:
+        return f"embedding('{self.model_id}', '{query}')::vector"
