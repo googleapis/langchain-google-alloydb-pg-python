@@ -156,7 +156,7 @@ We will calculate the average latency of multiple queries to have a better under
 
     hnsw_index = HNSWIndex(name="hnsw")
     await vector_store.aapply_vector_index(hnsw_index)
-    assert await vector_store.is_valid_index(hnsw_index.name)
+    assert await vector_store.ais_valid_index(hnsw_index.name)
     print("HNSW index created.")
     ```
 

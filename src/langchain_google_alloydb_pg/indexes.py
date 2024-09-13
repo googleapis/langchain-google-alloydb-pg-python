@@ -135,7 +135,7 @@ class ScaNNIndex(BaseIndex):
     num_leaves: int = 5
     quantizer: str = field(
         default="sq8", init=False
-    )  # Excludes `quantizer` from initialization currently only supports the value "sq8"
+    )  # Disable `quantizer` initialization currently only supports the value "sq8"
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
