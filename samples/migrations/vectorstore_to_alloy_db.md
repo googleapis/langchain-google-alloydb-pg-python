@@ -51,7 +51,7 @@ pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vert
     Get all data from index
 
     ```python
-    def get_all_ids(index):
+    def get_all_ids():
         results = index.list_paginated(prefix="")
         ids = [v.id for v in results.vectors]
         while results.pagination is not None:
@@ -60,7 +60,7 @@ pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vert
             ids.extend([v.id for v in results.vectors])
         return ids
 
-    def get_all_data(index):
+    def get_all_data():
         all_data = index.fetch(ids=get_all_ids(index))
         ids = []
         embeddings = []
@@ -83,6 +83,41 @@ pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vert
    ### Qdrant
 
    ### Milvus
+
+   Install any prerequisites using the [docs](https://milvus.io/docs/install-pymilvus.md).
+
+
+   Create client
+
+    ```python
+    from pymilvus import MilvusClient
+
+    client = MilvusClient(uri='connection_uri')
+    ```
+
+    Get all data from collection
+
+    ```python
+    def get_all_data():
+        all_docs = client.query(
+            collection_name='collection_name',
+            filter='pk >= "0"',
+            output_fields=["pk", "source", "location", "text", "vector"],
+        )
+        ids = []
+        content = []
+        embeddings = []
+        metadatas = []
+        for doc in all_docs:
+            ids.append(doc["pk"])
+            content.append(doc["text"])
+            embeddings.append(doc["vector"])
+            del doc["pk"]
+            del doc["text"]
+            del doc["vector"]
+            metadatas.append(doc)
+        return ids, content, embeddings, metadatas
+    ```
 
 2. **Copy the data to AlloyDB**
     1. Define embeddings service.
@@ -148,7 +183,7 @@ pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vert
     3. Insert data to AlloyDB
 
         ```python
-        ids, embeddings, content, metadatas = get_all_data('collection_name')
+        ids, content, embeddings, metadatas = get_all_data()
         await vector_store.aadd_embeddings(
             texts=content,
             embeddings=embeddings,
@@ -188,5 +223,11 @@ pip install --upgrade --quiet  langchain-google-alloydb-pg langchain-google-vert
        ## Qdrant
 
        ## Milvus
+       [Source doc](https://milvus.io/docs/v2.0.x/drop_collection.md)
+
+        ```python
+        from pymilvus import utility
+        utility.drop_collection('collection_name')
+        ```
 
        ## Weaviate
