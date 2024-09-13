@@ -282,9 +282,8 @@ class TestVectorStoreSearch:
         assert results == [Document(page_content="bar")]
 
     async def test_similarity_search_image(self, image_vs, image_uris):
-        results = await image_vs.similarity_search_image(image_uris[0], k=1)
-        assert len(results) == 1
-        assert results[0].metadata["image_uri"] == image_uris[0]
+        with pytest.raises(NotImplementedError):
+            await image_vs.similarity_search_image(image_uris[0], k=1)
 
     async def test_similarity_search_score(self, vs_custom):
         results = await vs_custom.asimilarity_search_with_score("foo")

@@ -109,7 +109,7 @@ class TestVectorStoreSearch:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
-        await engine.ainit_vectorstore_table(
+        await engine._ainit_vectorstore_table(
             DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False
         )
         vs = await AlloyDBVectorStore.create(
@@ -181,16 +181,16 @@ class TestVectorStoreSearch:
             os.remove(uri)
 
     @pytest_asyncio.fixture(scope="class")
-    async def image_vs(self, engine_sync, image_uris):
-        engine_sync.init_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
-        vs = AlloyDBVectorStore.create_sync(
-            engine_sync,
+    async def image_vs(self, engine, image_uris):
+        await engine._ainit_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
+        vs = await AlloyDBVectorStore.create(
+            engine,
             embedding_service=image_embedding_service,
             table_name=IMAGE_TABLE_SYNC,
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
-        vs.add_images(image_uris, ids=ids)
+        await vs.aadd_images(image_uris, ids=ids)
         yield vs
 
     async def test_asimilarity_search(self, vs):
@@ -346,6 +346,36 @@ class TestVectorStoreSearchSync:
         vs_custom.add_documents(docs, ids=ids)
         yield vs_custom
 
+    @pytest_asyncio.fixture(scope="class")
+    async def image_uris(self):
+        image = Image.new("RGB", (100, 100), color="red")
+        image.save("test_image_red_search.jpg")
+        image = Image.new("RGB", (100, 100), color="green")
+        image.save("test_image_green_search.jpg")
+        image = Image.new("RGB", (100, 100), color="blue")
+        image.save("test_image_blue_search.jpg")
+        image_uris = [
+            "test_image_red_search.jpg",
+            "test_image_green_search.jpg",
+            "test_image_blue_search.jpg",
+        ]
+        yield image_uris
+        for uri in image_uris:
+            os.remove(uri)
+
+    @pytest_asyncio.fixture(scope="class")
+    def image_vs(self, engine_sync, image_uris):
+        engine_sync.init_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
+        vs = AlloyDBVectorStore.create_sync(
+            engine_sync,
+            embedding_service=image_embedding_service,
+            table_name=IMAGE_TABLE_SYNC,
+            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+        )
+        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
+        vs.add_images(image_uris, ids=ids)
+        yield vs
+
     def test_similarity_search(self, vs_custom):
         results = vs_custom.similarity_search("foo", k=1)
         assert len(results) == 1
@@ -353,8 +383,8 @@ class TestVectorStoreSearchSync:
         results = vs_custom.similarity_search("foo", k=1, filter="mycontent = 'bar'")
         assert results == [Document(page_content="bar")]
 
-    async def test_similarity_search_image(self, image_vs, image_uris):
-        results = await image_vs.similarity_search_image(image_uris[0], k=1)
+    def test_similarity_search_image(self, image_vs, image_uris):
+        results = image_vs.similarity_search_image(image_uris[0], k=1)
         assert len(results) == 1
         assert results[0].metadata["image_uri"] == image_uris[0]
 

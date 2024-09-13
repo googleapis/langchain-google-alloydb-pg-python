@@ -241,11 +241,11 @@ class TestVectorStore:
             {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
         ]
         await image_vs.aadd_images(image_uris, metadatas, ids)
-        results = await engine._afetch(f'SELECT * FROM "{IMAGE_TABLE}"')
+        results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
         assert len(results) == 3
         assert results[0]["image_id"] == 0
         assert results[0]["source"] == "google.com"
-        await engine._aexecute(f'TRUNCATE TABLE "{IMAGE_TABLE}"')
+        await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
 
     async def test_adelete(self, engine, vs):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]

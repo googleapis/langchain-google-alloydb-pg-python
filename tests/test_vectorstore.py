@@ -33,6 +33,7 @@ from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Colum
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
 CUSTOM_TABLE = "test-table-custom" + str(uuid.uuid4())
+IMAGE_TABLE = "test_image_table" + str(uuid.uuid4())
 IMAGE_TABLE_SYNC = "test_image_table_sync" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 
@@ -193,17 +194,6 @@ class TestVectorStore:
         await aexecute(engine, f'DROP TABLE IF EXISTS "{CUSTOM_TABLE}"')
 
     @pytest_asyncio.fixture(scope="class")
-    async def image_vs_sync(self, engine_sync):
-        engine_sync.init_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
-        vs = AlloyDBVectorStore.create_sync(
-            engine_sync,
-            embedding_service=image_embedding_service,
-            table_name=IMAGE_TABLE_SYNC,
-        )
-        yield vs
-        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE_SYNC}"')
-
-    @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
         image = Image.new("RGB", (100, 100), color="red")
         image.save("test_image_red.jpg")
@@ -339,17 +329,23 @@ class TestVectorStore:
         assert results[0]["source"] == "google.com"
         await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
 
-    async def test_aadd_images(self, engine, image_vs_sync, image_uris):
+    async def test_aadd_images(self, engine_sync, image_uris):
+        engine_sync.init_vectorstore_table(IMAGE_TABLE, VECTOR_SIZE)
+        vs = AlloyDBVectorStore.create_sync(
+            engine_sync,
+            embedding_service=image_embedding_service,
+            table_name=IMAGE_TABLE,
+        )
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         metadatas = [
             {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
         ]
-        await image_vs_sync.aadd_images(image_uris, metadatas, ids)
-        results = await afetch(engine, f'SELECT * FROM "{IMAGE_TABLE_SYNC}"')
+        await vs.aadd_images(image_uris, metadatas, ids)
+        results = await afetch(engine_sync, f'SELECT * FROM "{IMAGE_TABLE}"')
         assert len(results) == 3
         assert results[0]["image_id"] == 0
         assert results[0]["source"] == "google.com"
-        await aexecute(engine, f'TRUNCATE TABLE "{IMAGE_TABLE_SYNC}"')
+        await aexecute(engine_sync, f'TRUNCATE TABLE "{IMAGE_TABLE}"')
 
     async def test_adelete_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -382,12 +378,20 @@ class TestVectorStore:
         await vs_sync.adelete(ids)
         await aexecute(engine_sync, f'TRUNCATE TABLE "{DEFAULT_TABLE_SYNC}"')
 
-    async def test_add_images(self, engine_sync, image_vs_sync, image_uris):
+    async def test_add_images(self, engine_sync, image_uris):
+        engine_sync.init_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
+        vs = AlloyDBVectorStore.create_sync(
+            engine_sync,
+            embedding_service=image_embedding_service,
+            table_name=IMAGE_TABLE_SYNC,
+        )
+        yield vs
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
-        image_vs_sync.add_images(image_uris, ids=ids)
+        vs.add_images(image_uris, ids=ids)
         results = await afetch(engine_sync, (f'SELECT * FROM "{IMAGE_TABLE_SYNC}"'))
         assert len(results) == 3
-        await image_vs_sync.adelete(ids)
+        await vs.adelete(ids)
+        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE_SYNC}"')
 
     async def test_cross_env(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
