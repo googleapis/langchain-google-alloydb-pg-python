@@ -329,11 +329,17 @@ class TestVectorStore:
         await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
 
     async def test_aadd_images(self, engine_sync, image_uris):
-        engine_sync.init_vectorstore_table(IMAGE_TABLE, VECTOR_SIZE)
+        engine_sync.init_vectorstore_table(
+            IMAGE_TABLE,
+            VECTOR_SIZE,
+            metadata_columns=[Column("image_id", "TEXT"), Column("source", "TEXT")],
+        )
         vs = AlloyDBVectorStore.create_sync(
             engine_sync,
             embedding_service=image_embedding_service,
             table_name=IMAGE_TABLE,
+            metadata_columns=["image_id", "source"],
+            metadata_json_column="mymeta",
         )
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         metadatas = [
@@ -342,7 +348,7 @@ class TestVectorStore:
         await vs.aadd_images(image_uris, metadatas, ids)
         results = await afetch(engine_sync, f'SELECT * FROM "{IMAGE_TABLE}"')
         assert len(results) == 3
-        assert results[0]["image_id"] == 0
+        assert results[0]["image_id"] == ids[0]
         assert results[0]["source"] == "google.com"
         await aexecute(engine_sync, f'TRUNCATE TABLE "{IMAGE_TABLE}"')
 

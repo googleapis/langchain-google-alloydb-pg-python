@@ -149,13 +149,14 @@ class TestVectorStore:
         await engine._ainit_vectorstore_table(
             IMAGE_TABLE,
             VECTOR_SIZE,
-            metadata_columns=[Column("image_id", "INTEGER"), Column("source", "TEXT")],
-            metadata_json_column="mymeta",
+            metadata_columns=[Column("image_id", "TEXT"), Column("source", "TEXT")],
         )
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
             embedding_service=image_embedding_service,
             table_name=IMAGE_TABLE,
+            metadata_columns=["image_id", "source"],
+            metadata_json_column="mymeta",
         )
         yield vs
 
@@ -242,7 +243,7 @@ class TestVectorStore:
         await image_vs.aadd_images(image_uris, metadatas, ids)
         results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
         assert len(results) == 3
-        assert results[0]["image_id"] == 0
+        assert results[0]["image_id"] == ids[0]
         assert results[0]["source"] == "google.com"
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
 
