@@ -195,17 +195,16 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
+        red_uri = "test_image_red.jpg" + str(uuid.uuid4()).replace("-", "_")
+        green_uri = "test_image_green.jpg" + str(uuid.uuid4()).replace("-", "_")
+        blue_uri = "test_image_blue.jpg" + str(uuid.uuid4()).replace("-", "_")
         image = Image.new("RGB", (100, 100), color="red")
-        image.save("test_image_red.jpg")
+        image.save(red_uri)
         image = Image.new("RGB", (100, 100), color="green")
-        image.save("test_image_green.jpg")
+        image.save(green_uri)
         image = Image.new("RGB", (100, 100), color="blue")
-        image.save("test_image_blue.jpg")
-        image_uris = [
-            "test_image_red.jpg",
-            "test_image_green.jpg",
-            "test_image_blue.jpg",
-        ]
+        image.save(blue_uri)
+        image_uris = [red_uri, green_uri, blue_uri]
         yield image_uris
         for uri in image_uris:
             os.remove(uri)

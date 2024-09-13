@@ -29,7 +29,8 @@ from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptio
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
-IMAGE_TABLE_SYNC = "test_iamge_table" + str(uuid.uuid4()).replace("-", "_")
+IMAGE_TABLE = "test_image_table" + str(uuid.uuid4()).replace("-", "_")
+IMAGE_TABLE_SYNC = "test_image_table_sync" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -166,15 +167,15 @@ class TestVectorStoreSearch:
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
         image = Image.new("RGB", (100, 100), color="red")
-        image.save("test_image_red_search.jpg")
+        image.save("test_image_red_search_async.jpg")
         image = Image.new("RGB", (100, 100), color="green")
-        image.save("test_image_green_search.jpg")
+        image.save("test_image_green_search_async.jpg")
         image = Image.new("RGB", (100, 100), color="blue")
-        image.save("test_image_blue_search.jpg")
+        image.save("test_image_blue_search_async.jpg")
         image_uris = [
-            "test_image_red_search.jpg",
-            "test_image_green_search.jpg",
-            "test_image_blue_search.jpg",
+            "test_image_red_search_async.jpg",
+            "test_image_green_search_async.jpg",
+            "test_image_blue_search_async.jpg",
         ]
         yield image_uris
         for uri in image_uris:
@@ -182,11 +183,11 @@ class TestVectorStoreSearch:
 
     @pytest_asyncio.fixture(scope="class")
     async def image_vs(self, engine, image_uris):
-        await engine.ainit_vectorstore_table(IMAGE_TABLE_SYNC, VECTOR_SIZE)
+        await engine.ainit_vectorstore_table(IMAGE_TABLE, VECTOR_SIZE)
         vs = await AlloyDBVectorStore.create(
             engine,
             embedding_service=image_embedding_service,
-            table_name=IMAGE_TABLE_SYNC,
+            table_name=IMAGE_TABLE,
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
@@ -348,17 +349,16 @@ class TestVectorStoreSearchSync:
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
+        red_uri = "test_image_red.jpg" + str(uuid.uuid4()).replace("-", "_")
+        green_uri = "test_image_green.jpg" + str(uuid.uuid4()).replace("-", "_")
+        blue_uri = "test_image_blue.jpg" + str(uuid.uuid4()).replace("-", "_")
         image = Image.new("RGB", (100, 100), color="red")
-        image.save("test_image_red_search.jpg")
+        image.save(red_uri)
         image = Image.new("RGB", (100, 100), color="green")
-        image.save("test_image_green_search.jpg")
+        image.save(green_uri)
         image = Image.new("RGB", (100, 100), color="blue")
-        image.save("test_image_blue_search.jpg")
-        image_uris = [
-            "test_image_red_search.jpg",
-            "test_image_green_search.jpg",
-            "test_image_blue_search.jpg",
-        ]
+        image.save(blue_uri)
+        image_uris = [red_uri, green_uri, blue_uri]
         yield image_uris
         for uri in image_uris:
             os.remove(uri)
