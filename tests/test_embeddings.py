@@ -61,23 +61,25 @@ class TestAlloyDBEmbeddings:
 
     @pytest.fixture(scope="module")
     def model_id(self) -> str:
-        return "textembedding-gecko@003"
+        return "textembedding-gecko@001"
 
     @pytest_asyncio.fixture
     def embeddings(self, engine, model_id):
         return AlloyDBEmbeddings(engine=engine, model_id=model_id)
 
     async def test_aembed_documents(self, embeddings):
-        with pytest.raises(NotImplementedError):
-            await embeddings.aembed_documents(["test document"])
+        embedding = await embeddings.aembed_query("test document")
+        assert isinstance(embedding, list)
+        assert len(embedding) > 0
+        for embedding_field in embedding:
+            assert isinstance(embedding_field, float)
+            assert -1 <= embedding_field <= 1
 
     async def test_embed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
             embeddings.embed_documents(["test document"])
 
     async def test_embed_query(self, embeddings):
-        # with pytest.raises(NotImplementedError):
-        #     embeddings.embed_query("test document")
         embedding = embeddings.embed_query("test document")
         assert isinstance(embedding, list)
         assert len(embedding) > 0
@@ -96,3 +98,10 @@ class TestAlloyDBEmbeddings:
         for embedding_field in embedding:
             assert isinstance(embedding_field, float)
             assert -1 <= embedding_field <= 1
+
+    async def test_embed_query_invalid_model_id(self, engine):
+        with pytest.raises(Exception, match="Invalid Endpoint name"):
+            embedding_service = AlloyDBEmbeddings(
+                engine=engine, model_id="not_existing_model_id"
+            )
+            await embedding_service.aembed_query("test document")

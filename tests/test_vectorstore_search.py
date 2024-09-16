@@ -21,12 +21,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import text
 
-from langchain_google_alloydb_pg import (
-    AlloyDBEmbeddings,
-    AlloyDBEngine,
-    AlloyDBVectorStore,
-    Column,
-)
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
@@ -34,8 +29,12 @@ DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
-fake_embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
+embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
+# Note: The following texts are chosen to produce diverse
+# similarity scores when using the DeterministicFakeEmbedding service. This ensures
+# that the test cases can effectively validate the filtering and scoring logic.
+# The scoring might be different if using a different embedding service.
 texts = ["foo", "bar", "baz", "boo"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
 metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
@@ -43,7 +42,7 @@ docs = [
     Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
-embeddings = [fake_embeddings_service.embed_query("foo") for i in range(len(texts))]
+embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -100,18 +99,8 @@ class TestVectorStoreSearch:
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
         await engine.close()
 
-    @pytest.fixture(
-        scope="class",
-        params=[
-            lambda _: fake_embeddings_service,
-            lambda engine: AlloyDBEmbeddings(engine, "textembedding-gecko@002"),
-        ],
-    )
-    def embeddings_service(self, engine, request):
-        return request.param(engine)
-
     @pytest_asyncio.fixture(scope="class")
-    async def vs(self, engine, embeddings_service):
+    async def vs(self, engine):
         await engine.ainit_vectorstore_table(
             DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False
         )
@@ -156,7 +145,7 @@ class TestVectorStoreSearch:
 
         vs_custom = AlloyDBVectorStore.create_sync(
             engine_sync,
-            embedding_service=fake_embeddings_service,
+            embedding_service=embeddings_service,
             table_name=CUSTOM_TABLE,
             id_column="myid",
             content_column="mycontent",
@@ -179,12 +168,12 @@ class TestVectorStoreSearch:
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
 
-    async def test_asimilarity_search_by_vector(self, vs, embeddings_service):
-        search_embedding = embeddings_service.embed_query("foo")
-        results = await vs.asimilarity_search_by_vector(search_embedding)
+    async def test_asimilarity_search_by_vector(self, vs):
+        embedding = embeddings_service.embed_query("foo")
+        results = await vs.asimilarity_search_by_vector(embedding)
         assert len(results) == 4
         assert results[0] == Document(page_content="foo")
-        results = await vs.asimilarity_search_with_score_by_vector(search_embedding)
+        results = await vs.asimilarity_search_with_score_by_vector(embedding)
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
 
@@ -209,7 +198,7 @@ class TestVectorStoreSearch:
         assert results[0][0] == Document(page_content="foo")
 
     async def test_similarity_search_with_relevance_scores_threshold_euclidean(
-        self, engine, embeddings_service
+        self, engine
     ):
         vs = await AlloyDBVectorStore.create(
             engine,
@@ -233,14 +222,12 @@ class TestVectorStoreSearch:
         )
         assert results[0] == Document(page_content="boo")
 
-    async def test_amax_marginal_relevance_search_vector(self, vs, embeddings_service):
+    async def test_amax_marginal_relevance_search_vector(self, vs):
         embedding = embeddings_service.embed_query("bar")
         results = await vs.amax_marginal_relevance_search_by_vector(embedding)
         assert results[0] == Document(page_content="bar")
 
-    async def test_amax_marginal_relevance_search_vector_score(
-        self, vs, embeddings_service
-    ):
+    async def test_amax_marginal_relevance_search_vector_score(self, vs):
         embedding = embeddings_service.embed_query("bar")
         results = await vs.amax_marginal_relevance_search_with_score_by_vector(
             embedding
@@ -306,7 +293,7 @@ class TestVectorStoreSearchSync:
 
         vs_custom = await AlloyDBVectorStore.create(
             engine_sync,
-            embedding_service=fake_embeddings_service,
+            embedding_service=embeddings_service,
             table_name=DEFAULT_TABLE_SYNC,
             id_column="myid",
             content_column="mycontent",
@@ -330,7 +317,7 @@ class TestVectorStoreSearchSync:
         assert results[0][1] == 0
 
     def test_similarity_search_by_vector(self, vs_custom):
-        embedding = fake_embeddings_service.embed_query("foo")
+        embedding = embeddings_service.embed_query("foo")
         results = vs_custom.similarity_search_by_vector(embedding)
         assert len(results) == 4
         assert results[0] == Document(page_content="foo")
@@ -347,12 +334,12 @@ class TestVectorStoreSearchSync:
         assert results[0] == Document(page_content="boo")
 
     def test_max_marginal_relevance_search_vector(self, vs_custom):
-        embedding = fake_embeddings_service.embed_query("bar")
+        embedding = embeddings_service.embed_query("bar")
         results = vs_custom.max_marginal_relevance_search_by_vector(embedding)
         assert results[0] == Document(page_content="bar")
 
     def test_max_marginal_relevance_search_vector_score(self, vs_custom):
-        embedding = fake_embeddings_service.embed_query("bar")
+        embedding = embeddings_service.embed_query("bar")
         results = vs_custom.max_marginal_relevance_search_with_score_by_vector(
             embedding
         )
