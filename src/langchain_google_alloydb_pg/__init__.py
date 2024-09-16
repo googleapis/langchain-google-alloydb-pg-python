@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from .chat_message_history import AlloyDBChatMessageHistory
+from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine, Column
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
-from .embeddings import AlloyDBEmbeddings
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 

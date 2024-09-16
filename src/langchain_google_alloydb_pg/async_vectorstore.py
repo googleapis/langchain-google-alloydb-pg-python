@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type
 
 import numpy as np
 from langchain_core.documents import Document
@@ -26,6 +26,7 @@ from langchain_core.vectorstores import VectorStore, utils
 from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
@@ -36,7 +37,6 @@ from .indexes import (
     QueryOptions,
     ScaNNIndex,
 )
-from .embeddings import AlloyDBEmbeddings
 
 
 class AsyncAlloyDBVectorStore(VectorStore):

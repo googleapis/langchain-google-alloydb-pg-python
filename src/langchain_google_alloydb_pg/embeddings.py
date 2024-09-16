@@ -16,13 +16,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Iterable, List, Optional, Tuple, Type
+from typing import List
 
-from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from sqlalchemy import text
 
 from .engine import AlloyDBEngine
-from sqlalchemy import RowMapping, text
 
 
 class AlloyDBEmbeddings(Embeddings):

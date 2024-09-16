@@ -18,7 +18,7 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBEmbeddings
+from langchain_google_alloydb_pg import AlloyDBEmbeddings, AlloyDBEngine
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
