@@ -329,7 +329,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             encoded_images.append(encoded_image)
 
         embeddings = self._images_embedding_helper(uris)
-        ids = await self.__aadd_embeddings(
+        ids = await self.aadd_embeddings(
             encoded_images, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
         return ids
