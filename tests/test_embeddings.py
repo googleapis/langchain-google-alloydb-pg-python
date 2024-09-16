@@ -14,12 +14,11 @@
 
 import os
 import uuid
-from typing import Sequence
 
 import pytest
 import pytest_asyncio
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBMemEmbeddings
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBEmbeddings
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
@@ -30,7 +29,7 @@ table_name = "test-table" + str(uuid.uuid4())
 
 
 @pytest.mark.asyncio
-class TestAlloyDBMemEmbeddings:
+class TestAlloyDBEmbeddings:
 
     @pytest_asyncio.fixture
     async def engine(self):
@@ -65,29 +64,35 @@ class TestAlloyDBMemEmbeddings:
         return "textembedding-gecko@003"
 
     @pytest_asyncio.fixture
-    def mem_embeddings(self, engine, model_id):
-        return AlloyDBMemEmbeddings(engine=engine, model_id=model_id)
+    def embeddings(self, engine, model_id):
+        return AlloyDBEmbeddings(engine=engine, model_id=model_id)
 
-    async def test_aembed_documents(self, mem_embeddings):
+    async def test_aembed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
-            await mem_embeddings.aembed_documents(["test document"])
+            await embeddings.aembed_documents(["test document"])
 
-    async def test_embed_documents(self, mem_embeddings):
+    async def test_embed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
-            mem_embeddings.embed_documents(["test document"])
+            embeddings.embed_documents(["test document"])
 
-    async def test_embed_query(self, mem_embeddings):
-        with pytest.raises(NotImplementedError):
-            mem_embeddings.embed_query("test document")
-
-    async def test_embed_query_inline(self, mem_embeddings):
-        embedding_query = mem_embeddings.embed_query_inline("test document")
-        assert (
-            embedding_query
-            == f"embedding('{mem_embeddings.model_id}', 'test document')::vector"
-        )
-
-    async def test_aembed_query(self, mem_embeddings):
-        embedding = await mem_embeddings.aembed_query("test document")
+    async def test_embed_query(self, embeddings):
+        # with pytest.raises(NotImplementedError):
+        #     embeddings.embed_query("test document")
+        embedding = embeddings.embed_query("test document")
         assert isinstance(embedding, list)
         assert len(embedding) > 0
+        for embedding_field in embedding:
+            assert isinstance(embedding_field, float)
+            assert -1 <= embedding_field <= 1
+
+    async def test_embed_query_inline(self, embeddings, model_id):
+        embedding_query = embeddings.embed_query_inline("test document")
+        assert embedding_query == f"embedding('{model_id}', 'test document')::vector"
+
+    async def test_aembed_query(self, embeddings):
+        embedding = await embeddings.aembed_query("test document")
+        assert isinstance(embedding, list)
+        assert len(embedding) > 0
+        for embedding_field in embedding:
+            assert isinstance(embedding_field, float)
+            assert -1 <= embedding_field <= 1

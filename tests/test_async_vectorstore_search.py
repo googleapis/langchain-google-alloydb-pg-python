@@ -21,7 +21,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, Column
+from langchain_google_alloydb_pg import AlloyDBEmbeddings, AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
 
@@ -29,7 +29,7 @@ DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
-embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
+fake_embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 texts = ["foo", "bar", "baz", "boo"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -38,7 +38,7 @@ docs = [
     Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
 
-embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
+embeddings = [fake_embeddings_service.embed_query("foo") for i in range(len(texts))]
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -79,24 +79,53 @@ class TestVectorStoreSearch:
     def db_name(self) -> str:
         return get_env_var("DATABASE_ID", "instance for AlloyDB")
 
+    @pytest.fixture(scope="module")
+    def db_user(self) -> str:
+        return get_env_var("DB_USER", "instance for AlloyDB")
+
+    @pytest.fixture(scope="module")
+    def db_password(self) -> str:
+        return get_env_var("DB_PASSWORD", "instance for AlloyDB")
+
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
+    async def engine(
+        self,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        db_user,
+        db_password,
+    ):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             cluster=db_cluster,
             instance=db_instance,
             region=db_region,
             database=db_name,
+            user=db_user,
+            password=db_password,
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
         await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
         await engine.close()
 
+    @pytest.fixture(
+        scope="class",
+        params=[
+            lambda _: fake_embeddings_service,
+            lambda engine: AlloyDBEmbeddings(engine, "textembedding-gecko@002"),
+        ],
+    )
+    def embeddings_service(self, engine, request):
+        return request.param(engine)
+
     @pytest_asyncio.fixture(scope="class")
-    async def vs(self, engine):
+    async def vs(self, engine, embeddings_service):
         await engine._ainit_vectorstore_table(
-            DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False
+            DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False, overwrite_existing=True
         )
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
@@ -106,6 +135,24 @@ class TestVectorStoreSearch:
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         await vs.aadd_documents(docs, ids=ids)
         yield vs
+
+    # @pytest_asyncio.fixture(scope="class")
+    # async def db_embedding_service(self, engine):
+    #     return AlloyDBEmbeddings(engine, "textembedding-gecko@002")
+
+    # @pytest_asyncio.fixture(scope="class")
+    # async def vs_db_embedding(self, engine, db_embedding_service):
+    #     await engine._ainit_vectorstore_table(
+    #         DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False
+    #     )
+    #     vs = await AsyncAlloyDBVectorStore.create(
+    #         engine,
+    #         embedding_service=db_embedding_service,
+    #         table_name=DEFAULT_TABLE,
+    #     )
+    #     ids = [str(uuid.uuid4()) for i in range(len(texts))]
+    #     await vs.aadd_documents(docs, ids=ids)
+    #     yield vs
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom(self, engine):
@@ -124,7 +171,7 @@ class TestVectorStoreSearch:
 
         vs_custom = await AsyncAlloyDBVectorStore.create(
             engine,
-            embedding_service=embeddings_service,
+            embedding_service=fake_embeddings_service,
             table_name=CUSTOM_TABLE,
             id_column="myid",
             content_column="mycontent",
@@ -147,8 +194,8 @@ class TestVectorStoreSearch:
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
 
-    async def test_asimilarity_search_by_vector(self, vs):
-        embedding = embeddings_service.embed_query("foo")
+    async def test_asimilarity_search_by_vector(self, vs, embeddings_service):
+        embedding = await embeddings_service.aembed_query("foo")
         results = await vs.asimilarity_search_by_vector(embedding)
         assert len(results) == 4
         assert results[0] == Document(page_content="foo")
@@ -188,7 +235,7 @@ class TestVectorStoreSearch:
     ):
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
-            embedding_service=embeddings_service,
+            embedding_service=fake_embeddings_service,
             table_name=DEFAULT_TABLE,
             distance_strategy=DistanceStrategy.EUCLIDEAN,
         )
@@ -208,12 +255,14 @@ class TestVectorStoreSearch:
         )
         assert results[0] == Document(page_content="boo")
 
-    async def test_amax_marginal_relevance_search_vector(self, vs):
+    async def test_amax_marginal_relevance_search_vector(self, vs, embeddings_service):
         embedding = embeddings_service.embed_query("bar")
         results = await vs.amax_marginal_relevance_search_by_vector(embedding)
         assert results[0] == Document(page_content="bar")
 
-    async def test_amax_marginal_relevance_search_vector_score(self, vs):
+    async def test_amax_marginal_relevance_search_vector_score(
+        self, vs, embeddings_service
+    ):
         embedding = embeddings_service.embed_query("bar")
         results = await vs.amax_marginal_relevance_search_with_score_by_vector(
             embedding
@@ -241,7 +290,7 @@ class TestVectorStoreSearch:
         assert results[0][1] == 0
 
     async def test_similarity_search_by_vector(self, vs_custom):
-        embedding = embeddings_service.embed_query("foo")
+        embedding = fake_embeddings_service.embed_query("foo")
         results = await vs_custom.asimilarity_search_by_vector(embedding)
         assert len(results) == 4
         assert results[0] == Document(page_content="foo")
@@ -258,12 +307,12 @@ class TestVectorStoreSearch:
         assert results[0] == Document(page_content="boo")
 
     async def test_max_marginal_relevance_search_vector(self, vs_custom):
-        embedding = embeddings_service.embed_query("bar")
+        embedding = fake_embeddings_service.embed_query("bar")
         results = await vs_custom.amax_marginal_relevance_search_by_vector(embedding)
         assert results[0] == Document(page_content="bar")
 
     async def test_max_marginal_relevance_search_vector_score(self, vs_custom):
-        embedding = embeddings_service.embed_query("bar")
+        embedding = fake_embeddings_service.embed_query("bar")
         results = await vs_custom.amax_marginal_relevance_search_with_score_by_vector(
             embedding
         )
@@ -273,3 +322,13 @@ class TestVectorStoreSearch:
             embedding, lambda_mult=0.75, fetch_k=10
         )
         assert results[0][0] == Document(page_content="bar")
+
+    # async def test_aadd_mem(self, vs_db_embedding, db_embedding_service):
+    #     # embedding = db_embedding_service.embed_query("foo")
+    #     # embedding = await db_embedding_service.aembed_query("foo")
+    #     embedding = fake_embeddings_service.embed_query("foo")
+    #     results = await vs_db_embedding.asimilarity_search_by_vector(
+    #         embedding, filter="content = 'bar'"
+    #     )
+    #     assert len(results) == 1
+    #     assert results[0] == Document(page_content="bar")
