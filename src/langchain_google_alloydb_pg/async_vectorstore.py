@@ -218,7 +218,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
     def embeddings(self) -> Embeddings:
         return self.embedding_service
 
-    async def __aadd_embeddings(
+    async def aadd_embeddings(
         self,
         texts: Iterable[str],
         embeddings: List[List[float]],
@@ -226,7 +226,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Add embeddings to the table."""
+        """Add data along with embeddings to the table."""
         if not ids:
             ids = [str(uuid.uuid4()) for _ in texts]
         if not metadatas:
@@ -283,7 +283,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             embeddings = [[] for _ in list(texts)]
         else:
             embeddings = self.embedding_service.embed_documents(list(texts))
-        ids = await self.__aadd_embeddings(
+        ids = await self.aadd_embeddings(
             texts, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
         return ids
