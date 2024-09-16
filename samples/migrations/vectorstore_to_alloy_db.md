@@ -288,7 +288,7 @@ The process of getting data from vector stores varies depending on the specific 
     )
     ```
 
-    Note: The weaviate examples here use Cohere Embeddings, which have a size of 1024. Make sure to change the vector size while creating the table.
+    > **_NOTE:_** The weaviate examples here use Cohere Embeddings, which have a size of 1024. Make sure to change the vector size while creating the table.
 
 3. Insert data to AlloyDB
 
