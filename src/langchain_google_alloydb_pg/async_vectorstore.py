@@ -38,7 +38,7 @@ from .indexes import (
     QueryOptions,
     ScaNNIndex,
 )
-from .mem_embeddings import AlloyDBMemEmbeddings
+from .embeddings import AlloyDBEmbeddings
 
 
 class AsyncAlloyDBVectorStore(VectorStore):
