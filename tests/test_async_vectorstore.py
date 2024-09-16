@@ -243,7 +243,7 @@ class TestVectorStore:
         await image_vs.aadd_images(image_uris, metadatas, ids)
         results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
         assert len(results) == 3
-        assert results[0]["image_id"] == ids[0]
+        assert results[0]["image_id"] == "0"
         assert results[0]["source"] == "google.com"
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
 
