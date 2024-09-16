@@ -85,8 +85,12 @@ class TestAlloyDBEmbeddings:
             assert err.args[0] == error_message
 
     async def test_aembed_documents(self, embeddings):
-        with pytest.raises(NotImplementedError):
-            await embeddings.aembed_documents([Document(page_content="test document")])
+        embedding = await embeddings.aembed_query("test document")
+        assert isinstance(embedding, list)
+        assert len(embedding) > 0
+        for embedding_field in embedding:
+            assert isinstance(embedding_field, float)
+            assert -1 <= embedding_field <= 1
 
     async def test_embed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
