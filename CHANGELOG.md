@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.7.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.6.0...v0.7.0) (2024-09-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* support async and sync versions of indexing methods
+
+### Features
+
+* Add from_engine_args method ([f06834d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f06834d67b3219d0981dbad191f0c6d89dc8aa03))
+* Add multi-modal support vector store ([#207](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/207)) ([8d259ba](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/8d259ba0c98476b312e7a7201fa86f9316919ab6))
+* Add support for custom schema names ([#210](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/210)) ([f148a7e](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f148a7e7ebd58afc18ee32f42bfe980a5fde9907))
+* Add support for sync from_engine ([f06834d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f06834d67b3219d0981dbad191f0c6d89dc8aa03))
+* Allow non-uuid data types for vectorstore primary key ([#226](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/226)) ([e6dc991](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/e6dc9918afa42086cc975056bb23862d4bb7017e))
+* Made add_embeddings method public ([#228](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/228)) ([433b92f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/433b92f4a2c62ccc2244c95feba9e1e0ec9620ea))
+* Refactor to support both async and sync usage ([f06834d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f06834d67b3219d0981dbad191f0c6d89dc8aa03))
+
+
+### Bug Fixes
+
+* Fix documentation comments for library methods. ([#219](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/219)) ([5b923b2](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/5b923b299fba54e3be36363f070fec7264444aea))
+* Replacing cosine_similarity and maximal_marginal_relevance methods ([#218](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/218)) ([d827ccc](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/d827ccce0ba3b032e636b26e9ea5c5a5d3e151f6))
+* Support async and sync versions of indexing methods ([f06834d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f06834d67b3219d0981dbad191f0c6d89dc8aa03))
+
+
+### Documentation
+
+* Added example for chat message history with omni ([#191](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/191)) ([2e6809f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2e6809f0ae0063307d49529e784e65a4929e9c85))
+* Itemise code samples ([#224](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/224)) ([2e7157b](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2e7157be64678fb4b6780aae3628bac55d33223c))
+* Migration samples ([#230](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/230)) ([9fd9308](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9fd93081aa8307d9190f7f30ef6746e0e9aeedbe))
+* Update sample python notebooks to reflect the support for custom schema. ([#222](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/222)) ([18dbf69](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/18dbf690d19390a3b1aa4664417a1da28a68933f))
+
+
+### Miscellaneous Chores
+
+* Release 0.7.0 ([#227](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/227)) ([2576315](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2576315f4b76fb0fa044b485b10dfe5ca299c5fe))
+
 ## [0.6.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.5.0...v0.6.0) (2024-09-03)
 
 
