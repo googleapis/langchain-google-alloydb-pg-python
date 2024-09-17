@@ -223,10 +223,14 @@ class AsyncAlloyDBVectorStore(VectorStore):
         texts: Iterable[str],
         embeddings: List[List[float]],
         metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Add data along with embeddings to the table."""
+        """Add data along with embeddings to the table.
+
+        Raises:
+            :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
+        """
         if not ids:
             ids = [str(uuid.uuid4()) for _ in texts]
         if not metadatas:
@@ -275,14 +279,19 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         texts: Iterable[str],
         metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Embed texts and add to the table."""
+        """Embed texts and add to the table.
+
+        Raises:
+            :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
+        """
         if isinstance(self.embedding_service, AlloyDBEmbeddings):
             embeddings: List[List[float]] = [[] for _ in list(texts)]
         else:
             embeddings = self.embedding_service.embed_documents(list(texts))
+
         ids = await self.aadd_embeddings(
             texts, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
@@ -291,10 +300,14 @@ class AsyncAlloyDBVectorStore(VectorStore):
     async def aadd_documents(
         self,
         documents: List[Document],
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Embed documents and add to the table."""
+        """Embed documents and add to the table.
+
+        Raises:
+            :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
+        """
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
@@ -302,10 +315,14 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def adelete(
         self,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
-        """Delete records from the table."""
+        """Delete records from the table.
+
+        Raises:
+            :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
+        """
         if not ids:
             return False
 
@@ -325,7 +342,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         table_name: str,
         schema_name: str = "public",
         metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -360,6 +377,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
             lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (QueryOptions): Index query option.
 
+        Raises:
+            :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
+
         Returns:
             AsyncAlloyDBVectorStore
         """
@@ -391,7 +411,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         engine: AlloyDBEngine,
         table_name: str,
         schema_name: str = "public",
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -425,6 +445,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
             lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (QueryOptions): Index query option.
+
+        Raises:
+            :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
 
         Returns:
             AsyncAlloyDBVectorStore
@@ -774,7 +797,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         texts: Iterable[str],
         metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         **kwargs: Any,
     ) -> List[str]:
         raise NotImplementedError(
@@ -784,7 +807,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
     def add_documents(
         self,
         documents: List[Document],
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         **kwargs: Any,
     ) -> List[str]:
         raise NotImplementedError(
@@ -793,7 +816,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     def delete(
         self,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
         raise NotImplementedError(
@@ -808,7 +831,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         engine: AlloyDBEngine,
         table_name: str,
         metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
@@ -828,7 +851,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
-        ids: Optional[List[str]] = None,
+        ids: Optional[List] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
         metadata_columns: List[str] = [],
