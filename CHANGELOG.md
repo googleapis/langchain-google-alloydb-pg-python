@@ -28,14 +28,7 @@
 ### Documentation
 
 * Added example for chat message history with omni ([#191](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/191)) ([2e6809f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2e6809f0ae0063307d49529e784e65a4929e9c85))
-* Itemise code samples ([#224](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/224)) ([2e7157b](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2e7157be64678fb4b6780aae3628bac55d33223c))
-* Migration samples ([#230](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/230)) ([9fd9308](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9fd93081aa8307d9190f7f30ef6746e0e9aeedbe))
-* Update sample python notebooks to reflect the support for custom schema. ([#222](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/222)) ([18dbf69](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/18dbf690d19390a3b1aa4664417a1da28a68933f))
-
-
-### Miscellaneous Chores
-
-* Release 0.7.0 ([#227](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/227)) ([2576315](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2576315f4b76fb0fa044b485b10dfe5ca299c5fe))
+* Add Migration samples for migrating from vector store to AlloyDB ([#230](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/230)) ([9fd9308](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9fd93081aa8307d9190f7f30ef6746e0e9aeedbe))
 
 ## [0.6.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.5.0...v0.6.0) (2024-09-03)
 
