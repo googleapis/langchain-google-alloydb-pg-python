@@ -319,7 +319,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Embed images and add to the table."""
+        """Embed images and add to the table.
+
+        Args:
+            uris (List[str]): List of local image URIs to add to the table.
+            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
+            ids: (Optional[List[str]]): List of IDs to add to table records.
+
+        Returns:
+            List of record IDs added.
+        """
         encoded_images = []
         if metadatas is None:
             metadatas = [{"image_uri": uri} for uri in uris]
