@@ -97,7 +97,7 @@ class TestVectorStoreEmbeddings:
 
     @pytest.fixture(scope="class")
     def embeddings_service(self, engine):
-        return AlloyDBEmbeddings(engine, "textembedding-gecko@001")
+        return AlloyDBEmbeddings(engine)
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine, embeddings_service):
