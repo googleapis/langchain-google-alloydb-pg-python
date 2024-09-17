@@ -27,7 +27,9 @@ from .engine import AlloyDBEngine
 class AlloyDBEmbeddings(Embeddings):
     """Google AlloyDB Embeddings available via Model Endpoint Management."""
 
-    def __init__(self, engine: AlloyDBEngine, model_id: str):
+    def __init__(
+        self, engine: AlloyDBEngine, model_id: str = "textembedding-gecko@001"
+    ):
         """AlloyDBEmbeddings constructor.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.

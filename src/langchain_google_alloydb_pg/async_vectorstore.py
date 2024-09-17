@@ -280,7 +280,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
     ) -> List[str]:
         """Embed texts and add to the table."""
         if isinstance(self.embedding_service, AlloyDBEmbeddings):
-            embeddings = [[] for _ in list(texts)]
+            embeddings: List[List[float]] = [[] for _ in list(texts)]
         else:
             embeddings = self.embedding_service.embed_documents(list(texts))
         ids = await self.aadd_embeddings(
@@ -470,10 +470,10 @@ class AsyncAlloyDBVectorStore(VectorStore):
             and isinstance(self.embedding_service, AlloyDBEmbeddings)
             and "query" in kwargs
         ):
-            embedding = self.embedding_service.embed_query_inline(kwargs["query"])
+            query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])
         else:
-            embedding = f"'{str(embedding)}'"
-        stmt = f'SELECT *, {search_function}({self.embedding_column}, {embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {embedding} LIMIT {k};'
+            query_embedding = f"'{embedding}'"
+        stmt = f'SELECT *, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
             query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
