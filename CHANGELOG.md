@@ -6,6 +6,7 @@
 ### ⚠ BREAKING CHANGES
 
 * support async and sync versions of indexing methods
+* remove _aexecute(), _execute(), _afetch(), and _fetch() methods
 
 ### Features
 
@@ -56,11 +57,6 @@
 * Create functions need pre-existing tables ([#202](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/202)) ([a2e6c0a](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/a2e6c0a1d1ef2887d3fc9edac7cd62a0864f5a17))
 * Rename index guide ([#201](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/201)) ([2436c5b](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2436c5b2120d69938644e20181559aa62b95fc84))
 * Update index tuning samples to include advanced indexes ([#197](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/197)) ([da52bc4](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/da52bc421da1ca8cad78184566426b22941b09af))
-
-
-### Miscellaneous Chores
-
-* Release 0.6.0 ([#217](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/217)) ([3d96251](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/3d9625131e3412e6d2958856224ef251baa625bd))
 
 ## [0.5.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.4.1...v0.5.0) (2024-07-23)
 
