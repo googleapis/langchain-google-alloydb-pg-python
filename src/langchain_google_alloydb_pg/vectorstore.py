@@ -226,6 +226,18 @@ class AlloyDBVectorStore(VectorStore):
             self.__vs.aadd_documents(documents, ids, **kwargs)
         )
 
+    async def aadd_images(
+        self,
+        uris: List[str],
+        metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        """Embed images and add to the table."""
+        return await self._engine._run_as_async(
+            self.__vs.aadd_images(uris, metadatas, ids, **kwargs)
+        )
+
     def add_embeddings(
         self,
         texts: Iterable[str],
@@ -268,6 +280,18 @@ class AlloyDBVectorStore(VectorStore):
         """
         return self._engine._run_as_sync(
             self.__vs.aadd_documents(documents, ids, **kwargs)
+        )
+
+    def add_images(
+        self,
+        uris: List[str],
+        metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        """Embed images and add to the table."""
+        return self._engine._run_as_sync(
+            self.__vs.aadd_images(uris, metadatas, ids, **kwargs)
         )
 
     async def adelete(
@@ -589,6 +613,18 @@ class AlloyDBVectorStore(VectorStore):
             self.__vs.asimilarity_search(query, k, filter, **kwargs)
         )
 
+    def similarity_search_image(
+        self,
+        image_uri: str,
+        k: Optional[int] = None,
+        filter: Optional[str] = None,
+        **kwargs: Any,
+    ) -> List[Document]:
+        """Return docs selected by similarity search on image."""
+        return self._engine._run_as_sync(
+            self.__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)
+        )
+
     async def asimilarity_search(
         self,
         query: str,
@@ -599,6 +635,18 @@ class AlloyDBVectorStore(VectorStore):
         """Return docs selected by similarity search on query."""
         return await self._engine._run_as_async(
             self.__vs.asimilarity_search(query, k, filter, **kwargs)
+        )
+
+    async def asimilarity_search_image(
+        self,
+        image_uri: str,
+        k: Optional[int] = None,
+        filter: Optional[str] = None,
+        **kwargs: Any,
+    ) -> List[Document]:
+        """Return docs selected by similarity search on query."""
+        return await self._engine._run_as_async(
+            self.__vs.asimilarity_search(image_uri, k, filter, **kwargs)
         )
 
     # Required for (a)similarity_search_with_relevance_scores
