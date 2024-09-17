@@ -28,7 +28,7 @@ Install required libraries
 pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
 ```
 
-> **_NOTE:_**  The langchain-core library is installed to use the Fake embeddings service. To use a different embedding service, you'll need to install the appropriate library for your chosen provider.
+> **_NOTE:_**  The langchain-core library is installed to use the Fake embeddings service. To use a different embedding service, you'll need to install the appropriate library for your chosen provider. Choose embeddings services from [LangChain's Embedding models](https://python.langchain.com/v0.2/docs/integrations/text_embedding/).
 
 ## How to Migrate
 
@@ -139,7 +139,7 @@ The process of getting data from vector stores varies depending on the specific 
         embeddings_service = FakeEmbeddings(size=4096)
         ```
 
-        In case you're using a different embeddings service, choose one from <https://python.langchain.com/v0.2/docs/integrations/text_embedding/>
+        In case you're using a different embeddings service, choose one from [LangChain's Embedding models](https://python.langchain.com/v0.2/docs/integrations/text_embedding/).
 
    3. Create client
 
@@ -231,7 +231,7 @@ The process of getting data from vector stores varies depending on the specific 
 
 1. Define embeddings service.
 
-    In case you're using a different embeddings service, choose one from <https://python.langchain.com/v0.2/docs/integrations/text_embedding/>
+    In case you're using a different embeddings service, choose one from [LangChain's Embedding models](https://python.langchain.com/v0.2/docs/integrations/text_embedding/).
 
     ```python
     from langchain_core.embeddings import FakeEmbeddings
@@ -269,12 +269,6 @@ The process of getting data from vector stores varies depending on the specific 
         # Fake embeddings use a vector size of 4096. 
         # If you're choosing another vector embeddings service, choose the corresponding vector size
         vector_size=4096,
-
-        # Define your metadata columns
-        metadata_columns=[
-            Column("col1", "VARCHAR"), 
-            Column("col2", "VARCHAR")
-        ],
     )
 
     # Create a vector store instance
@@ -282,11 +276,10 @@ The process of getting data from vector stores varies depending on the specific 
         engine=engine,
         embedding_service=embeddings_service,
         table_name='table_name',
-
-        # Metadata column names
-        metadata_columns=["col1", "col2"],
     )
     ```
+
+    > **_NOTE:_** This code adds metadata to the "langchain_metadata" column in a JSON format. For more efficient filtering, you can organize this metadata into separate columns. Refer to the [vector store docs](https://github.com/googleapis/langchain-google-alloydb-pg-python/blob/main/docs/vector_store.ipynb) for examples of creating metadata columns.
 
     > **_NOTE:_** The weaviate examples here use Cohere Embeddings, which have a size of 1024. Make sure to change the vector size while creating the table.
 
@@ -313,7 +306,7 @@ The process of getting data from vector stores varies depending on the specific 
         engine=engine,
         query=f"SELECT * FROM table_name;",
         content_columns="content",
-        metadata_columns=["col1", "col2"]
+        metadata_json_column="langchain_metadata"
     )
     
     documents = loader.load()
