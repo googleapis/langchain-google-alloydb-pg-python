@@ -326,8 +326,6 @@ class PgToAlloyMigrator(AlloyDBEngine):
                 await conn.commit()
             print("Succesfully deleted old data.")
 
-    
-
     async def _aget_all_pgvector_collection_names(
         self,
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
@@ -378,7 +376,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
                 collection_name, pg_embedding_table_name, pg_collection_table_name
             )
         )
-    
+
     async def aget_all_pgvector_collection_names(
         self,
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
@@ -396,7 +394,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
         return await self._run_as_async(
             self._aget_all_pgvector_collection_names(pg_collection_table_name)
         )
-    
+
     async def amigrate_pgvector_collection(
         self,
         collection_name: str,
@@ -441,7 +439,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
                 insert_batch_size,
             )
         )
-    
+
     def extract_pgvector_collection(
         self,
         collection_name: str,
@@ -484,7 +482,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
         return self._run_as_sync(
             self._aget_all_pgvector_collection_names(pg_collection_table_name)
         )
-    
+
     def migrate_pgvector_collection(
         self,
         collection_name: str,
