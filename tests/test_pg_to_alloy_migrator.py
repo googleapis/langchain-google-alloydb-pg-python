@@ -93,8 +93,7 @@ class TestPgToAlloyMigrator:
     def iam_account(self) -> str:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
-    # @pytest.fixture(params=["PUBLIC", "PRIVATE"])
-    @pytest_asyncio.fixture(scope="module", params=["PUBLIC"])
+    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
     async def engine(
         self,
         request,
@@ -118,8 +117,7 @@ class TestPgToAlloyMigrator:
         )
         return engine
 
-    # @pytest.fixture(params=["PUBLIC", "PRIVATE"])
-    @pytest_asyncio.fixture(scope="module", params=["PUBLIC"])
+    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
     async def migrator(self, engine):
         migrator = PgToAlloyMigrator(engine)
         await aexecute(
@@ -263,6 +261,7 @@ class TestPgToAlloyMigrator:
             )
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(migrator, f"DROP TABLE IF EXISTS collection_1")
 
     async def test_amigrate_pgvector_collection_json_metadata(
         self, engine, migrator, sample_embeddings
@@ -455,7 +454,7 @@ class TestPgToAlloyMigrator:
         await self._create_pgvector_tables(
             migrator, sample_embeddings, num_rows=7, num_collections=2
         )
-        collection_name = "collection_0"
+        collection_name = "collection_1"
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
             vector_size=768,
@@ -575,6 +574,7 @@ class TestPgToAlloyMigrator:
             )
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(migrator, "DROP TABLE IF EXISTS collection_1")
 
     async def test_migrate_pgvector_collection_json_metadata(
         self, engine, migrator, sample_embeddings
@@ -767,7 +767,7 @@ class TestPgToAlloyMigrator:
         await self._create_pgvector_tables(
             migrator, sample_embeddings, num_rows=7, num_collections=2
         )
-        collection_name = "collection_0"
+        collection_name = "collection_1"
         engine.init_vectorstore_table(
             table_name=collection_name,
             vector_size=768,
