@@ -60,7 +60,7 @@ def get_env_var(key: str, desc: str) -> str:
 
 
 @pytest.mark.asyncio
-class TestPgToAlloyMigratorAsync:
+class TestPgToAlloyMigrator:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
         return get_env_var("PROJECT_ID", "project id for google cloud")
