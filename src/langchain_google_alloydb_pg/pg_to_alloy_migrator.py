@@ -110,30 +110,6 @@ class PgToAlloyMigrator(AlloyDBEngine):
         except:
             raise ValueError(f"Collection: {collection_name} does not exist.")
 
-    async def aextract_pgvector_collection(
-        self,
-        collection_name: str,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
-    ) -> Sequence[RowMapping]:
-        return await self._run_as_async(
-            self._aextract_pgvector_collection(
-                collection_name, pg_embedding_table_name, pg_collection_table_name
-            )
-        )
-
-    def extract_pgvector_collection(
-        self,
-        collection_name: str,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
-    ) -> Sequence[RowMapping]:
-        return self._run_as_sync(
-            self._aextract_pgvector_collection(
-                collection_name, pg_embedding_table_name, pg_collection_table_name
-            )
-        )
-
     async def _ainsert_single_batch(
         self,
         destination_table: str,
@@ -173,7 +149,6 @@ class PgToAlloyMigrator(AlloyDBEngine):
             # Add parameters
             for row_number in range(len(data)):
                 row = data[row_number]
-                # TODO: Id does not always need to be uuid (New feature). Fix this
                 params[f"langchain_id_{row_number}"] = row.id
                 params[f"content_{row_number}"] = row.document
                 params[f"embedding_{row_number}"] = row.embedding
@@ -351,29 +326,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
                 await conn.commit()
             print("Succesfully deleted old data.")
 
-    async def amigrate_pgvector_collection(
-        self,
-        collection_name: str,
-        metadata_columns: Optional[List[Column]] = [],
-        destination_table: Optional[str] = None,
-        use_json_metadata: Optional[bool] = False,
-        delete_pg_collection: Optional[bool] = False,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
-        insert_batch_size: int = 1000,
-    ) -> None:
-        await self._run_as_async(
-            self._amigrate_pgvector_collection(
-                collection_name,
-                metadata_columns,
-                destination_table,
-                use_json_metadata,
-                delete_pg_collection,
-                pg_embedding_table_name,
-                pg_collection_table_name,
-                insert_batch_size,
-            )
-        )
+    
 
     async def _aget_all_pgvector_collection_names(
         self,
@@ -401,6 +354,31 @@ class PgToAlloyMigrator(AlloyDBEngine):
                 "Please provide the correct collection table name: " + str(e)
             )
 
+    async def aextract_pgvector_collection(
+        self,
+        collection_name: str,
+        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> Sequence[RowMapping]:
+        """
+        Extract all data belonging to a PGVector collection.
+
+        Args:
+            collection_name (str): The name of the collection to get the data for.
+            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
+                Default: "langchain_pg_embedding". Optional.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+
+        Returns:
+            The data present in the collection.
+        """
+        return await self._run_as_async(
+            self._aextract_pgvector_collection(
+                collection_name, pg_embedding_table_name, pg_collection_table_name
+            )
+        )
+    
     async def aget_all_pgvector_collection_names(
         self,
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
@@ -417,6 +395,76 @@ class PgToAlloyMigrator(AlloyDBEngine):
         """
         return await self._run_as_async(
             self._aget_all_pgvector_collection_names(pg_collection_table_name)
+        )
+    
+    async def amigrate_pgvector_collection(
+        self,
+        collection_name: str,
+        metadata_columns: Optional[List[Column]] = [],
+        destination_table: Optional[str] = None,
+        use_json_metadata: Optional[bool] = False,
+        delete_pg_collection: Optional[bool] = False,
+        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+        insert_batch_size: int = 1000,
+    ) -> None:
+        """
+        Migrate all data present in a PGVector collection to use separate tables for each collection.
+        The new data format is compatible with the AlloyDB interface.
+
+        Args:
+            collection_name (str): The collection to migrate.
+            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format.
+                Optional.
+            destination_table (str): The name of the table to insert the data in.
+                Optional. defaults to collection_name.
+            use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
+                Default: False. Optional.
+            delete_pg_collection (bool): An option to delete the original data upon migration.
+                Default: False. Optional.
+            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
+                Default: "langchain_pg_embedding". Optional.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+            insert_batch_size (int): Number of rows to insert at once in the table.
+                Default: 1000.
+        """
+        await self._run_as_async(
+            self._amigrate_pgvector_collection(
+                collection_name,
+                metadata_columns,
+                destination_table,
+                use_json_metadata,
+                delete_pg_collection,
+                pg_embedding_table_name,
+                pg_collection_table_name,
+                insert_batch_size,
+            )
+        )
+    
+    def extract_pgvector_collection(
+        self,
+        collection_name: str,
+        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+    ) -> Sequence[RowMapping]:
+        """
+        Extract all data belonging to a PGVector collection.
+
+        Args:
+            collection_name (str): The name of the collection to get the data for.
+            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
+                Default: "langchain_pg_embedding". Optional.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+
+        Returns:
+            The data present in the collection.
+        """
+        return self._run_as_sync(
+            self._aextract_pgvector_collection(
+                collection_name, pg_embedding_table_name, pg_collection_table_name
+            )
         )
 
     def get_all_pgvector_collection_names(
@@ -435,4 +483,49 @@ class PgToAlloyMigrator(AlloyDBEngine):
         """
         return self._run_as_sync(
             self._aget_all_pgvector_collection_names(pg_collection_table_name)
+        )
+    
+    def migrate_pgvector_collection(
+        self,
+        collection_name: str,
+        metadata_columns: Optional[List[Column]] = [],
+        destination_table: Optional[str] = None,
+        use_json_metadata: Optional[bool] = False,
+        delete_pg_collection: Optional[bool] = False,
+        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
+        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
+        insert_batch_size: int = 1000,
+    ) -> None:
+        """
+        Migrate all data present in a PGVector collection to use separate tables for each collection.
+        The new data format is compatible with the AlloyDB interface.
+
+        Args:
+            collection_name (str): The collection to migrate.
+            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format.
+                Optional.
+            destination_table (str): The name of the table to insert the data in.
+                Optional. defaults to collection_name.
+            use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
+                Default: False. Optional.
+            delete_pg_collection (bool): An option to delete the original data upon migration.
+                Default: False. Optional.
+            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
+                Default: "langchain_pg_embedding". Optional.
+            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
+                Default: "langchain_pg_collection". Optional.
+            insert_batch_size (int): Number of rows to insert at once in the table.
+                Default: 1000.
+        """
+        self._run_as_sync(
+            self._amigrate_pgvector_collection(
+                collection_name,
+                metadata_columns,
+                destination_table,
+                use_json_metadata,
+                delete_pg_collection,
+                pg_embedding_table_name,
+                pg_collection_table_name,
+                insert_batch_size,
+            )
         )

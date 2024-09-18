@@ -330,7 +330,7 @@ class TestPgToAlloyMigratorAsync:
         await aexecute(migrator, f"DROP TABLE {collections_table}")
         await aexecute(migrator, f"DROP TABLE {collection_name}")
 
-    async def test_migrate_pgvector_collection_col_metadata(
+    async def test_amigrate_pgvector_collection_col_metadata(
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
@@ -395,7 +395,7 @@ class TestPgToAlloyMigratorAsync:
         await aexecute(migrator, f"DROP TABLE {collections_table}")
         await aexecute(migrator, f"DROP TABLE {collection_name}")
 
-    async def test_migrate_pgvector_collection_delete_original(
+    async def test_amigrate_pgvector_collection_delete_original(
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
@@ -455,7 +455,7 @@ class TestPgToAlloyMigratorAsync:
         await aexecute(migrator, f"DROP TABLE {collections_table}")
         await aexecute(migrator, f"DROP TABLE {collection_name}")
 
-    async def test_migrate_pgvector_collection_batch(
+    async def test_amigrate_pgvector_collection_batch(
         self, migrator, engine, sample_embeddings
     ):
         # Set up tables
