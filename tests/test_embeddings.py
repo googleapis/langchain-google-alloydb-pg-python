@@ -17,6 +17,7 @@ import uuid
 
 import pytest
 import pytest_asyncio
+from langchain_core.documents import Document
 
 from langchain_google_alloydb_pg import AlloyDBEmbeddings, AlloyDBEngine
 
@@ -68,16 +69,12 @@ class TestAlloyDBEmbeddings:
         return AlloyDBEmbeddings(engine=engine, model_id=model_id)
 
     async def test_aembed_documents(self, embeddings):
-        embedding = await embeddings.aembed_query("test document")
-        assert isinstance(embedding, list)
-        assert len(embedding) > 0
-        for embedding_field in embedding:
-            assert isinstance(embedding_field, float)
-            assert -1 <= embedding_field <= 1
+        with pytest.raises(NotImplementedError):
+            await embeddings.aembed_documents([Document(page_content="test document")])
 
     async def test_embed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
-            embeddings.embed_documents(["test document"])
+            embeddings.embed_documents([Document(page_content="test document")])
 
     async def test_embed_query(self, embeddings):
         embedding = embeddings.embed_query("test document")
