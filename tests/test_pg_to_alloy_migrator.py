@@ -183,7 +183,12 @@ class TestPgToAlloyMigrator:
             )
 
     async def _create_pgvector_tables(
-        self, migrator, sample_embeddings, num_rows=2, num_collections=3, num_cols=3
+        self,
+        migrator: PgToAlloyMigrator,
+        sample_embeddings: List[float],
+        num_rows: int = 2,
+        num_collections: int = 3,
+        num_cols: int = 3,
     ) -> None:
         """Create embeddings as well as collections table."""
 
