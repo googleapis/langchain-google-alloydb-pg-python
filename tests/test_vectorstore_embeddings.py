@@ -296,9 +296,9 @@ class TestVectorStoreEmbeddingsSync:
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE_SYNC}")
         await engine.close()
 
-    @pytest.fixture(scope="class")
-    def embeddings_service(self, engine):
-        return AlloyDBEmbeddings(engine)
+    @pytest_asyncio.fixture(scope="class")
+    def embeddings_service(self, engine_sync):
+        return AlloyDBEmbeddings(engine_sync)
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom(self, engine_sync, embeddings_service):
