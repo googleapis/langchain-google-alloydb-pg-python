@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import json
 import os
 import uuid
@@ -28,6 +27,7 @@ from langchain_google_alloydb_pg import AlloyDBEngine, Column, PgToAlloyMigrator
 COLLECTIONS_TABLE = "collections_" + str(uuid.uuid4()).replace("-", "_")
 EMBEDDING_TABLE = "embeddings" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
+COLLECTION_NAME_SUFFIX = str(uuid.uuid4()).replace("-", "_")
 
 
 async def aexecute(
@@ -93,7 +93,7 @@ class TestPgToAlloyMigrator:
     def iam_account(self) -> str:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
-    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
+    @pytest_asyncio.fixture(scope="module", params=["PUBLIC", "PRIVATE"])
     async def engine(
         self,
         request,
@@ -117,7 +117,7 @@ class TestPgToAlloyMigrator:
         )
         return engine
 
-    @pytest_asyncio.fixture(params=["PUBLIC", "PRIVATE"])
+    @pytest_asyncio.fixture(scope="module")
     async def migrator(self, engine):
         migrator = PgToAlloyMigrator(engine)
         await aexecute(
@@ -129,15 +129,12 @@ class TestPgToAlloyMigrator:
             query=f"CREATE table {EMBEDDING_TABLE} (id VARCHAR, collection_id VARCHAR, embedding vector(768), document TEXT, cmetadata JSONB)",
         )
         yield migrator
-        await aexecute(migrator, f'DROP TABLE "{COLLECTIONS_TABLE}"')
-        await aexecute(migrator, f'DROP TABLE "{EMBEDDING_TABLE}"')
+        await aexecute(migrator, f"DROP TABLE {COLLECTIONS_TABLE}")
+        await aexecute(migrator, f"DROP TABLE {EMBEDDING_TABLE}")
 
     @pytest.fixture(scope="module")
     def sample_embeddings(self) -> List[float]:
         return [0.1] * (VECTOR_SIZE - 1) + [0.2]
-
-    async def test_execute(self, migrator):
-        await aexecute(migrator, query="SELECT 1")
 
     def _create_metadata_for_collection(
         self, collection_name: str, row_num: int, num_cols: int = 3
@@ -185,27 +182,29 @@ class TestPgToAlloyMigrator:
         migrator: PgToAlloyMigrator,
         sample_embeddings: List[float],
         num_rows: int = 2,
-        num_collections: int = 3,
+        num_collections: int = 1,
         num_cols: int = 3,
     ) -> None:
         """Create embeddings as well as collections table."""
-
         for collection_num in range(num_collections):
-            collection_name = f"collection_{collection_num}"
+            collection_name = f"collection_{collection_num}_{COLLECTION_NAME_SUFFIX}"
             await self._create_collection(
                 migrator,
                 collection_name,
                 sample_embeddings,
-                num_rows,
+                num_rows=num_rows,
                 num_cols=num_cols,
             )
+
+    async def test_execute(self, migrator):
+        await aexecute(migrator, query="SELECT 1")
 
     #### Async tests
     async def test_aextract_pgvector_collection_exists(
         self, migrator, sample_embeddings
     ):
         await self._create_pgvector_tables(migrator, sample_embeddings)
-        collection_name = "collection_1"
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         results = await migrator.aextract_pgvector_collection(
             collection_name, EMBEDDING_TABLE, COLLECTIONS_TABLE
         )
@@ -236,11 +235,8 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_aextract_pgvector_collection_non_existant(
-        self, migrator, sample_embeddings
-    ):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
-        collection_name = "collection_random"
+    async def test_aextract_pgvector_collection_non_existant(self, migrator):
+        collection_name = "random_collection"
         with pytest.raises(ValueError):
             await migrator.aextract_pgvector_collection(
                 collection_name, EMBEDDING_TABLE, COLLECTIONS_TABLE
@@ -252,28 +248,27 @@ class TestPgToAlloyMigrator:
         self, migrator, sample_embeddings
     ):
         await self._create_pgvector_tables(migrator, sample_embeddings)
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         with pytest.raises(ValueError):
             await migrator.amigrate_pgvector_collection(
-                collection_name="collection_1",
+                collection_name=collection_name,
                 delete_pg_collection=True,
                 pg_embedding_table_name=EMBEDDING_TABLE,
                 pg_collection_table_name=COLLECTIONS_TABLE,
             )
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE IF EXISTS collection_1")
+        await aexecute(migrator, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_amigrate_pgvector_collection_json_metadata(
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5, num_collections=3
-        )
-        collection_name = "collection_1"
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
         await migrator.amigrate_pgvector_collection(
@@ -326,10 +321,8 @@ class TestPgToAlloyMigrator:
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5, num_collections=3, num_cols=3
-        )
-        collection_name = "collection_1"
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         metadata_columns = [
             Column(f"col_0_{collection_name}", "VARCHAR"),
             Column(f"col_1_{collection_name}", "VARCHAR"),
@@ -337,7 +330,7 @@ class TestPgToAlloyMigrator:
         ]
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             metadata_columns=metadata_columns,
             id_column=Column("langchain_id", "VARCHAR"),
         )
@@ -391,13 +384,11 @@ class TestPgToAlloyMigrator:
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5, num_collections=3
-        )
-        collection_name = "collection_1"
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
         await migrator.amigrate_pgvector_collection(
@@ -451,13 +442,11 @@ class TestPgToAlloyMigrator:
         self, migrator, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=7, num_collections=2
-        )
-        collection_name = "collection_1"
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=7)
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
         await migrator.amigrate_pgvector_collection(
@@ -498,29 +487,38 @@ class TestPgToAlloyMigrator:
     async def test_aget_all_pgvector_collection_names(
         self, migrator, sample_embeddings
     ):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
+        num_collections = 3
+        await self._create_pgvector_tables(
+            migrator, sample_embeddings, num_collections=num_collections
+        )
         all_collections = await migrator.aget_all_pgvector_collection_names(
             pg_collection_table_name=COLLECTIONS_TABLE
         )
-        assert len(all_collections) == 3
-        expected = ["collection_0", "collection_1", "collection_2"]
+        assert len(all_collections) == num_collections
+
+        expected = [
+            f"collection_{i}_{COLLECTION_NAME_SUFFIX}" for i in range(num_collections)
+        ]
         for collection in all_collections:
             assert collection in expected
+
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
     async def test_aget_all_pgvector_collection_names_error(self, migrator):
         with pytest.raises(ValueError):
             await migrator.aget_all_pgvector_collection_names(
-                f"langchain_pg_collection12c92u2973923729_{uuid.uuid4()}"
+                f"langchain_pg_collection12c92u2973923729_{str(uuid.uuid4()).replace('-', '_')}"
             )
 
-    #### Async tests
+    ### Async tests
     async def test_extract_pgvector_collection_exists(
         self, migrator, sample_embeddings
     ):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
-        collection_name = "collection_1"
+        await self._create_pgvector_tables(
+            migrator, sample_embeddings
+        )
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         results = migrator.extract_pgvector_collection(
             collection_name, EMBEDDING_TABLE, COLLECTIONS_TABLE
         )
@@ -551,11 +549,8 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_extract_pgvector_collection_non_existant(
-        self, migrator, sample_embeddings
-    ):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
-        collection_name = "collection_random"
+    async def test_extract_pgvector_collection_non_existant(self, migrator):
+        collection_name = "random_collection"
         with pytest.raises(ValueError):
             await migrator.extract_pgvector_collection(
                 collection_name, EMBEDDING_TABLE, COLLECTIONS_TABLE
@@ -564,29 +559,34 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
     async def test_migrate_pgvector_collection_error(self, migrator, sample_embeddings):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
+        await self._create_pgvector_tables(
+            migrator, sample_embeddings
+        )
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
+
         with pytest.raises(ValueError):
             await migrator.migrate_pgvector_collection(
-                collection_name="collection_1",
+                collection_name=collection_name,
                 delete_pg_collection=True,
                 pg_embedding_table_name=EMBEDDING_TABLE,
                 pg_collection_table_name=COLLECTIONS_TABLE,
             )
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, "DROP TABLE IF EXISTS collection_1")
+        await aexecute(migrator, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_migrate_pgvector_collection_json_metadata(
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
         await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5, num_collections=3
+            migrator, sample_embeddings, num_rows=5
         )
-        collection_name = "collection_1"
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
+
         engine.init_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
         migrator.migrate_pgvector_collection(
@@ -640,9 +640,9 @@ class TestPgToAlloyMigrator:
     ):
         # Set up tables
         await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5, num_collections=3, num_cols=3
+            migrator, sample_embeddings, num_rows=5
         )
-        collection_name = "collection_1"
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         metadata_columns = [
             Column(f"col_0_{collection_name}", "VARCHAR"),
             Column(f"col_1_{collection_name}", "VARCHAR"),
@@ -650,7 +650,7 @@ class TestPgToAlloyMigrator:
         ]
         engine.init_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             metadata_columns=metadata_columns,
             id_column=Column("langchain_id", "VARCHAR"),
         )
@@ -705,12 +705,12 @@ class TestPgToAlloyMigrator:
     ):
         # Set up tables
         await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5, num_collections=3
+            migrator, sample_embeddings, num_rows=5
         )
-        collection_name = "collection_1"
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         engine.init_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
         migrator.migrate_pgvector_collection(
@@ -765,12 +765,12 @@ class TestPgToAlloyMigrator:
     ):
         # Set up tables
         await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=7, num_collections=2
+            migrator, sample_embeddings, num_rows=7
         )
-        collection_name = "collection_1"
+        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         engine.init_vectorstore_table(
             table_name=collection_name,
-            vector_size=768,
+            vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
         migrator.migrate_pgvector_collection(
@@ -808,20 +808,29 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
         await aexecute(migrator, f"DROP TABLE {collection_name}")
 
-    async def test_get_all_pgvector_collection_names(self, migrator, sample_embeddings):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
+    async def test_aget_all_pgvector_collection_names(
+        self, migrator, sample_embeddings
+    ):
+        num_collections = 3
+        await self._create_pgvector_tables(
+            migrator, sample_embeddings, num_collections=num_collections
+        )
         all_collections = migrator.get_all_pgvector_collection_names(
             pg_collection_table_name=COLLECTIONS_TABLE
         )
-        assert len(all_collections) == 3
-        expected = ["collection_0", "collection_1", "collection_2"]
+        assert len(all_collections) == num_collections
+
+        expected = [
+            f"collection_{i}_{COLLECTION_NAME_SUFFIX}" for i in range(num_collections)
+        ]
         for collection in all_collections:
             assert collection in expected
+
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
     async def test_get_all_pgvector_collection_names_error(self, migrator):
         with pytest.raises(ValueError):
             await migrator.get_all_pgvector_collection_names(
-                f"langchain_pg_collection923729_{uuid.uuid4()}"
+                f"langchain_pg_collection923729_{str(uuid.uuid4()).replace('-', '_')}"
             )
