@@ -15,6 +15,7 @@
 from .chat_message_history import AlloyDBChatMessageHistory
 from .engine import AlloyDBEngine, Column
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
+from .pg_to_alloy_migrator import PgToAlloyMigrator
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
@@ -25,5 +26,6 @@ __all__ = [
     "AlloyDBLoader",
     "AlloyDBDocumentSaver",
     "AlloyDBChatMessageHistory",
+    "PgToAlloyMigrator",
     "__version__",
 ]
