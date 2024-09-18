@@ -36,7 +36,6 @@ class AlloyDBEmbeddings(Embeddings):
             model_id (str): The model id used for generating embeddings.
 
         """
-
         self._engine = engine
         self.model_id = model_id
 
