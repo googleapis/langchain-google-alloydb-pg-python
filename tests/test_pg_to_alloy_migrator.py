@@ -515,9 +515,7 @@ class TestPgToAlloyMigrator:
     async def test_extract_pgvector_collection_exists(
         self, migrator, sample_embeddings
     ):
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings
-        )
+        await self._create_pgvector_tables(migrator, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         results = migrator.extract_pgvector_collection(
             collection_name, EMBEDDING_TABLE, COLLECTIONS_TABLE
@@ -559,9 +557,7 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
     async def test_migrate_pgvector_collection_error(self, migrator, sample_embeddings):
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings
-        )
+        await self._create_pgvector_tables(migrator, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
 
         with pytest.raises(ValueError):
@@ -579,9 +575,7 @@ class TestPgToAlloyMigrator:
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5
-        )
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
 
         engine.init_vectorstore_table(
@@ -639,9 +633,7 @@ class TestPgToAlloyMigrator:
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5
-        )
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         metadata_columns = [
             Column(f"col_0_{collection_name}", "VARCHAR"),
@@ -704,9 +696,7 @@ class TestPgToAlloyMigrator:
         self, engine, migrator, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=5
-        )
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         engine.init_vectorstore_table(
             table_name=collection_name,
@@ -764,9 +754,7 @@ class TestPgToAlloyMigrator:
         self, migrator, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_rows=7
-        )
+        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=7)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         engine.init_vectorstore_table(
             table_name=collection_name,
@@ -808,9 +796,7 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
         await aexecute(migrator, f"DROP TABLE {collection_name}")
 
-    async def test_aget_all_pgvector_collection_names(
-        self, migrator, sample_embeddings
-    ):
+    async def test_get_all_pgvector_collection_names(self, migrator, sample_embeddings):
         num_collections = 3
         await self._create_pgvector_tables(
             migrator, sample_embeddings, num_collections=num_collections
