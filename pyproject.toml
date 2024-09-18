@@ -51,6 +51,9 @@ test = [
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.black]
+target-version = ['py39']
+
 [tool.isort]
 profile = "black"
 
