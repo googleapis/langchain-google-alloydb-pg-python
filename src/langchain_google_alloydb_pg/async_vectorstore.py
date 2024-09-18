@@ -291,7 +291,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if isinstance(self.embedding_service, AlloyDBEmbeddings):
             embeddings: List[List[float]] = [[] for _ in list(texts)]
         else:
-            embeddings = self.embedding_service.embed_documents(list(texts))
+            embeddings = await self.embedding_service.aembed_documents(list(texts))
 
         ids = await self.aadd_embeddings(
             texts, embeddings, metadatas=metadatas, ids=ids, **kwargs
@@ -559,7 +559,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding = (
             []
             if isinstance(self.embedding_service, AlloyDBEmbeddings)
-            else self.embedding_service.embed_query(text=query)
+            else await self.embedding_service.aembed_query(text=query)
         )
         kwargs["query"] = query
 
@@ -618,7 +618,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding = (
             []
             if isinstance(self.embedding_service, AlloyDBEmbeddings)
-            else self.embedding_service.embed_query(text=query)
+            else await self.embedding_service.aembed_query(text=query)
         )
         kwargs["query"] = query
 
