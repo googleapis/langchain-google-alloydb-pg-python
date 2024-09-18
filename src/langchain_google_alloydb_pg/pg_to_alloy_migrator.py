@@ -134,14 +134,6 @@ class PgToAlloyMigrator(AlloyDBEngine):
             )
         )
 
-    def _is_uuid(self, id: str) -> bool:
-        """Check if a string is of type uuid."""
-        try:
-            uuid.UUID(str(id))
-            return True
-        except:
-            return False
-
     async def _ainsert_single_batch(
         self,
         destination_table: str,
@@ -182,9 +174,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
             for row_number in range(len(data)):
                 row = data[row_number]
                 # TODO: Id does not always need to be uuid (New feature). Fix this
-                params[f"langchain_id_{row_number}"] = (
-                    row.id if self._is_uuid(row.id) else uuid.uuid4()
-                )
+                params[f"langchain_id_{row_number}"] = row.id
                 params[f"content_{row_number}"] = row.document
                 params[f"embedding_{row_number}"] = row.embedding
                 params[f"langchain_metadata_{row_number}"] = json.dumps(row.cmetadata)
@@ -214,9 +204,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
 
             # Add parameters
             for row in data:
-                params[f"langchain_id_{row_number}"] = (
-                    row.id if self._is_uuid(row.id) else uuid.uuid4()
-                )
+                params[f"langchain_id_{row_number}"] = row.id
                 params[f"content_{row_number}"] = row.document
                 params[f"embedding_{row_number}"] = row.embedding
                 for column in metadata_column_names:

@@ -282,6 +282,7 @@ class TestPgToAlloyMigratorAsync:
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
             vector_size=768,
+            id_column=Column("langchain_id", "VARCHAR"),
         )
         await migrator.amigrate_pgvector_collection(
             collection_name=collection_name,
@@ -299,9 +300,10 @@ class TestPgToAlloyMigratorAsync:
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
             migrator,
-            f"SELECT content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
+            f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
+            "langchain_id": f"uuid_0_{collection_name}",
             "content": "content_0",
             "embedding": str(sample_embeddings).replace(" ", ""),
             "langchain_metadata": self._create_metadata_for_collection(
@@ -345,6 +347,7 @@ class TestPgToAlloyMigratorAsync:
             table_name=collection_name,
             vector_size=768,
             metadata_columns=metadata_columns,
+            id_column=Column("langchain_id", "VARCHAR"),
         )
         await migrator.amigrate_pgvector_collection(
             collection_name=collection_name,
@@ -362,9 +365,10 @@ class TestPgToAlloyMigratorAsync:
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
             migrator,
-            f"SELECT content, embedding, col_0_{collection_name}, col_1_{collection_name}, col_2_{collection_name} FROM {collection_name} LIMIT 1",
+            f"SELECT langchain_id, content, embedding, col_0_{collection_name}, col_1_{collection_name}, col_2_{collection_name} FROM {collection_name} LIMIT 1",
         )
         expected_row = {
+            "langchain_id": f"uuid_0_{collection_name}",
             "content": "content_0",
             "embedding": str(sample_embeddings).replace(" ", ""),
             f"col_0_{collection_name}": f"val_0_{collection_name}",
@@ -402,6 +406,7 @@ class TestPgToAlloyMigratorAsync:
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
             vector_size=768,
+            id_column=Column("langchain_id", "VARCHAR"),
         )
         await migrator.amigrate_pgvector_collection(
             collection_name=collection_name,
@@ -420,9 +425,10 @@ class TestPgToAlloyMigratorAsync:
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
             migrator,
-            f"SELECT content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
+            f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
+            "langchain_id": f"uuid_0_{collection_name}",
             "content": "content_0",
             "embedding": str(sample_embeddings).replace(" ", ""),
             "langchain_metadata": self._create_metadata_for_collection(
@@ -460,6 +466,7 @@ class TestPgToAlloyMigratorAsync:
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
             vector_size=768,
+            id_column=Column("langchain_id", "VARCHAR"),
         )
         await migrator.amigrate_pgvector_collection(
             collection_name=collection_name,
@@ -479,9 +486,10 @@ class TestPgToAlloyMigratorAsync:
         # Check last row to ensure that the data is inserted correctly
         migrated_data = await afetch(
             migrator,
-            f"SELECT content, embedding, langchain_metadata FROM {collection_name}",
+            f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name}",
         )
         expected_row = {
+            "langchain_id": f"uuid_6_{collection_name}",
             "content": "content_6",
             "embedding": str(sample_embeddings).replace(" ", ""),
             "langchain_metadata": self._create_metadata_for_collection(
