@@ -21,7 +21,15 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import RowMapping, text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, Column, PgvectorMigrator
+from langchain_google_alloydb_pg import AlloyDBEngine, Column
+from langchain_google_alloydb_pg.utils.pgvector_migrator import (
+    aextract_pgvector_collection,
+    extract_pgvector_collection,
+    alist_pgvector_collection_names,
+    list_pgvector_collection_names,
+    amigrate_pgvector_collection,
+    migrate_pgvector_collection,
+)
 
 COLLECTIONS_TABLE = "langchain_pg_collection"
 EMBEDDINGS_TABLE = "langchain_pg_embedding"
@@ -30,17 +38,17 @@ COLLECTION_NAME_SUFFIX = str(uuid.uuid4()).replace("-", "_")
 
 
 async def aexecute(
-    migrator: PgvectorMigrator, query: str, params: Optional[dict] = None
+    engine: AlloyDBEngine, query: str, params: Optional[dict] = None
 ) -> None:
     async def run(engine, query, params):
         async with engine._pool.connect() as conn:
             await conn.execute(text(query), params)
             await conn.commit()
 
-    await migrator.engine._run_as_async(run(migrator.engine, query, params))
+    await engine._run_as_async(run(engine, query, params))
 
 
-async def afetch(migrator: PgvectorMigrator, query: str) -> Sequence[RowMapping]:
+async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
     async def run(engine, query):
         async with engine._pool.connect() as conn:
             result = await conn.execute(text(query))
@@ -48,7 +56,7 @@ async def afetch(migrator: PgvectorMigrator, query: str) -> Sequence[RowMapping]
             result_fetch = result_map.fetchall()
         return result_fetch
 
-    return await migrator.engine._run_as_async(run(migrator.engine, query))
+    return await engine._run_as_async(run(engine, query))
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -59,7 +67,7 @@ def get_env_var(key: str, desc: str) -> str:
 
 
 @pytest.mark.asyncio
-class TestPgvectorMigrator:
+class TestPgvectorengine:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
         return get_env_var("PROJECT_ID", "project id for google cloud")
@@ -114,22 +122,17 @@ class TestPgvectorMigrator:
             user=user,
             password=password,
         )
-        return engine
-
-    @pytest_asyncio.fixture(scope="module")
-    async def migrator(self, engine):
-        migrator = PgvectorMigrator(engine)
         await aexecute(
-            migrator,
+            engine,
             query=f"CREATE table {COLLECTIONS_TABLE} (uuid VARCHAR, name VARCHAR, cmetadata JSONB)",
         )
         await aexecute(
-            migrator,
+            engine,
             query=f"CREATE table {EMBEDDINGS_TABLE} (id VARCHAR, collection_id VARCHAR, embedding vector(768), document TEXT, cmetadata JSONB)",
         )
-        yield migrator
-        await aexecute(migrator, f"DROP TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {EMBEDDINGS_TABLE}")
+        yield engine
+        await aexecute(engine, f"DROP TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {EMBEDDINGS_TABLE}")
 
     @pytest.fixture(scope="module")
     def sample_embeddings(self) -> List[float]:
@@ -147,7 +150,7 @@ class TestPgvectorMigrator:
 
     async def _create_collection(
         self,
-        migrator: PgvectorMigrator,
+        engine: AlloyDBEngine,
         collection_name: str,
         sample_embeddings: List[float],
         num_rows: int = 2,
@@ -155,13 +158,13 @@ class TestPgvectorMigrator:
     ) -> None:
         collection_id = f"collection_id_{collection_name}"
         await aexecute(
-            migrator,
+            engine,
             query=f"INSERT INTO {COLLECTIONS_TABLE} (uuid, name) VALUES (:uuid, :collection_name)",
             params={"uuid": collection_id, "collection_name": collection_name},
         )
         for row_num in range(num_rows):
             await aexecute(
-                migrator,
+                engine,
                 query=f"""INSERT INTO {EMBEDDINGS_TABLE} (id, collection_id, embedding, document, cmetadata) VALUES (:id, :collection_id, :embedding, :document, :cmetadata)""",
                 params={
                     "collection_id": collection_id,
@@ -178,7 +181,7 @@ class TestPgvectorMigrator:
 
     async def _create_pgvector_tables(
         self,
-        migrator: PgvectorMigrator,
+        engine: AlloyDBEngine,
         sample_embeddings: List[float],
         num_rows: int = 2,
         num_collections: int = 1,
@@ -188,23 +191,21 @@ class TestPgvectorMigrator:
         for collection_num in range(num_collections):
             collection_name = f"collection_{collection_num}_{COLLECTION_NAME_SUFFIX}"
             await self._create_collection(
-                migrator,
+                engine,
                 collection_name,
                 sample_embeddings,
                 num_rows=num_rows,
                 num_cols=num_cols,
             )
 
-    async def test_execute(self, migrator):
-        await aexecute(migrator, query="SELECT 1")
+    async def test_execute(self, engine):
+        await aexecute(engine, query="SELECT 1")
 
     #### Async tests
-    async def test_aextract_pgvector_collection_exists(
-        self, migrator, sample_embeddings
-    ):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
+    async def test_aextract_pgvector_collection_exists(self, engine, sample_embeddings):
+        await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
-        results = await migrator.aextract_pgvector_collection(collection_name)
+        results = await aextract_pgvector_collection(engine, collection_name)
         expected = [
             {
                 "id": f"uuid_0_{collection_name}",
@@ -229,55 +230,55 @@ class TestPgvectorMigrator:
             assert row in expected
         assert len(results) == 2
 
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_aextract_pgvector_collection_non_existant(self, migrator):
+    async def test_aextract_pgvector_collection_non_existant(self, engine):
         collection_name = "random_collection"
         with pytest.raises(ValueError):
-            await migrator.aextract_pgvector_collection(collection_name)
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+            await aextract_pgvector_collection(engine, collection_name)
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_amigrate_pgvector_collection_error(
-        self, migrator, sample_embeddings
-    ):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
+    async def test_amigrate_pgvector_collection_error(self, engine, sample_embeddings):
+        await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         with pytest.raises(ValueError):
-            await migrator.amigrate_pgvector_collection(
+            await amigrate_pgvector_collection(
+                engine,
                 collection_name=collection_name,
                 delete_pg_collection=True,
             )
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE IF EXISTS {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_amigrate_pgvector_collection_json_metadata(
-        self, engine, migrator, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        await migrator.amigrate_pgvector_collection(
+        await amigrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             use_json_metadata=True,
         )
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 5}]
 
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
@@ -293,26 +294,26 @@ class TestPgvectorMigrator:
         # The collection data should not be deleted from both PGVector tables
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
         )
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_col_metadata(
-        self, engine, migrator, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         metadata_columns = [
             Column(f"col_0_{collection_name}", "VARCHAR"),
@@ -325,20 +326,21 @@ class TestPgvectorMigrator:
             metadata_columns=metadata_columns,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        await migrator.amigrate_pgvector_collection(
+        await amigrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             metadata_columns=[col.name for col in metadata_columns],
         )
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 5}]
 
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, col_0_{collection_name}, col_1_{collection_name}, col_2_{collection_name} FROM {collection_name} LIMIT 1",
         )
         expected_row = {
@@ -354,33 +356,34 @@ class TestPgvectorMigrator:
         # The collection data should not be deleted from both PGVector tables
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
         )
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_delete_original(
-        self, engine, migrator, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        await migrator.amigrate_pgvector_collection(
+        await amigrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             use_json_metadata=True,
             delete_pg_collection=True,
@@ -388,13 +391,13 @@ class TestPgvectorMigrator:
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 5}]
 
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
@@ -410,33 +413,34 @@ class TestPgvectorMigrator:
         # The collection data should be deleted from both PGVector tables
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
         )
         assert embeddings_table_count == [{"count": 0}]
         collection_table_entry = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
         )
         assert collection_table_entry == [{"count": 0}]
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_batch(
-        self, migrator, engine, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=7)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=7)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        await migrator.amigrate_pgvector_collection(
+        await amigrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             use_json_metadata=True,
             delete_pg_collection=True,
@@ -445,13 +449,13 @@ class TestPgvectorMigrator:
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 7}]
 
         # Check last row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name}",
         )
         expected_row = {
@@ -465,16 +469,16 @@ class TestPgvectorMigrator:
         assert expected_row in migrated_data
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
-    async def test_alist_pgvector_collection_names(self, migrator, sample_embeddings):
+    async def test_alist_pgvector_collection_names(self, engine, sample_embeddings):
         num_collections = 3
         await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_collections=num_collections
+            engine, sample_embeddings, num_collections=num_collections
         )
-        all_collections = await migrator.alist_pgvector_collection_names()
+        all_collections = await alist_pgvector_collection_names(engine)
         assert len(all_collections) == num_collections
 
         expected = [
@@ -483,30 +487,28 @@ class TestPgvectorMigrator:
         for collection in all_collections:
             assert collection in expected
 
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_alist_pgvector_collection_names_error(self, migrator):
-        await aexecute(migrator, f"DROP TABLE IF EXISTS {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE IF EXISTS {EMBEDDINGS_TABLE}")
+    async def test_alist_pgvector_collection_names_error(self, engine):
+        await aexecute(engine, f"DROP TABLE IF EXISTS {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {EMBEDDINGS_TABLE}")
         with pytest.raises(ValueError):
-            await migrator.alist_pgvector_collection_names()
+            await alist_pgvector_collection_names(engine)
         await aexecute(
-            migrator,
+            engine,
             query=f"CREATE table {COLLECTIONS_TABLE} (uuid VARCHAR, name VARCHAR, cmetadata JSONB)",
         )
         await aexecute(
-            migrator,
+            engine,
             query=f"CREATE table {EMBEDDINGS_TABLE} (id VARCHAR, collection_id VARCHAR, embedding vector(768), document TEXT, cmetadata JSONB)",
         )
 
     ### Async tests
-    async def test_extract_pgvector_collection_exists(
-        self, migrator, sample_embeddings
-    ):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
+    async def test_extract_pgvector_collection_exists(self, engine, sample_embeddings):
+        await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
-        results = migrator.extract_pgvector_collection(collection_name)
+        results = extract_pgvector_collection(engine, collection_name)
         expected = [
             {
                 "id": f"uuid_0_{collection_name}",
@@ -531,34 +533,35 @@ class TestPgvectorMigrator:
             assert row in expected
         assert len(results) == 2
 
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_extract_pgvector_collection_non_existant(self, migrator):
+    async def test_extract_pgvector_collection_non_existant(self, engine):
         collection_name = "random_collection"
         with pytest.raises(ValueError):
-            await migrator.extract_pgvector_collection(collection_name)
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+            extract_pgvector_collection(engine, collection_name)
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_migrate_pgvector_collection_error(self, migrator, sample_embeddings):
-        await self._create_pgvector_tables(migrator, sample_embeddings)
+    async def test_migrate_pgvector_collection_error(self, engine, sample_embeddings):
+        await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
 
         with pytest.raises(ValueError):
-            await migrator.migrate_pgvector_collection(
+            migrate_pgvector_collection(
+                engine, 
                 collection_name=collection_name,
                 delete_pg_collection=True,
             )
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE IF EXISTS {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_migrate_pgvector_collection_json_metadata(
-        self, engine, migrator, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
 
         engine.init_vectorstore_table(
@@ -566,20 +569,21 @@ class TestPgvectorMigrator:
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        migrator.migrate_pgvector_collection(
+        migrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             use_json_metadata=True,
         )
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 5}]
 
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
@@ -595,26 +599,26 @@ class TestPgvectorMigrator:
         # The collection data should not be deleted from both PGVector tables
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
         )
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_col_metadata(
-        self, engine, migrator, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         metadata_columns = [
             Column(f"col_0_{collection_name}", "VARCHAR"),
@@ -627,20 +631,21 @@ class TestPgvectorMigrator:
             metadata_columns=metadata_columns,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        migrator.migrate_pgvector_collection(
+        migrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             metadata_columns=[col.name for col in metadata_columns],
         )
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 5}]
 
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, col_0_{collection_name}, col_1_{collection_name}, col_2_{collection_name} FROM {collection_name} LIMIT 1",
         )
         expected_row = {
@@ -656,33 +661,34 @@ class TestPgvectorMigrator:
         # The collection data should not be deleted from both PGVector tables
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
         )
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_delete_original(
-        self, engine, migrator, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=5)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         engine.init_vectorstore_table(
             table_name=collection_name,
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        migrator.migrate_pgvector_collection(
+        migrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             use_json_metadata=True,
             delete_pg_collection=True,
@@ -690,13 +696,13 @@ class TestPgvectorMigrator:
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 5}]
 
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
@@ -712,33 +718,34 @@ class TestPgvectorMigrator:
         # The collection data should be deleted from both PGVector tables
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
         )
         assert embeddings_table_count == [{"count": 0}]
         collection_table_entry = await afetch(
-            migrator,
+            engine,
             f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
         )
         assert collection_table_entry == [{"count": 0}]
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_batch(
-        self, migrator, engine, sample_embeddings
+        self, engine, sample_embeddings
     ):
         # Set up tables
-        await self._create_pgvector_tables(migrator, sample_embeddings, num_rows=7)
+        await self._create_pgvector_tables(engine, sample_embeddings, num_rows=7)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         engine.init_vectorstore_table(
             table_name=collection_name,
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
-        migrator.migrate_pgvector_collection(
+        migrate_pgvector_collection(
+            engine,
             collection_name=collection_name,
             use_json_metadata=True,
             delete_pg_collection=True,
@@ -747,13 +754,13 @@ class TestPgvectorMigrator:
 
         # Check that all data has been migrated
         migrated_table_count = await afetch(
-            migrator, f"SELECT COUNT(*) FROM {collection_name}"
+            engine, f"SELECT COUNT(*) FROM {collection_name}"
         )
         assert migrated_table_count == [{"count": 7}]
 
         # Check last row to ensure that the data is inserted correctly
         migrated_data = await afetch(
-            migrator,
+            engine,
             f"SELECT langchain_id, content, embedding, langchain_metadata FROM {collection_name}",
         )
         expected_row = {
@@ -767,16 +774,16 @@ class TestPgvectorMigrator:
         assert expected_row in migrated_data
 
         # Delete set up tables
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {collection_name}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"DROP TABLE {collection_name}")
 
-    async def test_list_pgvector_collection_names(self, migrator, sample_embeddings):
+    async def test_list_pgvector_collection_names(self, engine, sample_embeddings):
         num_collections = 3
         await self._create_pgvector_tables(
-            migrator, sample_embeddings, num_collections=num_collections
+            engine, sample_embeddings, num_collections=num_collections
         )
-        all_collections = migrator.list_pgvector_collection_names()
+        all_collections = list_pgvector_collection_names(engine)
         assert len(all_collections) == num_collections
 
         expected = [
@@ -785,19 +792,19 @@ class TestPgvectorMigrator:
         for collection in all_collections:
             assert collection in expected
 
-        await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_list_pgvector_collection_names_error(self, migrator):
-        await aexecute(migrator, f"DROP TABLE IF EXISTS {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE IF EXISTS {COLLECTIONS_TABLE}")
+    async def test_list_pgvector_collection_names_error(self, engine):
+        await aexecute(engine, f"DROP TABLE IF EXISTS {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {COLLECTIONS_TABLE}")
         with pytest.raises(ValueError):
-            migrator.list_pgvector_collection_names()
+            list_pgvector_collection_names(engine)
         await aexecute(
-            migrator,
+            engine,
             query=f"CREATE table {COLLECTIONS_TABLE} (uuid VARCHAR, name VARCHAR, cmetadata JSONB)",
         )
         await aexecute(
-            migrator,
+            engine,
             query=f"CREATE table {EMBEDDINGS_TABLE} (id VARCHAR, collection_id VARCHAR, embedding vector(768), document TEXT, cmetadata JSONB)",
         )
