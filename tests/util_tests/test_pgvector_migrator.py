@@ -487,8 +487,8 @@ class TestPgvectorMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
     async def test_alist_pgvector_collection_names_error(self, migrator):
-        await aexecute(migrator, f"DROP TABLE {COLLECTIONS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(migrator, f"DROP TABLE IF EXISTS {COLLECTIONS_TABLE}")
+        await aexecute(migrator, f"DROP TABLE IF EXISTS {EMBEDDINGS_TABLE}")
         with pytest.raises(ValueError):
             await migrator.alist_pgvector_collection_names()
         await aexecute(
@@ -789,8 +789,8 @@ class TestPgvectorMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
     async def test_list_pgvector_collection_names_error(self, migrator):
-        await aexecute(migrator, f"DROP TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(migrator, f"DROP TABLE {COLLECTIONS_TABLE}")
+        await aexecute(migrator, f"DROP TABLE IF EXISTS {EMBEDDINGS_TABLE}")
+        await aexecute(migrator, f"DROP TABLE IF EXISTS {COLLECTIONS_TABLE}")
         with pytest.raises(ValueError):
             migrator.list_pgvector_collection_names()
         await aexecute(

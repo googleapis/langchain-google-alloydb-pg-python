@@ -13,7 +13,7 @@
 # limitations under the License.
 import json
 from typing import List, Optional, Sequence, TypeVar
-
+import warnings
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
 
@@ -234,6 +234,10 @@ class PgvectorMigrator(AlloyDBEngine):
             )
 
         if not destination_table:
+            warnings.warn(
+                f"Destination table not set. Destination table would default to {collection_name}."
+                "Please make sure that there is an existing table with the same name."
+            )
             destination_table = collection_name
 
         collection_data = await self._aextract_pgvector_collection(collection_name)
