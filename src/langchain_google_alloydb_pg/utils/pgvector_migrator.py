@@ -117,8 +117,6 @@ async def _ainsert_single_batch(
             params[f"embedding_{row_number}"] = row.embedding
             params[f"langchain_metadata_{row_number}"] = json.dumps(row.cmetadata)
 
-            row_number += 1
-
     elif metadata_column_names:
         insert_query = (
             f"INSERT INTO {destination_table} (langchain_id, content, embedding"
