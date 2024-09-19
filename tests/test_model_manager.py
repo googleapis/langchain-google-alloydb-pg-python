@@ -18,8 +18,7 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from langchain_google_alloydb_pg.engine import AlloyDBEngine
-from langchain_google_alloydb_pg.model import AlloyDBModel
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBModelManager
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -33,7 +32,7 @@ EMBEDDING_MODEL_NAME = "textembedding-gecko@003" + str(uuid.uuid4()).replace("-"
 
 
 @pytest.mark.asyncio
-class TestAlloyDBModel:
+class TestAlloyDBModelManager:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
         return get_env_var("PROJECT_ID", "project id for google cloud")
@@ -63,14 +62,12 @@ class TestAlloyDBModel:
             region=db_region,
             database=db_name,
         )
-        print("START")
         yield engine
-        print("END")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="module")
     async def model(self, engine):
-        model = AlloyDBModel(engine)
+        model = AlloyDBModelManager(engine)
         return model
 
     async def test_acreate_model(self, model):

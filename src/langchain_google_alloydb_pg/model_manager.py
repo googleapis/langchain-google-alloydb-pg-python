@@ -22,7 +22,7 @@ from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 
-class AlloyDBModel:
+class AlloyDBModelManager:
     """Manage models to be used with google_ml_integration Extension.
     Refer to [Model Endpoint Management](https://cloud.google.com/alloydb/docs/ai/model-endpoint-overview).
     """
@@ -31,7 +31,7 @@ class AlloyDBModel:
         self,
         engine: AsyncEngine,
     ):
-        """AlloyDBModel constructor.
+        """AlloyDBModelManager constructor.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
         """
