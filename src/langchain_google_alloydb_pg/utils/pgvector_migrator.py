@@ -18,7 +18,7 @@ from typing import List, Optional, Sequence, TypeVar
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
 
-from ..engine import AlloyDBEngine, Column
+from ..engine import AlloyDBEngine
 
 COLLECTIONS_TABLE = "langchain_pg_collection"
 EMBEDDINGS_TABLE = "langchain_pg_embedding"
@@ -205,7 +205,7 @@ class PgvectorMigrator(AlloyDBEngine):
     async def _amigrate_pgvector_collection(
         self,
         collection_name: str,
-        metadata_columns: Optional[List[Column]] = [],
+        metadata_columns: Optional[List[str]] = [],
         destination_table: Optional[str] = None,
         use_json_metadata: Optional[bool] = False,
         delete_pg_collection: Optional[bool] = False,
@@ -217,7 +217,7 @@ class PgvectorMigrator(AlloyDBEngine):
 
         Args:
             collection_name (str): The collection to migrate.
-            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format.
+            metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
                 Optional.
             destination_table (str): The name of the table to insert the data in.
                 Optional. defaults to collection_name.
@@ -230,8 +230,8 @@ class PgvectorMigrator(AlloyDBEngine):
         """
         if not use_json_metadata and not metadata_columns:
             raise ValueError(
-                "Schema not defined for new table. Please define the correct schema."
-                "To keep the data in json format, use use_json_metadata=True while running this method."
+                "Please specify the columns for the new table. "
+                "To store data in JSON format, set use_json_metadata=True when calling this method."
             )
 
         if not destination_table:
@@ -247,9 +247,7 @@ class PgvectorMigrator(AlloyDBEngine):
             data=collection_data,
             destination_table=destination_table,
             metadata_column_names=(
-                [column.name for column in metadata_columns]
-                if metadata_columns
-                else None
+                [column for column in metadata_columns] if metadata_columns else None
             ),
             insert_batch_size=insert_batch_size,
             use_json_metadata=use_json_metadata,
@@ -323,7 +321,7 @@ class PgvectorMigrator(AlloyDBEngine):
     async def amigrate_pgvector_collection(
         self,
         collection_name: str,
-        metadata_columns: Optional[List[Column]] = [],
+        metadata_columns: Optional[List[str]] = [],
         destination_table: Optional[str] = None,
         use_json_metadata: Optional[bool] = False,
         delete_pg_collection: Optional[bool] = False,
@@ -335,7 +333,7 @@ class PgvectorMigrator(AlloyDBEngine):
 
         Args:
             collection_name (str): The collection to migrate.
-            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format.
+            metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
                 Optional.
             destination_table (str): The name of the table to insert the data in.
                 Optional. defaults to collection_name.
@@ -383,7 +381,7 @@ class PgvectorMigrator(AlloyDBEngine):
     def migrate_pgvector_collection(
         self,
         collection_name: str,
-        metadata_columns: Optional[List[Column]] = [],
+        metadata_columns: Optional[List[str]] = [],
         destination_table: Optional[str] = None,
         use_json_metadata: Optional[bool] = False,
         delete_pg_collection: Optional[bool] = False,
@@ -395,7 +393,7 @@ class PgvectorMigrator(AlloyDBEngine):
 
         Args:
             collection_name (str): The collection to migrate.
-            metadata_columns (List[Column]): The metadata columns to be created to keep the data in a row-column format.
+            metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
                 Optional.
             destination_table (str): The name of the table to insert the data in.
                 Optional. defaults to collection_name.

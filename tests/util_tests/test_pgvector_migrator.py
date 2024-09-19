@@ -327,7 +327,7 @@ class TestPgvectorMigrator:
         )
         await migrator.amigrate_pgvector_collection(
             collection_name=collection_name,
-            metadata_columns=metadata_columns,
+            metadata_columns=[col.name for col in metadata_columns],
         )
 
         # Check that all data has been migrated
@@ -629,7 +629,7 @@ class TestPgvectorMigrator:
         )
         migrator.migrate_pgvector_collection(
             collection_name=collection_name,
-            metadata_columns=metadata_columns,
+            metadata_columns=[col.name for col in metadata_columns],
         )
 
         # Check that all data has been migrated
