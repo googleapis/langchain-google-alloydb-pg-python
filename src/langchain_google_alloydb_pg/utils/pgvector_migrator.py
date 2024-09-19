@@ -96,27 +96,25 @@ async def _ainsert_single_batch(
         use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
             Default: False. Optional.
     """
-    params = {}
+    params = []
 
     if use_json_metadata:
         insert_query = f"INSERT INTO {destination_table} (langchain_id, content, embedding, langchain_metadata) VALUES"
 
         # Create value clause for the SQL query
-        values_clause = ", ".join(
-            [
-                f"(:langchain_id_{num}, :content_{num}, :embedding_{num}, :langchain_metadata_{num})"
-                for num in range(len(data))
-            ]
-        )
+        values_clause = "(:langchain_id, :content, :embedding, :langchain_metadata)"
         insert_query += values_clause
 
         # Add parameters
-        for row_number, row in enumerate(data):
-            params[f"langchain_id_{row_number}"] = row.id
-            params[f"content_{row_number}"] = row.document
-            params[f"embedding_{row_number}"] = row.embedding
-            params[f"langchain_metadata_{row_number}"] = json.dumps(row.cmetadata)
-
+        for row in data:
+            params.append(
+                {
+                    "langchain_id": row.id,
+                    "content": row.document,
+                    "embedding": row.embedding,
+                    "langchain_metadata": json.dumps(row.cmetadata),
+                }
+            )
     elif metadata_column_names:
         insert_query = (
             f"INSERT INTO {destination_table} (langchain_id, content, embedding"
@@ -126,27 +124,27 @@ async def _ainsert_single_batch(
         insert_query += ") VALUES"
 
         # Create value clause for the SQL query
-        values_clause = ", ".join(
-            [
-                f"(:langchain_id_{num}, :content_{num}, :embedding_{num}, "
-                + ", ".join([f":{column}_{num}" for column in metadata_column_names])
-                + ")"
-                for num in range(len(data))
-            ]
+        values_clause = (
+            "(:langchain_id, :content, :embedding, "
+            + ", ".join([f":{column}" for column in metadata_column_names])
+            + ")"
         )
         insert_query += values_clause
 
         # Add parameters
-        for row_number, row in enumerate(data):
-            params[f"langchain_id_{row_number}"] = row.id
-            params[f"content_{row_number}"] = row.document
-            params[f"embedding_{row_number}"] = row.embedding
+        for row in data:
+            param = {
+                "langchain_id": row.id,
+                "content": row.document,
+                "embedding": row.embedding,
+            }
             for column in metadata_column_names:
                 # In case the key is not present, add a null value
                 if column in row.cmetadata:
-                    params[f"{column}_{row_number}"] = row.cmetadata[column]
+                    param[column] = row.cmetadata[column]
                 else:
-                    params[f"{column}_{row_number}"] = None
+                    param[column] = None
+            params.append(param)
 
     # Insert rows
     async with engine._pool.connect() as conn:
