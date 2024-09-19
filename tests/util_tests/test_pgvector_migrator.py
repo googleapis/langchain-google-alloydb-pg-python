@@ -24,10 +24,10 @@ from sqlalchemy import RowMapping, text
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.utils.pgvector_migrator import (
     aextract_pgvector_collection,
-    extract_pgvector_collection,
     alist_pgvector_collection_names,
-    list_pgvector_collection_names,
     amigrate_pgvector_collection,
+    extract_pgvector_collection,
+    list_pgvector_collection_names,
     migrate_pgvector_collection,
 )
 
@@ -428,9 +428,7 @@ class TestPgvectorengine:
         await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
-    async def test_amigrate_pgvector_collection_batch(
-        self, engine, sample_embeddings
-    ):
+    async def test_amigrate_pgvector_collection_batch(self, engine, sample_embeddings):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=7)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
@@ -549,7 +547,7 @@ class TestPgvectorengine:
 
         with pytest.raises(ValueError):
             migrate_pgvector_collection(
-                engine, 
+                engine,
                 collection_name=collection_name,
                 delete_pg_collection=True,
             )
@@ -733,9 +731,7 @@ class TestPgvectorengine:
         await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
-    async def test_migrate_pgvector_collection_batch(
-        self, engine, sample_embeddings
-    ):
+    async def test_migrate_pgvector_collection_batch(self, engine, sample_embeddings):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=7)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
