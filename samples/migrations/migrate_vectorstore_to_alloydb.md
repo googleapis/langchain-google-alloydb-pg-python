@@ -1,6 +1,6 @@
-# Vector Store to AlloyDB migration
+# Migrate a Vector Store to AlloyDB
 
-This guide provides step-by-step instructions on migrating data from existing vector stores to the AlloyDB vectorstore.
+This guide provides step-by-step instructions on migrating data from existing vector stores to AlloyDB.
 
 Supported Vector Stores
 
@@ -96,8 +96,6 @@ The process of getting data from vector stores varies depending on the specific 
             )
         ```
 
-        You can choose other embeddings types as well. ([ref](https://weaviate.io/developers/weaviate/model-providers#api-based))
-
    3. Get all data from collection
 
         ```python
@@ -136,7 +134,7 @@ The process of getting data from vector stores varies depending on the specific 
         ```python
         from langchain_core.embeddings import FakeEmbeddings
 
-        embeddings_service = FakeEmbeddings(size=4096)
+        embeddings_service = FakeEmbeddings(size=768)
         ```
 
         In case you're using a different embeddings service, choose one from [LangChain's Embedding models](https://python.langchain.com/v0.2/docs/integrations/text_embedding/).
@@ -236,7 +234,7 @@ The process of getting data from vector stores varies depending on the specific 
     ```python
     from langchain_core.embeddings import FakeEmbeddings
 
-    embeddings_service = FakeEmbeddings(size=4096)
+    embeddings_service = FakeEmbeddings(size=768)
     ```
 
     > **_NOTE:_**  The embeddings service defined here is not used to generate the embeddings, but required by the vectorstore.
@@ -245,11 +243,7 @@ The process of getting data from vector stores varies depending on the specific 
 2. Create AlloyDB table and Vector Store
 
     ```python
-    from langchain_google_alloydb_pg import (
-        AlloyDBEngine,
-        Column,
-        AlloyDBVectorStore,
-    )
+    from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
     # Replace these variable values
     engine = await AlloyDBEngine.afrom_instance(
@@ -258,17 +252,17 @@ The process of getting data from vector stores varies depending on the specific 
         region="us-central1",
         cluster="my-primary",
         database="test_db",
-        user=USER,
-        password=PASSWORD,
+        user="user",
+        password="password",
     )
 
     # Create an AlloyDB table. Set the table name.
     await engine.ainit_vectorstore_table(
-        table_name='table_name', 
-        
-        # Fake embeddings use a vector size of 4096. 
+        table_name='table_name',
+
+        # Fake embeddings use a vector size of 768.
         # If you're choosing another vector embeddings service, choose the corresponding vector size
-        vector_size=4096,
+        vector_size=768,
     )
 
     # Create a vector store instance
@@ -308,7 +302,7 @@ The process of getting data from vector stores varies depending on the specific 
         content_columns="content",
         metadata_json_column="langchain_metadata"
     )
-    
+
     documents = loader.load()
     assert len(documents) == len(ids)
     ```
@@ -345,7 +339,7 @@ The process of getting data from vector stores varies depending on the specific 
 
     ```python
     from pymilvus import utility
-    
+
     utility.drop_collection('collection_name')
     ```
 
