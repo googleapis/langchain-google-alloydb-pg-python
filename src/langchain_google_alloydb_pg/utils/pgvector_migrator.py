@@ -107,7 +107,7 @@ class PgvectorMigrator(AlloyDBEngine):
                 result_fetch = result_map.fetchall()
             return result_fetch
         except:
-            raise ValueError(f"Collection: {collection_name} does not exist.")
+            raise ValueError(f"Collection, {collection_name} does not exist.")
 
     async def _ainsert_single_batch(
         self,
@@ -235,7 +235,7 @@ class PgvectorMigrator(AlloyDBEngine):
                 ],
                 use_json_metadata=use_json_metadata,
             )
-        print("All rows inserted succesfully.")
+        print("All rows inserted successfully.")
 
     async def _amigrate_pgvector_collection(
         self,
@@ -324,7 +324,7 @@ class PgvectorMigrator(AlloyDBEngine):
             async with self.engine._pool.connect() as conn:
                 await conn.execute(text(query))
                 await conn.commit()
-            print("Succesfully deleted old data.")
+            print(f"Successfully deleted PGVector collection, {collection_name}")
 
     async def _alist_pgvector_collection_names(
         self,
