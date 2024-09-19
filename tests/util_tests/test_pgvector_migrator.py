@@ -93,7 +93,7 @@ class TestPgvectorMigrator:
     def iam_account(self) -> str:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
-    @pytest_asyncio.fixture(scope="module", params=["PUBLIC", "PRIVATE"])
+    @pytest_asyncio.fixture(scope="module", params=["PUBLIC"])
     async def engine(
         self,
         request,

@@ -130,7 +130,6 @@ class PgvectorMigrator(AlloyDBEngine):
             use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
                 Default: False. Optional.
         """
-        row_number = 0
         params = {}
 
         if use_json_metadata:
@@ -146,8 +145,7 @@ class PgvectorMigrator(AlloyDBEngine):
             insert_query += values_clause
 
             # Add parameters
-            for row_number in range(len(data)):
-                row = data[row_number]
+            for row_number, row in enumerate(data):
                 params[f"langchain_id_{row_number}"] = row.id
                 params[f"content_{row_number}"] = row.document
                 params[f"embedding_{row_number}"] = row.embedding
@@ -177,7 +175,7 @@ class PgvectorMigrator(AlloyDBEngine):
             insert_query += values_clause
 
             # Add parameters
-            for row in data:
+            for row_number, row in enumerate(data):
                 params[f"langchain_id_{row_number}"] = row.id
                 params[f"content_{row_number}"] = row.document
                 params[f"embedding_{row_number}"] = row.embedding
@@ -187,8 +185,6 @@ class PgvectorMigrator(AlloyDBEngine):
                         params[f"{column}_{row_number}"] = row.cmetadata[column]
                     else:
                         params[f"{column}_{row_number}"] = None
-
-                row_number += 1
 
         # Insert rows
         async with self.engine._pool.connect() as conn:
