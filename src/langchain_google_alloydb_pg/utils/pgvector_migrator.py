@@ -13,8 +13,7 @@
 # limitations under the License.
 import asyncio
 import json
-import uuid
-from typing import Awaitable, List, Optional, Sequence, TypeVar
+from typing import List, Optional, Sequence, TypeVar
 
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
