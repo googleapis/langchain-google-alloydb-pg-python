@@ -18,11 +18,14 @@ from __future__ import annotations
 from typing import List, Sequence
 
 from sqlalchemy import text
+from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 
 class AlloyDBModel:
-    """Text embedding models to be used with google_ml_integration."""
+    """Manage models to be used with google_ml_integration Extension.
+    Refer to [Model Endpoint Management](https://cloud.google.com/alloydb/docs/ai/model-endpoint-overview).
+    """
 
     def __init__(
         self,
@@ -36,32 +39,6 @@ class AlloyDBModel:
         self._engine = engine
 
         self._validate()
-
-    async def validateGoogleMLExtension(self) -> None:
-        """Validates the version compatibility of the Google ML Extension.
-
-        Raises:
-            Assertion error if google_ml_integration EXTENSION is not 1.3.
-        """
-        extension_query = (
-            "SELECT * FROM pg_extension where extname = 'google_ml_integration';"
-        )
-        result = await self._query_db(extension_query)
-        assert (
-            float(result[0]["extversion"]) == 1.3
-        ), "google_ml_integration EXTENSION is not 1.3"
-
-    async def validateDBFlag(self) -> None:
-        """Validates if the enable_model_support flag is set.
-
-        Raises:
-            Assertion error if google_ml_integration.enable_model_support DB Flag not set.
-        """
-        db_flag_query = "SELECT name, setting FROM pg_settings where name = 'google_ml_integration.enable_model_support';"
-        result = await self._query_db(db_flag_query)
-        assert (
-            result[0]["setting"] == "on"
-        ), "google_ml_integration.enable_model_support DB Flag not set"
 
     async def alist_model(
         self, model_id: str = "textembedding-gecko@001"
@@ -83,7 +60,7 @@ class AlloyDBModel:
         """Creates a custom text embedding model.
 
         Raises:
-            :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names are not the same as those in the SQL function.
+            :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names mismatch create_model function specification.
         """
         await self._engine._run_as_async(
             self._acreate_model(model_id, model_provider, **kwargs)
@@ -97,13 +74,19 @@ class AlloyDBModel:
         """Private function to validate prerequisites.
 
         Raises:
-            Assertion error if google_ml_integration EXTENSION is not 1.3.
-            Assertion error if google_ml_integration.enable_model_support DB Flag not set.
+            Exception if google_ml_integration EXTENSION is not 1.3.
+            Exception if google_ml_integration.enable_model_support DB Flag not set.
         """
-        self._engine._run_as_sync(self.validateGoogleMLExtension())
-        self._engine._run_as_sync(self.validateDBFlag())
+        extension_version = self._engine._run_as_sync(self._fetchGoogleMLExtension())
+        db_flag = self._engine._run_as_sync(self._fetchDBFlag())
+        if float(extension_version) < 1.3:
+            raise Exception("google_ml_integration EXTENSION is not 1.3")
+        if db_flag != "on":
+            raise Exception(
+                "google_ml_integration.enable_model_support DB Flag not set."
+            )
 
-    async def _query_db(self, query: str) -> List[Sequence]:
+    async def _query_db(self, query: str) -> Sequence[RowMapping]:
         """Queries the Postgres database through the engine.
 
         Raises:
@@ -123,13 +106,22 @@ class AlloyDBModel:
         Raises:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if model has not been created.
         """
-        query = f"""SELECT * from google_ml.list_model('{model_id}')as t(model_id VARCHAR, model_request_url VARCHAR,
-        model_provider google_ml.model_provider, model_type google_ml.model_type, model_qualified_name VARCHAR ,
-        model_auth_type google_ml.auth_type, model_auth_id VARCHAR, input_transform_fn VARCHAR,output_transform_fn VARCHAR)"""
+        query = f"""SELECT * FROM
+                google_ml.list_model('{model_id}')
+                AS t(model_id VARCHAR,
+                model_request_url VARCHAR,
+                model_provider google_ml.model_provider,
+                model_type google_ml.model_type,
+                model_qualified_name VARCHAR,
+                model_auth_type google_ml.auth_type,
+                model_auth_id VARCHAR,
+                input_transform_fn VARCHAR,
+                output_transform_fn VARCHAR)"""
+
         result = await self._query_db(query)
         return result
 
-    async def _amodel_info_view(self) -> List[Sequence]:
+    async def _amodel_info_view(self) -> Sequence[RowMapping]:
         """Lists all the models and its details."""
         query = "SELECT * FROM google_ml.model_info_view;"
         result = await self._query_db(query)
@@ -154,7 +146,7 @@ class AlloyDBModel:
                 model_out_transform_fn (str): The SQL function name to transform model specific output to the prediction function output.
 
         Raises:
-            :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names are not the same as those in the SQL function.
+            :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names mismatch create_model function specification.
         """
         query = f"""
         CALL
@@ -175,3 +167,17 @@ class AlloyDBModel:
         async with self._engine._pool.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
+
+    async def _fetchGoogleMLExtension(self) -> float:
+        """Fetches the version of the Google ML Extension."""
+        extension_query = "SELECT extversion FROM pg_extension where extname = 'google_ml_integration';"
+        result = await self._query_db(extension_query)
+        result = result[0]["extversion"]
+        return result
+
+    async def _fetchDBFlag(self) -> str:
+        """Fetches the enable_model_support DB flag."""
+        db_flag_query = "SELECT setting FROM pg_settings where name = 'google_ml_integration.enable_model_support';"
+        result = await self._query_db(db_flag_query)
+        result = result[0]["setting"]
+        return result
