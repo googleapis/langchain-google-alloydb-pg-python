@@ -74,7 +74,7 @@ class PgvectorMigrator(AlloyDBEngine):
             result_map = result.mappings()
             result_fetch = result_map.fetchone()
         if not result_fetch:
-            raise ValueError(f"Collection: {collection_name} not found.")
+            raise ValueError(f"Collection, {collection_name} not found.")
         return result_fetch.uuid
 
     async def _aextract_pgvector_collection(
