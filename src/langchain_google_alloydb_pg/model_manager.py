@@ -39,7 +39,7 @@ class AlloyDBModelManager:
 
     async def alist_model(
         self, model_id: str = "textembedding-gecko@001"
-    ) -> List[Sequence]:
+    ) -> Sequence[RowMapping]:
         """Lists the model details for a specific model_id.
 
         Raises:
@@ -48,7 +48,7 @@ class AlloyDBModelManager:
         result = await self._engine._run_as_async(self._alist_model(model_id=model_id))
         return result
 
-    async def amodel_info_view(self) -> List[Sequence]:
+    async def amodel_info_view(self) -> Sequence[RowMapping]:
         """Lists all the models and its details."""
         results = await self._engine._run_as_async(self._amodel_info_view())
         return results
@@ -97,7 +97,7 @@ class AlloyDBModelManager:
     async def _alist_model(
         self,
         model_id: str = "textembedding-gecko@001",
-    ) -> List[Sequence]:
+    ) -> Sequence[RowMapping]:
         """Lists the model details for a specific model_id.
 
         Raises:
