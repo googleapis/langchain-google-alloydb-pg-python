@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
-from typing import List, Optional, Sequence, TypeVar
 import warnings
+from typing import List, Optional, Sequence, TypeVar
+
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
 
