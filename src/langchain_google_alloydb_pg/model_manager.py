@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Remove below import when minimum supported Python version is 3.10
-from __future__ import annotations
-
 from typing import List, Sequence
 
 from sqlalchemy import text
