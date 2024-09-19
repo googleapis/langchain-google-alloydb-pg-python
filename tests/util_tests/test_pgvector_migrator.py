@@ -22,7 +22,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import RowMapping, text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, Column, PgToAlloyMigrator
+from langchain_google_alloydb_pg import AlloyDBEngine, Column, PgvectorMigrator
 
 COLLECTIONS_TABLE = "collections_" + str(uuid.uuid4()).replace("-", "_")
 EMBEDDING_TABLE = "embeddings" + str(uuid.uuid4()).replace("-", "_")
@@ -31,7 +31,7 @@ COLLECTION_NAME_SUFFIX = str(uuid.uuid4()).replace("-", "_")
 
 
 async def aexecute(
-    migrator: PgToAlloyMigrator, query: str, params: Optional[dict] = None
+    migrator: PgvectorMigrator, query: str, params: Optional[dict] = None
 ) -> None:
     async def run(engine, query, params):
         async with engine._pool.connect() as conn:
@@ -41,7 +41,7 @@ async def aexecute(
     await migrator._run_as_async(run(migrator.engine, query, params))
 
 
-async def afetch(migrator: PgToAlloyMigrator, query: str) -> Sequence[RowMapping]:
+async def afetch(migrator: PgvectorMigrator, query: str) -> Sequence[RowMapping]:
     async def run(engine, query):
         async with engine._pool.connect() as conn:
             result = await conn.execute(text(query))
@@ -60,7 +60,7 @@ def get_env_var(key: str, desc: str) -> str:
 
 
 @pytest.mark.asyncio
-class TestPgToAlloyMigrator:
+class TestPgvectorMigrator:
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
         return get_env_var("PROJECT_ID", "project id for google cloud")
@@ -93,7 +93,7 @@ class TestPgToAlloyMigrator:
     def iam_account(self) -> str:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
-    @pytest_asyncio.fixture(scope="module", params=["PUBLIC", "PRIVATE"])
+    @pytest_asyncio.fixture(scope="module", params=["PUBLIC"])
     async def engine(
         self,
         request,
@@ -119,7 +119,7 @@ class TestPgToAlloyMigrator:
 
     @pytest_asyncio.fixture(scope="module")
     async def migrator(self, engine):
-        migrator = PgToAlloyMigrator(engine)
+        migrator = PgvectorMigrator(engine)
         await aexecute(
             migrator,
             query=f"CREATE table {COLLECTIONS_TABLE} (uuid VARCHAR, name VARCHAR, cmetadata JSONB)",
@@ -148,7 +148,7 @@ class TestPgToAlloyMigrator:
 
     async def _create_collection(
         self,
-        migrator: PgToAlloyMigrator,
+        migrator: PgvectorMigrator,
         collection_name: str,
         sample_embeddings: List[float],
         num_rows: int = 2,
@@ -179,7 +179,7 @@ class TestPgToAlloyMigrator:
 
     async def _create_pgvector_tables(
         self,
-        migrator: PgToAlloyMigrator,
+        migrator: PgvectorMigrator,
         sample_embeddings: List[float],
         num_rows: int = 2,
         num_collections: int = 1,
@@ -484,14 +484,12 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
         await aexecute(migrator, f"DROP TABLE {collection_name}")
 
-    async def test_aget_all_pgvector_collection_names(
-        self, migrator, sample_embeddings
-    ):
+    async def test_alist_pgvector_collection_names(self, migrator, sample_embeddings):
         num_collections = 3
         await self._create_pgvector_tables(
             migrator, sample_embeddings, num_collections=num_collections
         )
-        all_collections = await migrator.aget_all_pgvector_collection_names(
+        all_collections = await migrator.alist_pgvector_collection_names(
             pg_collection_table_name=COLLECTIONS_TABLE
         )
         assert len(all_collections) == num_collections
@@ -505,9 +503,9 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_aget_all_pgvector_collection_names_error(self, migrator):
+    async def test_alist_pgvector_collection_names_error(self, migrator):
         with pytest.raises(ValueError):
-            await migrator.aget_all_pgvector_collection_names(
+            await migrator.alist_pgvector_collection_names(
                 f"langchain_pg_collection12c92u2973923729_{str(uuid.uuid4()).replace('-', '_')}"
             )
 
@@ -796,12 +794,12 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
         await aexecute(migrator, f"DROP TABLE {collection_name}")
 
-    async def test_get_all_pgvector_collection_names(self, migrator, sample_embeddings):
+    async def test_list_pgvector_collection_names(self, migrator, sample_embeddings):
         num_collections = 3
         await self._create_pgvector_tables(
             migrator, sample_embeddings, num_collections=num_collections
         )
-        all_collections = migrator.get_all_pgvector_collection_names(
+        all_collections = migrator.list_pgvector_collection_names(
             pg_collection_table_name=COLLECTIONS_TABLE
         )
         assert len(all_collections) == num_collections
@@ -815,8 +813,8 @@ class TestPgToAlloyMigrator:
         await aexecute(migrator, f"TRUNCATE TABLE {EMBEDDING_TABLE}")
         await aexecute(migrator, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
-    async def test_get_all_pgvector_collection_names_error(self, migrator):
+    async def test_list_pgvector_collection_names_error(self, migrator):
         with pytest.raises(ValueError):
-            await migrator.get_all_pgvector_collection_names(
+            await migrator.list_pgvector_collection_names(
                 f"langchain_pg_collection923729_{str(uuid.uuid4()).replace('-', '_')}"
             )

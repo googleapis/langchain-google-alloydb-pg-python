@@ -19,12 +19,12 @@ from typing import Awaitable, List, Optional, Sequence, TypeVar
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
 
-from .engine import AlloyDBEngine, Column
+from ..engine import AlloyDBEngine, Column
 
 T = TypeVar("T")
 
 
-class PgToAlloyMigrator(AlloyDBEngine):
+class PgvectorMigrator(AlloyDBEngine):
     def __init__(
         self,
         engine: AlloyDBEngine,
@@ -326,12 +326,12 @@ class PgToAlloyMigrator(AlloyDBEngine):
                 await conn.commit()
             print("Succesfully deleted old data.")
 
-    async def _aget_all_pgvector_collection_names(
+    async def _alist_pgvector_collection_names(
         self,
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> List[str]:
         """
-        Get all collection names present in PGVector table.
+        Lists all collection names present in PGVector table.
 
         Args:
             pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
@@ -377,12 +377,12 @@ class PgToAlloyMigrator(AlloyDBEngine):
             )
         )
 
-    async def aget_all_pgvector_collection_names(
+    async def alist_pgvector_collection_names(
         self,
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> List[str]:
         """
-        Get all collection names present in PGVector table.
+        Lists all collection names present in PGVector table.
 
         Args:
             pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
@@ -392,7 +392,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
             A list of all collection names.
         """
         return await self._run_as_async(
-            self._aget_all_pgvector_collection_names(pg_collection_table_name)
+            self._alist_pgvector_collection_names(pg_collection_table_name)
         )
 
     async def amigrate_pgvector_collection(
@@ -465,12 +465,12 @@ class PgToAlloyMigrator(AlloyDBEngine):
             )
         )
 
-    def get_all_pgvector_collection_names(
+    def list_pgvector_collection_names(
         self,
         pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> List[str]:
         """
-        Get all collection names present in PGVector table.
+        Lists all collection names present in PGVector table.
 
         Args:
             pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
@@ -480,7 +480,7 @@ class PgToAlloyMigrator(AlloyDBEngine):
             A list of all collection names.
         """
         return self._run_as_sync(
-            self._aget_all_pgvector_collection_names(pg_collection_table_name)
+            self._alist_pgvector_collection_names(pg_collection_table_name)
         )
 
     def migrate_pgvector_collection(
