@@ -119,14 +119,14 @@ class TestPgvectorMigrator:
     @pytest_asyncio.fixture(scope="module")
     async def migrator(self, engine):
         migrator = PgvectorMigrator(engine)
-        # await aexecute(
-        #     migrator,
-        #     query=f"CREATE table {COLLECTIONS_TABLE} (uuid VARCHAR, name VARCHAR, cmetadata JSONB)",
-        # )
-        # await aexecute(
-        #     migrator,
-        #     query=f"CREATE table {EMBEDDINGS_TABLE} (id VARCHAR, collection_id VARCHAR, embedding vector(768), document TEXT, cmetadata JSONB)",
-        # )
+        await aexecute(
+            migrator,
+            query=f"CREATE table {COLLECTIONS_TABLE} (uuid VARCHAR, name VARCHAR, cmetadata JSONB)",
+        )
+        await aexecute(
+            migrator,
+            query=f"CREATE table {EMBEDDINGS_TABLE} (id VARCHAR, collection_id VARCHAR, embedding vector(768), document TEXT, cmetadata JSONB)",
+        )
         yield migrator
         await aexecute(migrator, f"DROP TABLE {COLLECTIONS_TABLE}")
         await aexecute(migrator, f"DROP TABLE {EMBEDDINGS_TABLE}")
