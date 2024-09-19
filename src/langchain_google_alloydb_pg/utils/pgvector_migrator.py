@@ -31,26 +31,6 @@ class PgvectorMigrator(AlloyDBEngine):
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         self.engine = engine
-        if loop is None:
-            self._loop = super()._default_loop
-        else:
-            self._loop = loop
-
-    def _run_as_sync(self, coro: Awaitable[T]) -> T:
-        """Run an async coroutine synchronously"""
-        if not self._loop:
-            raise Exception("Engine was initialized async.")
-        return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
-
-    async def _run_as_async(self, coro: Awaitable[T]) -> T:
-        """Run an async coroutine asynchronously"""
-        # If a loop has not been provided, attempt to run in current thread
-        if not self._loop:
-            return await coro
-        # Otherwise, run in the background thread
-        return await asyncio.wrap_future(
-            asyncio.run_coroutine_threadsafe(coro, self._loop)
-        )
 
     async def _aget_collection_uuid(
         self,
@@ -367,7 +347,7 @@ class PgvectorMigrator(AlloyDBEngine):
         Returns:
             The data present in the collection.
         """
-        return await self._run_as_async(
+        return await self.engine._run_as_async(
             self._aextract_pgvector_collection(
                 collection_name, pg_embedding_table_name, pg_collection_table_name
             )
@@ -387,7 +367,7 @@ class PgvectorMigrator(AlloyDBEngine):
         Returns:
             A list of all collection names.
         """
-        return await self._run_as_async(
+        return await self.engine._run_as_async(
             self._alist_pgvector_collection_names(pg_collection_table_name)
         )
 
@@ -423,7 +403,7 @@ class PgvectorMigrator(AlloyDBEngine):
             insert_batch_size (int): Number of rows to insert at once in the table.
                 Default: 1000.
         """
-        await self._run_as_async(
+        await self.engine._run_as_async(
             self._amigrate_pgvector_collection(
                 collection_name,
                 metadata_columns,
@@ -455,7 +435,7 @@ class PgvectorMigrator(AlloyDBEngine):
         Returns:
             The data present in the collection.
         """
-        return self._run_as_sync(
+        return self.engine._run_as_sync(
             self._aextract_pgvector_collection(
                 collection_name, pg_embedding_table_name, pg_collection_table_name
             )
@@ -475,7 +455,7 @@ class PgvectorMigrator(AlloyDBEngine):
         Returns:
             A list of all collection names.
         """
-        return self._run_as_sync(
+        return self.engine._run_as_sync(
             self._alist_pgvector_collection_names(pg_collection_table_name)
         )
 
@@ -511,7 +491,7 @@ class PgvectorMigrator(AlloyDBEngine):
             insert_batch_size (int): Number of rows to insert at once in the table.
                 Default: 1000.
         """
-        self._run_as_sync(
+        self.engine._run_as_sync(
             self._amigrate_pgvector_collection(
                 collection_name,
                 metadata_columns,

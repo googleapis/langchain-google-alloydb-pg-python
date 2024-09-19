@@ -38,7 +38,7 @@ async def aexecute(
             await conn.execute(text(query), params)
             await conn.commit()
 
-    await migrator._run_as_async(run(migrator.engine, query, params))
+    await migrator.engine._run_as_async(run(migrator.engine, query, params))
 
 
 async def afetch(migrator: PgvectorMigrator, query: str) -> Sequence[RowMapping]:
@@ -49,7 +49,7 @@ async def afetch(migrator: PgvectorMigrator, query: str) -> Sequence[RowMapping]
             result_fetch = result_map.fetchall()
         return result_fetch
 
-    return await migrator._run_as_async(run(migrator.engine, query))
+    return await migrator.engine._run_as_async(run(migrator.engine, query))
 
 
 def get_env_var(key: str, desc: str) -> str:
