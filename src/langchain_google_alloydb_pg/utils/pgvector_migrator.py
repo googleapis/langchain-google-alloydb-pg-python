@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
 import json
 from typing import List, Optional, Sequence, TypeVar
 
@@ -20,6 +19,9 @@ from sqlalchemy.exc import ProgrammingError
 
 from ..engine import AlloyDBEngine, Column
 
+COLLECTIONS_TABLE = "langchain_pg_collection"
+EMBEDDINGS_TABLE = "langchain_pg_embedding"
+
 T = TypeVar("T")
 
 
@@ -27,27 +29,22 @@ class PgvectorMigrator(AlloyDBEngine):
     def __init__(
         self,
         engine: AlloyDBEngine,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         self.engine = engine
 
     async def _aget_collection_uuid(
         self,
         collection_name: str,
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> str:
         """
         Get the collection uuid for a collection present in PGVector tables.
 
         Args:
             collection_name (str): The name of the collection to get the uuid for.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
-
         Returns:
             The uuid corresponding to the collection.
         """
-        query = f"SELECT name, uuid FROM {pg_collection_table_name} WHERE name = '{collection_name}'"
+        query = f"SELECT name, uuid FROM {COLLECTIONS_TABLE} WHERE name = '{collection_name}'"
         async with self.engine._pool.connect() as conn:
             result = await conn.execute(text(query))
             result_map = result.mappings()
@@ -59,27 +56,19 @@ class PgvectorMigrator(AlloyDBEngine):
     async def _aextract_pgvector_collection(
         self,
         collection_name: str,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> Sequence[RowMapping]:
         """
         Extract all data belonging to a PGVector collection.
 
         Args:
             collection_name (str): The name of the collection to get the data for.
-            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
-                Default: "langchain_pg_embedding". Optional.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
 
         Returns:
             The data present in the collection.
         """
-        uuid = await self._aget_collection_uuid(
-            collection_name, pg_collection_table_name
-        )
+        uuid = await self._aget_collection_uuid(collection_name)
         try:
-            query = f"SELECT * FROM {pg_embedding_table_name} WHERE collection_id = '{uuid}'"
+            query = f"SELECT * FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{uuid}'"
             async with self.engine._pool.connect() as conn:
                 result = await conn.execute(text(query))
                 result_map = result.mappings()
@@ -219,8 +208,6 @@ class PgvectorMigrator(AlloyDBEngine):
         destination_table: Optional[str] = None,
         use_json_metadata: Optional[bool] = False,
         delete_pg_collection: Optional[bool] = False,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
         insert_batch_size: int = 1000,
     ) -> None:
         """
@@ -237,10 +224,6 @@ class PgvectorMigrator(AlloyDBEngine):
                 Default: False. Optional.
             delete_pg_collection (bool): An option to delete the original data upon migration.
                 Default: False. Optional.
-            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
-                Default: "langchain_pg_embedding". Optional.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
             insert_batch_size (int): Number of rows to insert at once in the table.
                 Default: 1000.
         """
@@ -253,9 +236,7 @@ class PgvectorMigrator(AlloyDBEngine):
         if not destination_table:
             destination_table = collection_name
 
-        collection_data = await self._aextract_pgvector_collection(
-            collection_name, pg_embedding_table_name, pg_collection_table_name
-        )
+        collection_data = await self._aextract_pgvector_collection(collection_name)
 
         await self._arun_all_batch_inserts(
             data=collection_data,
@@ -282,20 +263,14 @@ class PgvectorMigrator(AlloyDBEngine):
                 raise ValueError(
                     "All data not yet migrated. The pre-existing data would not be deleted."
                 )
-            uuid = await self._aget_collection_uuid(
-                collection_name, pg_collection_table_name
-            )
+            uuid = await self._aget_collection_uuid(collection_name)
 
-            query = (
-                f"DELETE FROM {pg_collection_table_name} WHERE name='{collection_name}'"
-            )
+            query = f"DELETE FROM {COLLECTIONS_TABLE} WHERE name='{collection_name}'"
             async with self.engine._pool.connect() as conn:
                 await conn.execute(text(query))
                 await conn.commit()
-            query = (
-                f"DELETE FROM {pg_embedding_table_name} WHERE collection_id='{uuid}'"
-            )
 
+            query = f"DELETE FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
             async with self.engine._pool.connect() as conn:
                 await conn.execute(text(query))
                 await conn.commit()
@@ -303,20 +278,10 @@ class PgvectorMigrator(AlloyDBEngine):
 
     async def _alist_pgvector_collection_names(
         self,
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> List[str]:
-        """
-        Lists all collection names present in PGVector table.
-
-        Args:
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
-
-        Returns:
-            A list of all collection names.
-        """
+        """Lists all collection names present in PGVector table."""
         try:
-            query = f"SELECT name from {pg_collection_table_name}"
+            query = f"SELECT name from {COLLECTIONS_TABLE}"
             async with self.engine._pool.connect() as conn:
                 result = await conn.execute(text(query))
                 result_map = result.mappings()
@@ -330,45 +295,25 @@ class PgvectorMigrator(AlloyDBEngine):
     async def aextract_pgvector_collection(
         self,
         collection_name: str,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> Sequence[RowMapping]:
         """
         Extract all data belonging to a PGVector collection.
 
         Args:
             collection_name (str): The name of the collection to get the data for.
-            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
-                Default: "langchain_pg_embedding". Optional.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
 
         Returns:
             The data present in the collection.
         """
         return await self.engine._run_as_async(
-            self._aextract_pgvector_collection(
-                collection_name, pg_embedding_table_name, pg_collection_table_name
-            )
+            self._aextract_pgvector_collection(collection_name)
         )
 
     async def alist_pgvector_collection_names(
         self,
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> List[str]:
-        """
-        Lists all collection names present in PGVector table.
-
-        Args:
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
-
-        Returns:
-            A list of all collection names.
-        """
-        return await self.engine._run_as_async(
-            self._alist_pgvector_collection_names(pg_collection_table_name)
-        )
+        """Lists all collection names present in PGVector table."""
+        return await self.engine._run_as_async(self._alist_pgvector_collection_names())
 
     async def amigrate_pgvector_collection(
         self,
@@ -377,8 +322,6 @@ class PgvectorMigrator(AlloyDBEngine):
         destination_table: Optional[str] = None,
         use_json_metadata: Optional[bool] = False,
         delete_pg_collection: Optional[bool] = False,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
         insert_batch_size: int = 1000,
     ) -> None:
         """
@@ -395,10 +338,6 @@ class PgvectorMigrator(AlloyDBEngine):
                 Default: False. Optional.
             delete_pg_collection (bool): An option to delete the original data upon migration.
                 Default: False. Optional.
-            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
-                Default: "langchain_pg_embedding". Optional.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
             insert_batch_size (int): Number of rows to insert at once in the table.
                 Default: 1000.
         """
@@ -409,8 +348,6 @@ class PgvectorMigrator(AlloyDBEngine):
                 destination_table,
                 use_json_metadata,
                 delete_pg_collection,
-                pg_embedding_table_name,
-                pg_collection_table_name,
                 insert_batch_size,
             )
         )
@@ -418,45 +355,25 @@ class PgvectorMigrator(AlloyDBEngine):
     def extract_pgvector_collection(
         self,
         collection_name: str,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> Sequence[RowMapping]:
         """
         Extract all data belonging to a PGVector collection.
 
         Args:
             collection_name (str): The name of the collection to get the data for.
-            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
-                Default: "langchain_pg_embedding". Optional.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
 
         Returns:
             The data present in the collection.
         """
         return self.engine._run_as_sync(
-            self._aextract_pgvector_collection(
-                collection_name, pg_embedding_table_name, pg_collection_table_name
-            )
+            self._aextract_pgvector_collection(collection_name)
         )
 
     def list_pgvector_collection_names(
         self,
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
     ) -> List[str]:
-        """
-        Lists all collection names present in PGVector table.
-
-        Args:
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
-
-        Returns:
-            A list of all collection names.
-        """
-        return self.engine._run_as_sync(
-            self._alist_pgvector_collection_names(pg_collection_table_name)
-        )
+        """Lists all collection names present in PGVector table."""
+        return self.engine._run_as_sync(self._alist_pgvector_collection_names())
 
     def migrate_pgvector_collection(
         self,
@@ -465,8 +382,6 @@ class PgvectorMigrator(AlloyDBEngine):
         destination_table: Optional[str] = None,
         use_json_metadata: Optional[bool] = False,
         delete_pg_collection: Optional[bool] = False,
-        pg_embedding_table_name: Optional[str] = "langchain_pg_embedding",
-        pg_collection_table_name: Optional[str] = "langchain_pg_collection",
         insert_batch_size: int = 1000,
     ) -> None:
         """
@@ -483,10 +398,6 @@ class PgvectorMigrator(AlloyDBEngine):
                 Default: False. Optional.
             delete_pg_collection (bool): An option to delete the original data upon migration.
                 Default: False. Optional.
-            pg_embedding_table_name (str): The table name which stores the data corresponding to all collections.
-                Default: "langchain_pg_embedding". Optional.
-            pg_collection_table_name (str): The table name which stores the collection uuid to name mappings.
-                Default: "langchain_pg_collection". Optional.
             insert_batch_size (int): Number of rows to insert at once in the table.
                 Default: 1000.
         """
@@ -497,8 +408,6 @@ class PgvectorMigrator(AlloyDBEngine):
                 destination_table,
                 use_json_metadata,
                 delete_pg_collection,
-                pg_embedding_table_name,
-                pg_collection_table_name,
                 insert_batch_size,
             )
         )
