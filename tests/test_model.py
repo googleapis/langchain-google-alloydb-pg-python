@@ -85,11 +85,14 @@ class TestAlloyDBModel:
     async def test_alist_model(self, model):
         model_info = await model.alist_model(model_id=EMBEDDING_MODEL_NAME)
         assert len(model_info) == 1
+        assert model_info[0]["model_id"] == EMBEDDING_MODEL_NAME
 
     @pytest.mark.depends(on=["test_acreate_model"])
     async def test_amodel_info_view(self, model):
         models_list = await model.amodel_info_view()
         assert len(models_list) >= 3
+        model_ids = [model_info["model_id"] for model_info in models_list]
+        assert EMBEDDING_MODEL_NAME in model_ids
 
     @pytest.mark.depends(on=["test_acreate_model"])
     async def test_adrop_model(self, model):
