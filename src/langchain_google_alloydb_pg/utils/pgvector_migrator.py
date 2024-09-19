@@ -68,15 +68,14 @@ class PgvectorMigrator(AlloyDBEngine):
         Returns:
             The uuid corresponding to the collection.
         """
-        try:
-            query = f"SELECT name, uuid FROM {pg_collection_table_name} WHERE name = '{collection_name}'"
-            async with self.engine._pool.connect() as conn:
-                result = await conn.execute(text(query))
-                result_map = result.mappings()
-                result_fetch = result_map.fetchall()
-            return result_fetch[0].uuid
-        except IndexError as e:
-            raise ValueError(f"Collection: {collection_name}, does not exist.")
+        query = f"SELECT name, uuid FROM {pg_collection_table_name} WHERE name = '{collection_name}'"
+        async with self.engine._pool.connect() as conn:
+            result = await conn.execute(text(query))
+            result_map = result.mappings()
+            result_fetch = result_map.fetchone()
+        if not result_fetch:
+            raise ValueError(f"Collection: {collection_name} not found.")
+        return result_fetch.uuid
 
     async def _aextract_pgvector_collection(
         self,
@@ -301,9 +300,10 @@ class PgvectorMigrator(AlloyDBEngine):
             async with self.engine._pool.connect() as conn:
                 result = await conn.execute(text(query))
                 result_map = result.mappings()
-                table_size = result_map.fetchall()
-
-            if len(collection_data) != table_size[0]["count"]:
+                table_size = result_map.fetchone()
+            if not table_size:
+                raise ValueError(f"Table: {destination_table} does not exist.")
+            if len(collection_data) != table_size["count"]:
                 raise ValueError(
                     "All data not yet migrated. The pre-existing data would not be deleted."
                 )
