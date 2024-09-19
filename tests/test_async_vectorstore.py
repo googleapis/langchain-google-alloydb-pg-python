@@ -14,12 +14,13 @@
 
 import os
 import uuid
-from typing import Sequence
+from typing import List, Sequence
 
 import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
@@ -29,6 +30,7 @@ from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStor
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
 CUSTOM_TABLE = "test-table-custom" + str(uuid.uuid4())
+IMAGE_TABLE = "test_image_table" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -40,6 +42,15 @@ docs = [
 ]
 
 embeddings = [embeddings_service.embed_query(texts[i]) for i in range(len(texts))]
+
+
+class FakeImageEmbedding(DeterministicFakeEmbedding):
+
+    def embed_image(self, image_paths: List[str]) -> List[List[float]]:
+        return [self.embed_query(path) for path in image_paths]
+
+
+image_embedding_service = FakeImageEmbedding(size=VECTOR_SIZE)
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -133,6 +144,38 @@ class TestVectorStore:
         )
         yield vs
 
+    @pytest_asyncio.fixture(scope="class")
+    async def image_vs(self, engine):
+        await engine._ainit_vectorstore_table(
+            IMAGE_TABLE,
+            VECTOR_SIZE,
+            metadata_columns=[Column("image_id", "TEXT"), Column("source", "TEXT")],
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=image_embedding_service,
+            table_name=IMAGE_TABLE,
+            metadata_columns=["image_id", "source"],
+            metadata_json_column="mymeta",
+        )
+        yield vs
+
+    @pytest_asyncio.fixture(scope="class")
+    async def image_uris(self):
+        red_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_red.jpg"
+        green_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_green.jpg"
+        blue_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_blue.jpg"
+        image = Image.new("RGB", (100, 100), color="red")
+        image.save(red_uri)
+        image = Image.new("RGB", (100, 100), color="green")
+        image.save(green_uri)
+        image = Image.new("RGB", (100, 100), color="blue")
+        image.save(blue_uri)
+        image_uris = [red_uri, green_uri, blue_uri]
+        yield image_uris
+        for uri in image_uris:
+            os.remove(uri)
+
     async def test_init_with_constructor(self, engine):
         with pytest.raises(Exception):
             AsyncAlloyDBVectorStore(
@@ -191,6 +234,18 @@ class TestVectorStore:
         results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
         assert len(results) == 3
         await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
+
+    async def test_aadd_images(self, engine, image_vs, image_uris):
+        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
+        metadatas = [
+            {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
+        ]
+        await image_vs.aadd_images(image_uris, metadatas, ids)
+        results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
+        assert len(results) == 3
+        assert results[0]["image_id"] == "0"
+        assert results[0]["source"] == "google.com"
+        await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
 
     async def test_adelete(self, engine, vs):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
