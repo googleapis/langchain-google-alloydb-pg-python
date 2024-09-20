@@ -67,7 +67,9 @@ class AlloyDBModelManager:
         results = await self._engine._run_as_async(self.__amodel_info_view())
         return results
 
-    async def acreate_model(self, model_id: str, model_provider: str, **kwargs: dict[str, Any]) -> None:
+    async def acreate_model(
+        self, model_id: str, model_provider: str, **kwargs: dict[str, Any]
+    ) -> None:```
         """Creates a custom text embedding model.
 
         Raises:
