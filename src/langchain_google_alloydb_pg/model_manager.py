@@ -69,7 +69,7 @@ class AlloyDBModelManager:
 
     async def acreate_model(
         self, model_id: str, model_provider: str, **kwargs: dict[str, Any]
-    ) -> None:```
+    ) -> None:
         """Creates a custom text embedding model.
 
         Raises:
