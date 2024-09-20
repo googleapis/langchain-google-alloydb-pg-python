@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import asyncio
 import warnings
 from typing import AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
 
@@ -218,16 +219,24 @@ async def _amigrate_pgvector_collection(
     # Extract data from the collection and batch insert into the new table
     collection_data = _aextract_pgvector_collection(engine, collection_name)
     data_batches = _batch_data(collection_data, insert_batch_size)
-    async for batch_data in data_batches:
-        await _ainsert_single_batch(
-            engine,
-            data=batch_data,
-            destination_table=destination_table,
-            metadata_column_names=(
-                [column for column in metadata_columns] if metadata_columns else None
-            ),
-            use_json_metadata=use_json_metadata,
+
+    tasks = [
+        asyncio.create_task(
+            _ainsert_single_batch(
+                engine,
+                data=batch_data,
+                destination_table=destination_table,
+                metadata_column_names=(
+                    [column for column in metadata_columns]
+                    if metadata_columns
+                    else None
+                ),
+                use_json_metadata=use_json_metadata,
+            )
         )
+        async for batch_data in data_batches
+    ]
+    await asyncio.gather(*tasks)
 
     # Get row count in PGVector collection
     uuid = await _aget_collection_uuid(engine, collection_name)
