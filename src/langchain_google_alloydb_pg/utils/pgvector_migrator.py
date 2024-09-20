@@ -35,6 +35,7 @@ async def _aget_collection_uuid(
     Get the collection uuid for a collection present in PGVector tables.
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The name of the collection to get the uuid for.
     Returns:
         The uuid corresponding to the collection.
@@ -59,6 +60,7 @@ async def _aextract_pgvector_collection(
     Extract all data belonging to a PGVector collection.
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The name of the collection to get the data for.
 
     Yields:
@@ -92,6 +94,7 @@ async def _ainsert_single_batch(
     VALUES ( Value1, Value2 ), ( Value1, Value2 ), ...
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         destination_table (str): The name of the table to insert the data in.
         metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format.
             Optional.
@@ -191,6 +194,7 @@ async def _amigrate_pgvector_collection(
     The new data format is compatible with the AlloyDB interface.
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
         metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
             Optional.
@@ -296,6 +300,7 @@ async def aextract_pgvector_collection(
     Extract all data belonging to a PGVector collection.
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The name of the collection to get the data for.
 
     Yields:
@@ -331,6 +336,7 @@ async def amigrate_pgvector_collection(
     The new data format is compatible with the AlloyDB interface.
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
         metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
             Optional.
@@ -364,6 +370,7 @@ def extract_pgvector_collection(
     Extract all data belonging to a PGVector collection.
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The name of the collection to get the data for.
 
     Yields:
@@ -397,6 +404,7 @@ def migrate_pgvector_collection(
     The new data format is compatible with the AlloyDB interface.
 
     Args:
+        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
         metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
             Optional.
