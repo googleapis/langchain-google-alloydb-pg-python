@@ -97,7 +97,7 @@ class TestAlloyDBEmbeddings:
             assert -1 <= embedding_field <= 1
 
     async def test_embed_query_invalid_model_id(self, engine):
-        with pytest.raises(Exception, match="Invalid Endpoint name"):
+        with pytest.raises(Exception, match="Model not found"):
             embedding_service = AlloyDBEmbeddings(
                 engine=engine, model_id="not_existing_model_id"
             )
