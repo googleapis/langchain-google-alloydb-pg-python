@@ -211,7 +211,7 @@ class TestPgvectorengine:
         for doc in docs_generator:
             docs.append(doc)
         return docs
-    
+
     async def _clean_tables(self, engine):
         await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
         await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
@@ -256,7 +256,6 @@ class TestPgvectorengine:
                 aextract_pgvector_collection(engine, collection_name)
             )
         await self._clean_tables(engine)
-
 
     async def test_amigrate_pgvector_collection_error(self, engine, sample_embeddings):
         await self._create_pgvector_tables(engine, sample_embeddings)
