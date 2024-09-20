@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import List, Sequence
+from typing import Any, List, Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -67,7 +67,7 @@ class AlloyDBModelManager:
         results = await self._engine._run_as_async(self.__amodel_info_view())
         return results
 
-    async def acreate_model(self, model_id: str, model_provider: str, **kwargs) -> None:
+    async def acreate_model(self, model_id: str, model_provider: str, **kwargs: dict[str, Any]) -> None:
         """Creates a custom text embedding model.
 
         Raises:
@@ -141,7 +141,7 @@ class AlloyDBModelManager:
         return list_of_data_classes
 
     async def __acreate_model(
-        self, model_id: str, model_provider: str, **kwargs
+        self, model_id: str, model_provider: str, **kwargs: dict[str, Any]
     ) -> None:
         """Creates a custom text embedding model.
 
@@ -185,15 +185,15 @@ class AlloyDBModelManager:
         """Fetches the version of the Google ML Extension."""
         extension_query = """select coalesce((select extversion FROM pg_extension where extname = 'google_ml_integration'), '0') as extversion;"""
         result = await self.__query_db(extension_query)
-        result = result[0]["extversion"]
-        return float(result)
+        version = result[0]["extversion"]
+        return float(version)
 
     async def __fetch_db_flag(self) -> str:
         """Fetches the enable_model_support DB flag."""
         db_flag_query = "SELECT setting FROM pg_settings where name = 'google_ml_integration.enable_model_support';"
         result = await self.__query_db(db_flag_query)
-        result = result[0]["setting"]
-        return result
+        flag = result[0]["setting"]
+        return flag
 
     def __convert_dict_to_dataclass(self, list_of_rows):
         list_of_dataclass = [AlloyDBModel(**row) for row in list_of_rows]
