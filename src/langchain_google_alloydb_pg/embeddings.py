@@ -66,7 +66,7 @@ class AlloyDBEmbeddings(Embeddings):
         Returns:
             List[float]: Embedding.
         """
-        embeddings = await self._engine._run_as_async(self._aembed_query(text))
+        embeddings = await self._engine._run_as_async(self.__aembed_query(text))
         return embeddings
 
     def embed_query(self, text: str) -> List[float]:
@@ -78,9 +78,9 @@ class AlloyDBEmbeddings(Embeddings):
         Returns:
             List[float]: Embedding.
         """
-        return self._engine._run_as_sync(self._aembed_query(text))
+        return self._engine._run_as_sync(self.__aembed_query(text))
 
-    async def _aembed_query(self, query: str) -> List[float]:
+    async def __aembed_query(self, query: str) -> List[float]:
         """Coroutine for generating embeddings for a given query.
 
         Args:
