@@ -12,11 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 from typing import List, Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine
+
+
+@dataclass
+class AlloyDBModel:
+    model_id: str
+    model_request_url: str
+    model_provider: str
+    model_type: str
+    model_qualified_name: str
+    model_auth_type: str
+    model_auth_id: str
+    input_transform_fn: str
+    output_transform_fn: str
 
 
 class AlloyDBModelManager:
@@ -30,27 +44,27 @@ class AlloyDBModelManager:
     ):
         """AlloyDBModelManager constructor.
         Args:
-            engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
+            engine (Asycn AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
         """
 
         self._engine = engine
 
-        self._validate()
+        self._engine._run_as_sync(self.__validate())
 
     async def alist_model(
-        self, model_id: str = "textembedding-gecko@001"
-    ) -> Sequence[RowMapping]:
+        self, model_id: str = "textembedding-gecko@003"
+    ) -> AlloyDBModel:
         """Lists the model details for a specific model_id.
 
         Raises:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if model has not been created.
         """
-        result = await self._engine._run_as_async(self._alist_model(model_id=model_id))
+        result = await self._engine._run_as_async(self.__alist_model(model_id=model_id))
         return result
 
-    async def amodel_info_view(self) -> Sequence[RowMapping]:
+    async def amodel_info_view(self) -> List[AlloyDBModel]:
         """Lists all the models and its details."""
-        results = await self._engine._run_as_async(self._amodel_info_view())
+        results = await self._engine._run_as_async(self.__amodel_info_view())
         return results
 
     async def acreate_model(self, model_id: str, model_provider: str, **kwargs) -> None:
@@ -60,30 +74,30 @@ class AlloyDBModelManager:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names mismatch create_model function specification.
         """
         await self._engine._run_as_async(
-            self._acreate_model(model_id, model_provider, **kwargs)
+            self.__acreate_model(model_id, model_provider, **kwargs)
         )
 
     async def adrop_model(self, model_id: str) -> None:
         """Removes a text embedding model."""
-        await self._engine._run_as_async(self._adrop_model(model_id))
+        await self._engine._run_as_async(self.__adrop_model(model_id))
 
-    def _validate(self) -> None:
+    async def __validate(self) -> None:
         """Private function to validate prerequisites.
 
         Raises:
             Exception if google_ml_integration EXTENSION is not 1.3.
             Exception if google_ml_integration.enable_model_support DB Flag not set.
         """
-        extension_version = self._engine._run_as_sync(self._fetchGoogleMLExtension())
-        db_flag = self._engine._run_as_sync(self._fetchDBFlag())
-        if float(extension_version) < 1.3:
+        extension_version = await self.__fetch_google_ml_extension()
+        db_flag = await self.__fetch_db_flag()
+        if extension_version < 1.3:
             raise Exception("google_ml_integration EXTENSION is not 1.3")
         if db_flag != "on":
             raise Exception(
                 "google_ml_integration.enable_model_support DB Flag not set."
             )
 
-    async def _query_db(self, query: str) -> Sequence[RowMapping]:
+    async def __query_db(self, query: str) -> Sequence[RowMapping]:
         """Queries the Postgres database through the engine.
 
         Raises:
@@ -94,10 +108,10 @@ class AlloyDBModelManager:
             results = result_map.fetchall()
         return results
 
-    async def _alist_model(
+    async def __alist_model(
         self,
         model_id: str = "textembedding-gecko@001",
-    ) -> Sequence[RowMapping]:
+    ) -> AlloyDBModel:
         """Lists the model details for a specific model_id.
 
         Raises:
@@ -115,16 +129,18 @@ class AlloyDBModelManager:
                 input_transform_fn VARCHAR,
                 output_transform_fn VARCHAR)"""
 
-        result = await self._query_db(query)
-        return result
+        result = await self.__query_db(query)
+        data_class = self.__convert_dict_to_dataclass(result)[0]
+        return data_class
 
-    async def _amodel_info_view(self) -> Sequence[RowMapping]:
+    async def __amodel_info_view(self) -> List[AlloyDBModel]:
         """Lists all the models and its details."""
         query = "SELECT * FROM google_ml.model_info_view;"
-        result = await self._query_db(query)
-        return result
+        result = await self.__query_db(query)
+        list_of_data_classes = self.__convert_dict_to_dataclass(result)
+        return list_of_data_classes
 
-    async def _acreate_model(
+    async def __acreate_model(
         self, model_id: str, model_provider: str, **kwargs
     ) -> None:
         """Creates a custom text embedding model.
@@ -132,7 +148,7 @@ class AlloyDBModelManager:
         Args:
             model_id (str): A unique ID for the model endpoint that you define.
             model_provider (str): The provider of the model endpoint.
-            **kawrgs :
+            **kwargs :
                 model_request_url (str): The model-specific endpoint when adding other text embedding and generic model endpoints
                 model_type (str): The model type. Either text_embedding or generic.
                 model_qualified_name (str): The fully qualified name in case the model endpoint has multiple versions
@@ -158,23 +174,27 @@ class AlloyDBModelManager:
             await conn.execute(text(query))
             await conn.commit()
 
-    async def _adrop_model(self, model_id: str) -> None:
+    async def __adrop_model(self, model_id: str) -> None:
         """Removes a text embedding model."""
         query = f"CALL google_ml.drop_model('{model_id}');"
         async with self._engine._pool.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
 
-    async def _fetchGoogleMLExtension(self) -> float:
+    async def __fetch_google_ml_extension(self) -> float:
         """Fetches the version of the Google ML Extension."""
-        extension_query = "SELECT extversion FROM pg_extension where extname = 'google_ml_integration';"
-        result = await self._query_db(extension_query)
+        extension_query = """select coalesce((select extversion FROM pg_extension where extname = 'google_ml_integration'), '0') as extversion;"""
+        result = await self.__query_db(extension_query)
         result = result[0]["extversion"]
-        return result
+        return float(result)
 
-    async def _fetchDBFlag(self) -> str:
+    async def __fetch_db_flag(self) -> str:
         """Fetches the enable_model_support DB flag."""
         db_flag_query = "SELECT setting FROM pg_settings where name = 'google_ml_integration.enable_model_support';"
-        result = await self._query_db(db_flag_query)
+        result = await self.__query_db(db_flag_query)
         result = result[0]["setting"]
         return result
+
+    def __convert_dict_to_dataclass(self, list_of_rows):
+        list_of_dataclass = [AlloyDBModel(**row) for row in list_of_rows]
+        return list_of_dataclass
