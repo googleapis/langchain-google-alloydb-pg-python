@@ -13,7 +13,7 @@
 # limitations under the License.
 import json
 import warnings
-from typing import List, Optional, Sequence, TypeVar
+from typing import AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
 
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
@@ -53,24 +53,26 @@ async def _aget_collection_uuid(
 async def _aextract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-) -> Sequence[RowMapping]:
+) -> AsyncIterator[RowMapping]:
     """
     Extract all data belonging to a PGVector collection.
 
     Args:
         collection_name (str): The name of the collection to get the data for.
 
-    Returns:
+    Yields:
         The data present in the collection.
     """
     uuid = await _aget_collection_uuid(engine, collection_name)
     try:
         query = f"SELECT * FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{uuid}'"
         async with engine._pool.connect() as conn:
-            result = await conn.execute(text(query))
-            result_map = result.mappings()
-            result_fetch = result_map.fetchall()
-        return result_fetch
+            result_proxy = await conn.execute(text(query))
+            while True:
+                row = result_proxy.fetchone()
+                if not row:
+                    break
+                yield row._mapping
     except:
         raise ValueError(f"Collection, {collection_name} does not exist.")
 
@@ -152,49 +154,26 @@ async def _ainsert_single_batch(
         await conn.commit()
 
 
-async def _arun_all_batch_inserts(
-    engine: AlloyDBEngine,
-    data: Sequence[RowMapping],
-    destination_table: str,
-    metadata_column_names: Optional[List[str]],
-    use_json_metadata: Optional[bool] = False,
-    insert_batch_size: int = 1000,
-) -> None:
+async def _batch_data(generator, batch_size):
     """
-    Insert all data in batches of 1000 insert queries at once.
+    Batches data from a generator.
 
     Args:
-        data (Sequence[RowMapping]): All the data (to be inserted) belonging to a PGVector collection.
-        destination_table (str): The name of the table to insert the data in.
-        metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format.
-            Optional.
-        use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
-            Default: False. Optional.
-        insert_batch_size (int): Number of rows to insert at once in the table.
-            Default: 1000.
+        generator: A generator function yielding data items.
+        batch_size: The desired batch size.
+
+    Yields:
+        Batches of data as lists.
     """
-    data_size = len(data)
-    for i in range(data_size // insert_batch_size):
-        await _ainsert_single_batch(
-            engine,
-            destination_table,
-            metadata_column_names,
-            data=data[insert_batch_size * i : insert_batch_size * (i + 1)],
-            use_json_metadata=use_json_metadata,
-        )
-    if data_size % insert_batch_size:
-        i = data_size // insert_batch_size
-        await _ainsert_single_batch(
-            engine,
-            destination_table,
-            metadata_column_names,
-            data=data[
-                insert_batch_size * i : insert_batch_size * i
-                + data_size % insert_batch_size
-            ],
-            use_json_metadata=use_json_metadata,
-        )
-    print("All rows inserted successfully.")
+    batch = []
+    async for item in generator:
+        batch.append(item)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+
+    if batch:  # Yield remaining items if any
+        yield batch
 
 
 async def _amigrate_pgvector_collection(
@@ -236,34 +215,43 @@ async def _amigrate_pgvector_collection(
         )
         destination_table = collection_name
 
-    collection_data = await _aextract_pgvector_collection(engine, collection_name)
+    # Extract data from the collection and batch insert into the new table
+    collection_data = _aextract_pgvector_collection(engine, collection_name)
+    data_batches = _batch_data(collection_data, insert_batch_size)
+    async for batch_data in data_batches:
+        await _ainsert_single_batch(
+            engine,
+            data=batch_data,
+            destination_table=destination_table,
+            metadata_column_names=(
+                [column for column in metadata_columns] if metadata_columns else None
+            ),
+            use_json_metadata=use_json_metadata,
+        )
 
-    await _arun_all_batch_inserts(
-        engine,
-        data=collection_data,
-        destination_table=destination_table,
-        metadata_column_names=(
-            [column for column in metadata_columns] if metadata_columns else None
-        ),
-        insert_batch_size=insert_batch_size,
-        use_json_metadata=use_json_metadata,
-    )
+    # Get row count in PGVector collection
+    uuid = await _aget_collection_uuid(engine, collection_name)
+    query = f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
+    async with engine._pool.connect() as conn:
+        result = await conn.execute(text(query))
+        result_map = result.mappings()
+        collection_data_len = result_map.fetchone()
+    if collection_data_len is None:
+        raise ValueError(f"Collection, {collection_name} contains no elements.")
 
-    # Validate all data migration and delete old data
-    if delete_pg_collection:
-        query = f"SELECT COUNT(*) FROM {destination_table}"
-        async with engine._pool.connect() as conn:
-            result = await conn.execute(text(query))
-            result_map = result.mappings()
-            table_size = result_map.fetchone()
-        if not table_size:
-            raise ValueError(f"Table: {destination_table} does not exist.")
-        if len(collection_data) != table_size["count"]:
-            raise ValueError(
-                "All data not yet migrated. The pre-existing data would not be deleted."
-            )
-        uuid = await _aget_collection_uuid(engine, collection_name)
+    # Validate data migration
+    query = f"SELECT COUNT(*) FROM {destination_table}"
+    async with engine._pool.connect() as conn:
+        result = await conn.execute(text(query))
+        result_map = result.mappings()
+        table_size = result_map.fetchone()
+    if not table_size:
+        raise ValueError(f"Table: {destination_table} does not exist.")
 
+    if collection_data_len["count"] != table_size["count"]:
+        raise ValueError("All data not yet migrated.")
+    elif delete_pg_collection:
+        # Delete PGVector data
         query = f"DELETE FROM {COLLECTIONS_TABLE} WHERE name='{collection_name}'"
         async with engine._pool.connect() as conn:
             await conn.execute(text(query))
@@ -294,19 +282,23 @@ async def _alist_pgvector_collection_names(
 async def aextract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-) -> Sequence[RowMapping]:
+) -> AsyncIterator[RowMapping]:
     """
     Extract all data belonging to a PGVector collection.
 
     Args:
         collection_name (str): The name of the collection to get the data for.
 
-    Returns:
+    Yields:
         The data present in the collection.
     """
-    return await engine._run_as_async(
-        _aextract_pgvector_collection(engine, collection_name)
-    )
+    iterator = _aextract_pgvector_collection(engine, collection_name)
+    while True:
+        try:
+            result = await engine._run_as_async(iterator.__anext__())
+            yield result
+        except StopAsyncIteration:
+            break
 
 
 async def alist_pgvector_collection_names(
@@ -358,17 +350,23 @@ async def amigrate_pgvector_collection(
 def extract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-) -> Sequence[RowMapping]:
+) -> Iterator[RowMapping]:
     """
     Extract all data belonging to a PGVector collection.
 
     Args:
         collection_name (str): The name of the collection to get the data for.
 
-    Returns:
+    Yields:
         The data present in the collection.
     """
-    return engine._run_as_sync(_aextract_pgvector_collection(engine, collection_name))
+    iterator = _aextract_pgvector_collection(engine, collection_name)
+    while True:
+        try:
+            result = engine._run_as_sync(iterator.__anext__())
+            yield result
+        except StopAsyncIteration:
+            break
 
 
 def list_pgvector_collection_names(engine: AlloyDBEngine) -> List[str]:

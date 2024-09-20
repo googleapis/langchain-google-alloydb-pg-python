@@ -198,14 +198,27 @@ class TestPgvectorengine:
                 num_cols=num_cols,
             )
 
-    async def test_execute(self, engine):
-        await aexecute(engine, query="SELECT 1")
+    async def _collect_async_items(self, docs_generator):
+        """Collects items from an async generator."""
+        docs = []
+        async for doc in docs_generator:
+            docs.append(doc)
+        return docs
+
+    def _collect_sync_items(self, docs_generator):
+        """Collects items from an async generator."""
+        docs = []
+        for doc in docs_generator:
+            docs.append(doc)
+        return docs
 
     #### Async tests
     async def test_aextract_pgvector_collection_exists(self, engine, sample_embeddings):
         await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
-        results = await aextract_pgvector_collection(engine, collection_name)
+        results = await self._collect_async_items(
+            aextract_pgvector_collection(engine, collection_name)
+        )
         expected = [
             {
                 "id": f"uuid_0_{collection_name}",
@@ -236,7 +249,9 @@ class TestPgvectorengine:
     async def test_aextract_pgvector_collection_non_existant(self, engine):
         collection_name = "random_collection"
         with pytest.raises(ValueError):
-            await aextract_pgvector_collection(engine, collection_name)
+            await self._collect_async_items(
+                aextract_pgvector_collection(engine, collection_name)
+            )
         await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
         await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
@@ -502,11 +517,13 @@ class TestPgvectorengine:
             query=f"CREATE table {EMBEDDINGS_TABLE} (id VARCHAR, collection_id VARCHAR, embedding vector(768), document TEXT, cmetadata JSONB)",
         )
 
-    ### Async tests
+    #### Sync tests
     async def test_extract_pgvector_collection_exists(self, engine, sample_embeddings):
         await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
-        results = extract_pgvector_collection(engine, collection_name)
+        results = self._collect_sync_items(
+            extract_pgvector_collection(engine, collection_name)
+        )
         expected = [
             {
                 "id": f"uuid_0_{collection_name}",
@@ -537,7 +554,9 @@ class TestPgvectorengine:
     async def test_extract_pgvector_collection_non_existant(self, engine):
         collection_name = "random_collection"
         with pytest.raises(ValueError):
-            extract_pgvector_collection(engine, collection_name)
+            self._collect_sync_items(
+                extract_pgvector_collection(engine, collection_name)
+            )
         await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
         await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
