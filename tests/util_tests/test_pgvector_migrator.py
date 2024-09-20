@@ -211,6 +211,10 @@ class TestPgvectorengine:
         for doc in docs_generator:
             docs.append(doc)
         return docs
+    
+    async def _clean_tables(self, engine):
+        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
+        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
 
     #### Async tests
     async def test_aextract_pgvector_collection_exists(self, engine, sample_embeddings):
@@ -243,8 +247,7 @@ class TestPgvectorengine:
             assert row in expected
         assert len(results) == 2
 
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
 
     async def test_aextract_pgvector_collection_non_existant(self, engine):
         collection_name = "random_collection"
@@ -252,8 +255,8 @@ class TestPgvectorengine:
             await self._collect_async_items(
                 aextract_pgvector_collection(engine, collection_name)
             )
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
+
 
     async def test_amigrate_pgvector_collection_error(self, engine, sample_embeddings):
         await self._create_pgvector_tables(engine, sample_embeddings)
@@ -264,8 +267,7 @@ class TestPgvectorengine:
                 collection_name=collection_name,
                 delete_pg_collection=True,
             )
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_amigrate_pgvector_collection_json_metadata(
@@ -320,8 +322,7 @@ class TestPgvectorengine:
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_col_metadata(
@@ -382,8 +383,7 @@ class TestPgvectorengine:
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_delete_original(
@@ -439,8 +439,7 @@ class TestPgvectorengine:
         assert collection_table_entry == [{"count": 0}]
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_batch(self, engine, sample_embeddings):
@@ -482,8 +481,7 @@ class TestPgvectorengine:
         assert expected_row in migrated_data
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_alist_pgvector_collection_names(self, engine, sample_embeddings):
@@ -500,8 +498,7 @@ class TestPgvectorengine:
         for collection in all_collections:
             assert collection in expected
 
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
 
     async def test_alist_pgvector_collection_names_error(self, engine):
         await aexecute(engine, f"DROP TABLE IF EXISTS {COLLECTIONS_TABLE}")
@@ -548,8 +545,7 @@ class TestPgvectorengine:
             assert row in expected
         assert len(results) == 2
 
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
 
     async def test_extract_pgvector_collection_non_existant(self, engine):
         collection_name = "random_collection"
@@ -557,8 +553,7 @@ class TestPgvectorengine:
             self._collect_sync_items(
                 extract_pgvector_collection(engine, collection_name)
             )
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
 
     async def test_migrate_pgvector_collection_error(self, engine, sample_embeddings):
         await self._create_pgvector_tables(engine, sample_embeddings)
@@ -570,8 +565,7 @@ class TestPgvectorengine:
                 collection_name=collection_name,
                 delete_pg_collection=True,
             )
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_migrate_pgvector_collection_json_metadata(
@@ -627,8 +621,7 @@ class TestPgvectorengine:
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_col_metadata(
@@ -689,8 +682,7 @@ class TestPgvectorengine:
         assert collection_table_entry == [{"count": 1}]
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_delete_original(
@@ -746,8 +738,7 @@ class TestPgvectorengine:
         assert collection_table_entry == [{"count": 0}]
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_batch(self, engine, sample_embeddings):
@@ -789,8 +780,7 @@ class TestPgvectorengine:
         assert expected_row in migrated_data
 
         # Delete set up tables
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_list_pgvector_collection_names(self, engine, sample_embeddings):
@@ -807,8 +797,7 @@ class TestPgvectorengine:
         for collection in all_collections:
             assert collection in expected
 
-        await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
-        await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+        await self._clean_tables(engine)
 
     async def test_list_pgvector_collection_names_error(self, engine):
         await aexecute(engine, f"DROP TABLE IF EXISTS {EMBEDDINGS_TABLE}")
