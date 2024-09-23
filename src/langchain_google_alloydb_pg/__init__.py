@@ -17,7 +17,6 @@ from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine, Column
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
-from .embeddings import AlloyDBEmbeddings
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
