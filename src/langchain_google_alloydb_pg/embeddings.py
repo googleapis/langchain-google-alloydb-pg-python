@@ -47,13 +47,13 @@ class AlloyDBEmbeddings(Embeddings):
         if not self.model_exists():
             raise ValueError(f"Model {model_id} does not exist.")
 
-    def amodel_exists(self) -> bool:
+    async def amodel_exists(self) -> bool:
         """Checks if the embedding model exists.
 
         Return:
             `Bool`: True if a model with the given name exists, False otherwise.
         """
-        return self._engine._run_as_async(self._amodel_exists())
+        return await self._engine._run_as_async(self.__amodel_exists())
 
     def model_exists(self) -> bool:
         """Checks if the embedding model exists.
@@ -61,9 +61,9 @@ class AlloyDBEmbeddings(Embeddings):
         Return:
             `Bool`: True if a model with the given name exists, False otherwise.
         """
-        return self._engine._run_as_sync(self._amodel_exists())
+        return self._engine._run_as_sync(self.__amodel_exists())
 
-    async def _amodel_exists(self) -> bool:
+    async def __amodel_exists(self) -> bool:
         """Checks if the embedding model exists.
 
         Return:

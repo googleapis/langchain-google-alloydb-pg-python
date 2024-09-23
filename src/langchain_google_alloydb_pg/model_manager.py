@@ -250,7 +250,7 @@ class AlloyDBModelManager:
         flag = result[0]["setting"]
         return flag
 
-    def __convert_dict_to_dataclass(self, list_of_rows: Sequence[RowMapping]):
+    def __convert_dict_to_dataclass(self, list_of_rows: Sequence[RowMapping]) -> List[AlloyDBModel]:
         """Converts a list of DB rows to list of AlloyDBModel dataclass.
 
         Args:
