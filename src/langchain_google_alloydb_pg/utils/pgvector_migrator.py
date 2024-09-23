@@ -16,10 +16,12 @@ import json
 import warnings
 from typing import AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
 
+from langchain_core.embeddings import Embeddings
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
 
-from langchain_google_alloydb_pg import AlloyDBEngine
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 
 COLLECTIONS_TABLE = "langchain_pg_collection"
 EMBEDDINGS_TABLE = "langchain_pg_embedding"
@@ -82,10 +84,8 @@ async def _aextract_pgvector_collection(
 
 async def _ainsert_single_batch(
     engine: AlloyDBEngine,
-    destination_table: str,
-    metadata_column_names: Optional[List[str]],
+    vector_store: AsyncAlloyDBVectorStore,
     data: Sequence[RowMapping],
-    use_json_metadata: Optional[bool] = False,
 ) -> None:
     """
     Create a batch insert SQL query to insert multiple rows at once.
@@ -94,6 +94,7 @@ async def _ainsert_single_batch(
     VALUES ( Value1, Value2 ), ( Value1, Value2 ), ...
 
     Args:
+        vector_store (AlloyDBVectorStore): The AlloyDB vector store corresponding to the table.
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         destination_table (str): The name of the table to insert the data in.
         metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format.
@@ -102,57 +103,47 @@ async def _ainsert_single_batch(
         use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
             Default: False. Optional.
     """
+    metadata_col_names = (
+        ", " + ", ".join(vector_store.metadata_columns)
+        if len(vector_store.metadata_columns) > 0
+        else ""
+    )
+    insert_stmt = f'INSERT INTO "{vector_store.schema_name}"."{vector_store.table_name}"({vector_store.id_column}, {vector_store.content_column}, {vector_store.embedding_column}{metadata_col_names}'
+    insert_stmt += (
+        f", {vector_store.metadata_json_column})"
+        if vector_store.metadata_json_column
+        else ")"
+    )
+
+    values_stmt = "VALUES (:id, :content, :embedding"
+    for metadata_column in vector_store.metadata_columns:
+        values_stmt += f", :{metadata_column}"
+    if vector_store.metadata_json_column:
+        values_stmt += f", :extra_metadata"
+    values_stmt += ")"
+
     params = []
-
-    if use_json_metadata:
-        insert_query = f"INSERT INTO {destination_table} (langchain_id, content, embedding, langchain_metadata) VALUES"
-
-        # Create value clause for the SQL query
-        values_clause = "(:langchain_id, :content, :embedding, :langchain_metadata)"
-        insert_query += values_clause
-
-        # Add parameters
-        for row in data:
-            params.append(
-                {
-                    "langchain_id": row.id,
-                    "content": row.document,
-                    "embedding": row.embedding,
-                    "langchain_metadata": json.dumps(row.cmetadata),
-                }
+    for row in data:
+        curr_value = {
+            "id": row.id,
+            "content": row.document,
+            "embedding": row.embedding,
+        }
+        metadata = row.cmetadata
+        extra_metadata = row.cmetadata
+        for metadata_column in vector_store.metadata_columns:
+            curr_value[metadata_column] = (
+                metadata[metadata_column] if metadata_column in metadata else None
             )
-    elif metadata_column_names:
-        insert_query = (
-            f"INSERT INTO {destination_table} (langchain_id, content, embedding"
-        )
-        for column in metadata_column_names:
-            insert_query += ", " + column
-        insert_query += ") VALUES"
-
-        # Create value clause for the SQL query
-        values_clause = (
-            "(:langchain_id, :content, :embedding, "
-            + ", ".join([f":{column}" for column in metadata_column_names])
-            + ")"
-        )
-        insert_query += values_clause
-
-        # Add parameters
-        for row in data:
-            param = {
-                "langchain_id": row.id,
-                "content": row.document,
-                "embedding": row.embedding,
-            }
-            for column in metadata_column_names:
-                # In case the key is not present, add a null value
-                if column in row.cmetadata:
-                    param[column] = row.cmetadata[column]
-                else:
-                    param[column] = None
-            params.append(param)
+            del extra_metadata[metadata_column]
+        if vector_store.metadata_json_column:
+            curr_value["extra_metadata"] = (
+                json.dumps(extra_metadata) if extra_metadata else None
+            )
+        params.append(curr_value)
 
     # Insert rows
+    insert_query = insert_stmt + values_stmt
     async with engine._pool.connect() as conn:
         await conn.execute(text(insert_query), params)
         await conn.commit()
@@ -183,6 +174,7 @@ async def _batch_data(generator, batch_size):
 async def _amigrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
+    embeddings_service: Embeddings,
     metadata_columns: Optional[List[str]] = [],
     destination_table: Optional[str] = None,
     use_json_metadata: Optional[bool] = False,
@@ -196,6 +188,8 @@ async def _amigrate_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
+        embeddings_service (Embeddings): The embeddings service used in the vectorstore.
+            Embeddings are directly copied from the PGVector database. This service is used only to initialise the vector store.
         metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
             Optional.
         destination_table (str): The name of the table to insert the data in.
@@ -224,18 +218,26 @@ async def _amigrate_pgvector_collection(
     collection_data = _aextract_pgvector_collection(engine, collection_name)
     data_batches = _batch_data(collection_data, insert_batch_size)
 
+    if metadata_columns:
+        vector_store = await AsyncAlloyDBVectorStore.create(
+            engine=engine,
+            embedding_service=embeddings_service,
+            table_name=destination_table,
+            metadata_columns=metadata_columns,
+        )
+    else:
+        vector_store = await AsyncAlloyDBVectorStore.create(
+            engine=engine,
+            embedding_service=embeddings_service,
+            table_name=destination_table,
+        )
+
     tasks = [
         asyncio.create_task(
             _ainsert_single_batch(
                 engine,
+                vector_store,
                 data=batch_data,
-                destination_table=destination_table,
-                metadata_column_names=(
-                    [column for column in metadata_columns]
-                    if metadata_columns
-                    else None
-                ),
-                use_json_metadata=use_json_metadata,
             )
         )
         async for batch_data in data_batches
@@ -325,6 +327,7 @@ async def alist_pgvector_collection_names(
 async def amigrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
+    embeddings_service: Embeddings,
     metadata_columns: Optional[List[str]] = [],
     destination_table: Optional[str] = None,
     use_json_metadata: Optional[bool] = False,
@@ -338,6 +341,8 @@ async def amigrate_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
+        embeddings_service (Embeddings): The embeddings service used in the vectorstore.
+            Embeddings are directly copied from the PGVector database. This service is used only to initialise the vector store.
         metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
             Optional.
         destination_table (str): The name of the table to insert the data in.
@@ -353,6 +358,7 @@ async def amigrate_pgvector_collection(
         _amigrate_pgvector_collection(
             engine,
             collection_name,
+            embeddings_service,
             metadata_columns,
             destination_table,
             use_json_metadata,
@@ -393,6 +399,7 @@ def list_pgvector_collection_names(engine: AlloyDBEngine) -> List[str]:
 def migrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
+    embeddings_service: Embeddings,
     metadata_columns: Optional[List[str]] = [],
     destination_table: Optional[str] = None,
     use_json_metadata: Optional[bool] = False,
@@ -406,6 +413,8 @@ def migrate_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
+        embeddings_service (Embeddings): The embeddings service used in the vectorstore.
+            Embeddings are directly copied from the PGVector database. This service is used only to initialise the vector store.
         metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
             Optional.
         destination_table (str): The name of the table to insert the data in.
@@ -421,6 +430,7 @@ def migrate_pgvector_collection(
         _amigrate_pgvector_collection(
             engine,
             collection_name,
+            embeddings_service,
             metadata_columns,
             destination_table,
             use_json_metadata,

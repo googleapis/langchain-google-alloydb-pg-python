@@ -19,6 +19,7 @@ from typing import List, Optional, Sequence
 
 import pytest
 import pytest_asyncio
+from langchain_core.embeddings import Embeddings, FakeEmbeddings
 from sqlalchemy import RowMapping, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
@@ -99,6 +100,10 @@ class TestPgvectorengine:
     @pytest.fixture(scope="module")
     def iam_account(self) -> str:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
+
+    @pytest.fixture(scope="module")
+    def embeddings_service(self) -> Embeddings:
+        return FakeEmbeddings(size=768)
 
     @pytest_asyncio.fixture(scope="module", params=["PUBLIC"])
     async def engine(
@@ -257,20 +262,23 @@ class TestPgvectorengine:
             )
         await self._clean_tables(engine)
 
-    async def test_amigrate_pgvector_collection_error(self, engine, sample_embeddings):
+    async def test_amigrate_pgvector_collection_error(
+        self, engine, sample_embeddings, embeddings_service
+    ):
         await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
         with pytest.raises(ValueError):
             await amigrate_pgvector_collection(
                 engine,
                 collection_name=collection_name,
+                embeddings_service=embeddings_service,
                 delete_pg_collection=True,
             )
         await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_amigrate_pgvector_collection_json_metadata(
-        self, engine, sample_embeddings
+        self, engine, sample_embeddings, embeddings_service
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -283,6 +291,7 @@ class TestPgvectorengine:
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             use_json_metadata=True,
         )
 
@@ -325,7 +334,7 @@ class TestPgvectorengine:
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_col_metadata(
-        self, engine, sample_embeddings
+        self, engine, sample_embeddings, embeddings_service
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -333,7 +342,6 @@ class TestPgvectorengine:
         metadata_columns = [
             Column(f"col_0_{collection_name}", "VARCHAR"),
             Column(f"col_1_{collection_name}", "VARCHAR"),
-            Column(f"col_2_{collection_name}", "VARCHAR"),
         ]
         await engine.ainit_vectorstore_table(
             table_name=collection_name,
@@ -344,6 +352,7 @@ class TestPgvectorengine:
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             metadata_columns=[col.name for col in metadata_columns],
         )
 
@@ -356,7 +365,7 @@ class TestPgvectorengine:
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
             engine,
-            f"SELECT langchain_id, content, embedding, col_0_{collection_name}, col_1_{collection_name}, col_2_{collection_name} FROM {collection_name} LIMIT 1",
+            f"SELECT langchain_id, content, embedding, col_0_{collection_name}, col_1_{collection_name}, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
             "langchain_id": f"uuid_0_{collection_name}",
@@ -364,7 +373,9 @@ class TestPgvectorengine:
             "embedding": str(sample_embeddings).replace(" ", ""),
             f"col_0_{collection_name}": f"val_0_{collection_name}",
             f"col_1_{collection_name}": f"val_0_{collection_name}",
-            f"col_2_{collection_name}": f"val_0_{collection_name}",
+            "langchain_metadata": {
+                f"col_2_{collection_name}": f"val_0_{collection_name}"
+            },
         }
         assert expected_row in migrated_data
 
@@ -386,7 +397,7 @@ class TestPgvectorengine:
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_amigrate_pgvector_collection_delete_original(
-        self, engine, sample_embeddings
+        self, engine, sample_embeddings, embeddings_service
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -399,6 +410,7 @@ class TestPgvectorengine:
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             use_json_metadata=True,
             delete_pg_collection=True,
         )
@@ -441,7 +453,9 @@ class TestPgvectorengine:
         await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
-    async def test_amigrate_pgvector_collection_batch(self, engine, sample_embeddings):
+    async def test_amigrate_pgvector_collection_batch(
+        self, engine, sample_embeddings, embeddings_service
+    ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=7)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
@@ -453,6 +467,7 @@ class TestPgvectorengine:
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             use_json_metadata=True,
             delete_pg_collection=True,
             insert_batch_size=5,
@@ -554,7 +569,9 @@ class TestPgvectorengine:
             )
         await self._clean_tables(engine)
 
-    async def test_migrate_pgvector_collection_error(self, engine, sample_embeddings):
+    async def test_migrate_pgvector_collection_error(
+        self, engine, sample_embeddings, embeddings_service
+    ):
         await self._create_pgvector_tables(engine, sample_embeddings)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
 
@@ -562,13 +579,14 @@ class TestPgvectorengine:
             migrate_pgvector_collection(
                 engine,
                 collection_name=collection_name,
+                embeddings_service=embeddings_service,
                 delete_pg_collection=True,
             )
         await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
 
     async def test_migrate_pgvector_collection_json_metadata(
-        self, engine, sample_embeddings
+        self, engine, sample_embeddings, embeddings_service
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -582,6 +600,7 @@ class TestPgvectorengine:
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             use_json_metadata=True,
         )
 
@@ -624,7 +643,7 @@ class TestPgvectorengine:
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_col_metadata(
-        self, engine, sample_embeddings
+        self, engine, sample_embeddings, embeddings_service
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -632,7 +651,6 @@ class TestPgvectorengine:
         metadata_columns = [
             Column(f"col_0_{collection_name}", "VARCHAR"),
             Column(f"col_1_{collection_name}", "VARCHAR"),
-            Column(f"col_2_{collection_name}", "VARCHAR"),
         ]
         engine.init_vectorstore_table(
             table_name=collection_name,
@@ -643,6 +661,7 @@ class TestPgvectorengine:
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             metadata_columns=[col.name for col in metadata_columns],
         )
 
@@ -655,7 +674,7 @@ class TestPgvectorengine:
         # Check one row to ensure that the data is inserted correctly
         migrated_data = await afetch(
             engine,
-            f"SELECT langchain_id, content, embedding, col_0_{collection_name}, col_1_{collection_name}, col_2_{collection_name} FROM {collection_name} LIMIT 1",
+            f"SELECT langchain_id, content, embedding, col_0_{collection_name}, col_1_{collection_name}, langchain_metadata FROM {collection_name} LIMIT 1",
         )
         expected_row = {
             "langchain_id": f"uuid_0_{collection_name}",
@@ -663,7 +682,9 @@ class TestPgvectorengine:
             "embedding": str(sample_embeddings).replace(" ", ""),
             f"col_0_{collection_name}": f"val_0_{collection_name}",
             f"col_1_{collection_name}": f"val_0_{collection_name}",
-            f"col_2_{collection_name}": f"val_0_{collection_name}",
+            "langchain_metadata": {
+                f"col_2_{collection_name}": f"val_0_{collection_name}"
+            },
         }
         assert expected_row in migrated_data
 
@@ -685,7 +706,7 @@ class TestPgvectorengine:
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
     async def test_migrate_pgvector_collection_delete_original(
-        self, engine, sample_embeddings
+        self, engine, sample_embeddings, embeddings_service
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -698,6 +719,7 @@ class TestPgvectorengine:
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             use_json_metadata=True,
             delete_pg_collection=True,
         )
@@ -740,7 +762,9 @@ class TestPgvectorengine:
         await self._clean_tables(engine)
         await aexecute(engine, f"DROP TABLE {collection_name}")
 
-    async def test_migrate_pgvector_collection_batch(self, engine, sample_embeddings):
+    async def test_migrate_pgvector_collection_batch(
+        self, engine, sample_embeddings, embeddings_service
+    ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=7)
         collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
@@ -752,6 +776,7 @@ class TestPgvectorengine:
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
+            embeddings_service=embeddings_service,
             use_json_metadata=True,
             delete_pg_collection=True,
             insert_batch_size=5,
