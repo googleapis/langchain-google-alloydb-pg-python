@@ -510,6 +510,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: List[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> Sequence[RowMapping]:
         """Perform similarity search query on database."""
@@ -518,7 +519,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
         search_function = self.distance_strategy.search_function
 
         filter = f"WHERE {filter}" if filter else ""
-        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.schema_name}\".\"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
+
+        # Modify the query to include EXPLAIN ANALYZE if requested
+        stmt = f"{'EXPLAIN ANALYZE' if explain_analyze else ''} SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.schema_name}\".\"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
         if self.index_query_options:
             query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
@@ -538,13 +541,18 @@ class AsyncAlloyDBVectorStore(VectorStore):
         query: str,
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs selected by similarity search on query."""
         embedding = self.embedding_service.embed_query(text=query)
 
         return await self.asimilarity_search_by_vector(
-            embedding=embedding, k=k, filter=filter, **kwargs
+            embedding=embedding,
+            k=k,
+            filter=filter,
+            explain_analyze=explain_analyze,
+            **kwargs,
         )
 
     def _images_embedding_helper(self, image_uris: List[str]) -> List[List[float]]:
@@ -592,12 +600,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
         query: str,
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
         embedding = self.embedding_service.embed_query(query)
         docs = await self.asimilarity_search_with_score_by_vector(
-            embedding=embedding, k=k, filter=filter, **kwargs
+            embedding=embedding,
+            k=k,
+            filter=filter,
+            explain_analyze=explain_analyze,
+            **kwargs,
         )
         return docs
 
@@ -606,11 +619,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: List[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs selected by vector similarity search."""
         docs_and_scores = await self.asimilarity_search_with_score_by_vector(
-            embedding=embedding, k=k, filter=filter, **kwargs
+            embedding=embedding,
+            k=k,
+            filter=filter,
+            explain_analyze=explain_analyze,
+            **kwargs,
         )
 
         return [doc for doc, _ in docs_and_scores]
@@ -620,11 +638,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: List[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
         results = await self.__query_collection(
-            embedding=embedding, k=k, filter=filter, **kwargs
+            embedding=embedding,
+            k=k,
+            filter=filter,
+            explain_analyze=explain_analyze,
+            **kwargs,  # Pass explain_analyze to __query_collection
         )
 
         documents_with_scores = []
@@ -655,6 +678,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -666,6 +690,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k=fetch_k,
             lambda_mult=lambda_mult,
             filter=filter,
+            explain_analyze=explain_analyze,
             **kwargs,
         )
 
@@ -676,6 +701,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -686,6 +712,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 fetch_k=fetch_k,
                 lambda_mult=lambda_mult,
                 filter=filter,
+                explain_analyze=explain_analyze,
                 **kwargs,
             )
         )
@@ -699,11 +726,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
+        explain_analyze: bool = False,  # Add explain_analyze parameter
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
         results = await self.__query_collection(
-            embedding=embedding, k=fetch_k, filter=filter, **kwargs
+            embedding=embedding,
+            k=fetch_k,
+            filter=filter,
+            explain_analyze=explain_analyze,
+            **kwargs,
         )
 
         k = k if k else self.k
