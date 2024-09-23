@@ -13,24 +13,25 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, List, Sequence
+from typing import List, Optional, Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
-from sqlalchemy.ext.asyncio import AsyncEngine
+
+from .engine import AlloyDBEngine
 
 
 @dataclass
 class AlloyDBModel:
     model_id: str
-    model_request_url: str
+    model_request_url: Optional[str]
     model_provider: str
     model_type: str
-    model_qualified_name: str
-    model_auth_type: str
-    model_auth_id: str
-    input_transform_fn: str
-    output_transform_fn: str
+    model_qualified_name: Optional[str]
+    model_auth_type: Optional[str]
+    model_auth_id: Optional[str]
+    input_transform_fn: Optional[str]
+    output_transform_fn: Optional[str]
 
 
 class AlloyDBModelManager:
@@ -40,21 +41,27 @@ class AlloyDBModelManager:
 
     def __init__(
         self,
-        engine: AsyncEngine,
+        engine: AlloyDBEngine,
     ):
         """AlloyDBModelManager constructor.
         Args:
-            engine (Asycn AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
+            engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
         """
 
         self._engine = engine
 
-        self._engine._run_as_sync(self.__validate())
+        self._engine._run_as_sync(self.__avalidate())
 
     async def alist_model(
         self, model_id: str = "textembedding-gecko@003"
     ) -> AlloyDBModel:
         """Lists the model details for a specific model_id.
+
+        Args:
+            model_id (str): A unique ID for the model endpoint that you have defined.
+
+        Returns:
+            :class: `AlloyDBModel` object of the specified model.
 
         Raises:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if model has not been created.
@@ -63,28 +70,59 @@ class AlloyDBModelManager:
         return result
 
     async def amodel_info_view(self) -> List[AlloyDBModel]:
-        """Lists all the models and its details."""
+        """Lists all the models and its details.
+
+        Returns:
+            List[`AlloyDBModel`] of all available model..
+        """
         results = await self._engine._run_as_async(self.__amodel_info_view())
         return results
 
     async def acreate_model(
-        self, model_id: str, model_provider: str, **kwargs: dict[str, Any]
+        self,
+        model_id: str,
+        model_provider: str,
+        model_type: str,
+        **kwargs: dict[str, str],
     ) -> None:
         """Creates a custom text embedding model.
+
+        Args:
+            model_id (str): A unique ID for the model endpoint that you define.
+            model_provider (str): The provider of the model endpoint.
+            model_type (str): The model type. Either text_embedding or generic.
+            **kwargs :
+                model_request_url (str): The model-specific endpoint when adding other text embedding and generic model endpoints
+                model_qualified_name (str): The fully qualified name in case the model endpoint has multiple versions
+                model_auth_type (str): The authentication type used by the model endpoint.
+                model_auth_id (str): The secret ID that you set and is subsequently used when registering a model endpoint.
+                generate_headers_fn (str): 	The SQL function name you set to generate custom headers.
+                model_in_transform_fn (str): The SQL function name to transform input of the corresponding prediction function to the model-specific input.
+                model_out_transform_fn (str): The SQL function name to transform model specific output to the prediction function output.
+
+        Returns:
+          None
 
         Raises:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names mismatch create_model function specification.
         """
         await self._engine._run_as_async(
-            self.__acreate_model(model_id, model_provider, **kwargs)
+            self.__acreate_model(model_id, model_provider, model_type, **kwargs)
         )
 
     async def adrop_model(self, model_id: str) -> None:
-        """Removes a text embedding model."""
+        """Removes a text embedding model.
+
+        Args:
+            model_id (str): A unique ID for the model endpoint that you have defined.
+
+        Returns:
+            None
+        """
         await self._engine._run_as_async(self.__adrop_model(model_id))
 
-    async def __validate(self) -> None:
-        """Private function to validate prerequisites.
+    async def __avalidate(self) -> None:
+        """Private async function to validate prerequisites.
 
         Raises:
             Exception if google_ml_integration EXTENSION is not 1.3.
@@ -102,6 +140,9 @@ class AlloyDBModelManager:
     async def __query_db(self, query: str) -> Sequence[RowMapping]:
         """Queries the Postgres database through the engine.
 
+        Args:
+            query (str): Query to execute on the DB.
+
         Raises:
             Exception if the query is not a returning type."""
         async with self._engine._pool.connect() as conn:
@@ -112,9 +153,12 @@ class AlloyDBModelManager:
 
     async def __alist_model(
         self,
-        model_id: str = "textembedding-gecko@001",
+        model_id: str = "textembedding-gecko@003",
     ) -> AlloyDBModel:
         """Lists the model details for a specific model_id.
+
+        Args:
+            model_id (str): A unique ID for the model endpoint that you have defined.
 
         Raises:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if model has not been created.
@@ -143,16 +187,20 @@ class AlloyDBModelManager:
         return list_of_data_classes
 
     async def __acreate_model(
-        self, model_id: str, model_provider: str, **kwargs: dict[str, Any]
+        self,
+        model_id: str,
+        model_provider: str,
+        model_type: str,
+        **kwargs: dict[str, str],
     ) -> None:
         """Creates a custom text embedding model.
 
         Args:
             model_id (str): A unique ID for the model endpoint that you define.
             model_provider (str): The provider of the model endpoint.
+            model_type (str): The model type. Either text_embedding or generic.
             **kwargs :
                 model_request_url (str): The model-specific endpoint when adding other text embedding and generic model endpoints
-                model_type (str): The model type. Either text_embedding or generic.
                 model_qualified_name (str): The fully qualified name in case the model endpoint has multiple versions
                 model_auth_type (str): The authentication type used by the model endpoint.
                 model_auth_id (str): The secret ID that you set and is subsequently used when registering a model endpoint.
@@ -167,7 +215,8 @@ class AlloyDBModelManager:
         CALL
         google_ml.create_model(
         model_id => '{model_id}',
-        model_provider => '{model_provider}',"""
+        model_provider => '{model_provider}',
+        model_type => '{model_type}',"""
         for key, value in kwargs.items():
             query = query + f" {key} => '{value}',"
         query = query.strip(",")
@@ -177,7 +226,11 @@ class AlloyDBModelManager:
             await conn.commit()
 
     async def __adrop_model(self, model_id: str) -> None:
-        """Removes a text embedding model."""
+        """Removes a text embedding model.
+
+        Args:
+            model_id (str): A unique ID for the model endpoint that you have defined.
+        """
         query = f"CALL google_ml.drop_model('{model_id}');"
         async with self._engine._pool.connect() as conn:
             await conn.execute(text(query))
@@ -197,6 +250,11 @@ class AlloyDBModelManager:
         flag = result[0]["setting"]
         return flag
 
-    def __convert_dict_to_dataclass(self, list_of_rows):
+    def __convert_dict_to_dataclass(self, list_of_rows: Sequence[RowMapping]):
+        """Converts a list of DB rows to list of AlloyDBModel dataclass.
+
+        Args:
+            list_of_rows (Sequence[RowMapping]): A unique ID for the model endpoint that you define.
+        """
         list_of_dataclass = [AlloyDBModel(**row) for row in list_of_rows]
         return list_of_dataclass

@@ -72,7 +72,7 @@ class TestAlloyDBModelManager:
 
     async def test_acreate_model(self, model_manager):
         await model_manager.acreate_model(
-            model_id=EMBEDDING_MODEL_NAME,  # consider a uuid
+            model_id=EMBEDDING_MODEL_NAME,
             model_provider="google",
             model_qualified_name="textembedding-gecko@003",
             model_type="text_embedding",

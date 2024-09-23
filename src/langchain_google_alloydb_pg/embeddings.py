@@ -22,6 +22,7 @@ from langchain_core.embeddings import Embeddings
 from sqlalchemy import text
 
 from .engine import AlloyDBEngine
+from .model_manager import AlloyDBModelManager
 
 
 class AlloyDBEmbeddings(Embeddings):
@@ -35,14 +36,44 @@ class AlloyDBEmbeddings(Embeddings):
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
             model_id (str): The model id used for generating embeddings.
 
+        Raises:
+            :class:`ValueError`: if model does not exist. Use AlloyDBModelManager to create the model.
+
         """
         self._engine = engine
         self.model_id = model_id
 
-        # TODO: @vishwarajanand - We should validate the model_id here
-        # models = AlloyDBModel(engine, model_id)
-        # if not models.exists():
-        #     raise IllegalArgumentError(f"Model {model_id} does not exist.")
+        self.model_manager = AlloyDBModelManager(engine=self._engine)
+        if not self.model_exists():
+            raise ValueError(f"Model {model_id} does not exist.")
+
+    def amodel_exists(self) -> bool:
+        """Checks if the embedding model exists.
+
+        Return:
+            `Bool`: True if a model with the given name exists, False otherwise.
+        """
+        return self._engine._run_as_async(self._amodel_exists())
+
+    def model_exists(self) -> bool:
+        """Checks if the embedding model exists.
+
+        Return:
+            `Bool`: True if a model with the given name exists, False otherwise.
+        """
+        return self._engine._run_as_sync(self._amodel_exists())
+
+    async def _amodel_exists(self) -> bool:
+        """Checks if the embedding model exists.
+
+        Return:
+            `Bool`: True if a model with the given name exists, False otherwise.
+        """
+        try:
+            await self.model_manager.alist_model(model_id=self.model_id)
+            return True
+        except Exception:
+            return False
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         raise NotImplementedError(
