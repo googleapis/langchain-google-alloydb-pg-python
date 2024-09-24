@@ -209,6 +209,17 @@ async def _amigrate_pgvector_collection(
         )
         destination_table = collection_name
 
+    # Get row count in PGVector collection
+    uuid = await _aget_collection_uuid(engine, collection_name)
+    query = f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
+    async with engine._pool.connect() as conn:
+        result = await conn.execute(text(query))
+        result_map = result.mappings()
+        collection_data_len = result_map.fetchone()
+    if collection_data_len is None:
+        warnings.warn(f"Collection, {collection_name} contains no elements.")
+        return
+
     # Extract data from the collection and batch insert into the new table
     collection_data = _aextract_pgvector_collection(engine, collection_name)
     data_batches = _batch_data(collection_data, insert_batch_size)
@@ -237,16 +248,6 @@ async def _amigrate_pgvector_collection(
         async for batch_data in data_batches
     ]
     await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Get row count in PGVector collection
-    uuid = await _aget_collection_uuid(engine, collection_name)
-    query = f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
-    async with engine._pool.connect() as conn:
-        result = await conn.execute(text(query))
-        result_map = result.mappings()
-        collection_data_len = result_map.fetchone()
-    if collection_data_len is None:
-        raise ValueError(f"Collection, {collection_name} contains no elements.")
 
     # Validate data migration
     query = f"SELECT COUNT(*) FROM {destination_table}"
