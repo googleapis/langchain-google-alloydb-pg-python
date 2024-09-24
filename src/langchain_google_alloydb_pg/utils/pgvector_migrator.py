@@ -96,12 +96,7 @@ async def _ainsert_single_batch(
     Args:
         vector_store (AlloyDBVectorStore): The AlloyDB vector store corresponding to the table.
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
-        destination_table (str): The name of the table to insert the data in.
-        metadata_column_names (str): The metadata columns to be created to keep the data in a row-column format.
-            Optional.
         data (Sequence[RowMapping]): All the data (to be inserted) belonging to a pgvector collection.
-        use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
-            Default: False. Optional.
     """
     metadata_col_names = (
         ", " + ", ".join(vector_store.metadata_columns)
@@ -231,7 +226,6 @@ async def _amigrate_pgvector_collection(
             embedding_service=embeddings_service,
             table_name=destination_table,
         )
-
     tasks = [
         asyncio.create_task(
             _ainsert_single_batch(
@@ -242,7 +236,7 @@ async def _amigrate_pgvector_collection(
         )
         async for batch_data in data_batches
     ]
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     # Get row count in PGVector collection
     uuid = await _aget_collection_uuid(engine, collection_name)
