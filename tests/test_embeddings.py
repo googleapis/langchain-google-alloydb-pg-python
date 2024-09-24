@@ -71,18 +71,14 @@ class TestAlloyDBEmbeddings:
     async def test_model_exists(self, sync_engine):
         test_model_id = "test_sample_text_embedding_model"
         error_message = f"Model {test_model_id} does not exist."
-        try:
+        with pytest.raises(Exception, match=error_message):
             AlloyDBEmbeddings(engine=sync_engine, model_id=test_model_id)
-        except ValueError as err:
-            assert err.args[0] == error_message
 
     async def test_amodel_exists(self, engine):
         test_model_id = "test_sample_text_embedding_model"
         error_message = f"Model {test_model_id} does not exist."
-        try:
+        with pytest.raises(Exception, match=error_message):
             AlloyDBEmbeddings(engine=engine, model_id=test_model_id)
-        except ValueError as err:
-            assert err.args[0] == error_message
 
     async def test_aembed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
