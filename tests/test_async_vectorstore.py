@@ -165,13 +165,14 @@ class TestVectorStore:
         red_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_red.jpg"
         green_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_green.jpg"
         blue_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_blue.jpg"
+        gcs_uri = "gs://github-repo/img/vision/google-cloud-next.jpeg"
         image = Image.new("RGB", (100, 100), color="red")
         image.save(red_uri)
         image = Image.new("RGB", (100, 100), color="green")
         image.save(green_uri)
         image = Image.new("RGB", (100, 100), color="blue")
         image.save(blue_uri)
-        image_uris = [red_uri, green_uri, blue_uri]
+        image_uris = [red_uri, green_uri, blue_uri, gcs_uri]
         yield image_uris
         for uri in image_uris:
             os.remove(uri)
@@ -242,7 +243,7 @@ class TestVectorStore:
         ]
         await image_vs.aadd_images(image_uris, metadatas, ids)
         results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
-        assert len(results) == 3
+        assert len(results) == 4
         assert results[0]["image_id"] == "0"
         assert results[0]["source"] == "google.com"
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
