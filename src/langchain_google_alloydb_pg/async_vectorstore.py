@@ -548,8 +548,15 @@ class AsyncAlloyDBVectorStore(VectorStore):
         )
 
     def _images_embedding_helper(self, image_uris: List[str]) -> List[List[float]]:
-        # check if `embed_image()` API is supported by the embedding service used
-        if hasattr(self.embedding_service, "embed_image"):
+        # check if either `embed_images()` or `embed_image()` API is supported by the embedding service used
+        if hasattr(self.embedding_service, "embed_images"):
+            try:
+                embeddings = self.embedding_service.embed_images(image_uris)
+            except Exception as e:
+                raise Exception(
+                    f"Make sure your selected embedding model supports list of image URIs as input. {str(e)}"
+                )
+        elif hasattr(self.embedding_service, "embed_image"):
             try:
                 embeddings = self.embedding_service.embed_image(image_uris)
             except Exception as e:
