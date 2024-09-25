@@ -17,10 +17,13 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import uuid
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
+import requests
+from google.cloud import storage  # type: ignore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore, utils
@@ -308,7 +311,21 @@ class AsyncAlloyDBVectorStore(VectorStore):
         return ids
 
     def _encode_image(self, uri: str) -> str:
-        """Get base64 string from image URI."""
+        """Get base64 string from a image URI."""
+        gcs_uri = re.match("gs://(.*?)/(.*)", uri)
+        if gcs_uri:
+            bucket_name, object_name = gcs_uri.groups()
+            storage_client = storage.Client()
+            bucket = storage_client.bucket(bucket_name)
+            blob = bucket.blob(object_name)
+            return base64.b64encode(blob.download_as_bytes()).decode("utf-8")
+
+        web_uri = re.match(r"^(https?://).*", uri)
+        if web_uri:
+            response = requests.get(uri, stream=True)
+            response.raise_for_status()
+            return base64.b64encode(response.content).decode("utf-8")
+
         with open(uri, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
