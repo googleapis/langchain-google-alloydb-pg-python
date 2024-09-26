@@ -161,7 +161,10 @@ class TestVectorStoreSearch:
         image_uris = [red_uri, green_uri, blue_uri, gcs_uri]
         yield image_uris
         for uri in image_uris:
-            os.remove(uri)
+            try:
+                os.remove(uri)
+            except FileNotFoundError:
+                pass
 
     @pytest_asyncio.fixture(scope="class")
     async def image_vs(self, engine, image_uris):

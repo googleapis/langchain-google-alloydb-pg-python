@@ -175,7 +175,10 @@ class TestVectorStore:
         image_uris = [red_uri, green_uri, blue_uri, gcs_uri]
         yield image_uris
         for uri in image_uris:
-            os.remove(uri)
+            try:
+                os.remove(uri)
+            except FileNotFoundError:
+                pass
 
     async def test_init_with_constructor(self, engine):
         with pytest.raises(Exception):
