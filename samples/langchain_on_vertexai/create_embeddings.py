@@ -60,7 +60,7 @@ async def create_vectorstore():
         CLUSTER,
         INSTANCE,
         DATABASE,
-        user="postgres",
+        user=USER,
         password=PASSWORD,
     )
 
@@ -72,16 +72,12 @@ async def create_vectorstore():
 
     rm = resourcemanager_v3.ProjectsClient()
     res = rm.get_project(
-        request=resourcemanager_v3.GetProjectRequest(
-            name=f"projects/{PROJECT_ID}"
-        )
+        request=resourcemanager_v3.GetProjectRequest(name=f"projects/{PROJECT_ID}")
     )
     project_number = res.name.split("/")[1]
     IAM_USER = f"service-{project_number}@gcp-sa-aiplatform-re.iam"
     async with engine._pool.connect() as conn:
-        await conn.execute(
-            text(f'GRANT SELECT ON {TABLE_NAME} TO "{IAM_USER}";')
-        )
+        await conn.execute(text(f'GRANT SELECT ON {TABLE_NAME} TO "{IAM_USER}";'))
         await conn.commit()
 
     metadata = [
@@ -107,6 +103,8 @@ async def create_vectorstore():
 
     ids = [str(uuid.uuid4()) for i in range(len(docs))]
     await vector_store.aadd_documents(docs, ids=ids)
+    await engine.close()
+    await engine._connector.close()
 
 
 async def main():
