@@ -50,7 +50,6 @@ async def create_databases():
         await conn.execute(text("COMMIT"))
         await conn.execute(text(f'CREATE DATABASE "{DATABASE}"'))
     await engine.close()
-    await engine._connector.close()
 
 
 async def create_vectorstore():
@@ -108,7 +107,6 @@ async def create_vectorstore():
     ids = [str(uuid.uuid4()) for i in range(len(docs))]
     await vector_store.aadd_documents(docs, ids=ids)
     await engine.close()
-    await engine._connector.close()
 
 
 async def main():
