@@ -45,6 +45,7 @@ async def create_databases():
     )
 
     async with engine._pool.connect() as conn:
+        await conn.execute(text("COMMIT"))
         await conn.execute(text(f'DROP DATABASE IF EXISTS "{DATABASE}"'))
         await conn.execute(text(f'CREATE DATABASE "{DATABASE}"'))
     await engine.close()
