@@ -47,7 +47,9 @@ query_1 = "Brooding aromas of barrel spice."
 query_2 = "Aromas include tropical fruit, broom, brimstone and dried herb."
 query_3 = "Wine from spain."
 query_4 = "Condensed and dark on the bouquet"
-query_5 = "Light, fresh and silky—just what might be expected from cool-climate Pinot Noir"
+query_5 = (
+    "Light, fresh and silky—just what might be expected from cool-climate Pinot Noir"
+)
 queries = [query_1, query_2, query_3, query_4, query_5]
 
 
@@ -110,9 +112,7 @@ async def hnsw_search(vector_store, knn_docs):
     recalls = []
 
     for i in range(len(queries)):
-        hnsw_docs, latency = await query_vector_with_timing(
-            vector_store, queries[i]
-        )
+        hnsw_docs, latency = await query_vector_with_timing(vector_store, queries[i])
         latencies.append(latency)
         recalls.append(calculate_recall(knn_docs[i], hnsw_docs))
 
@@ -133,9 +133,7 @@ async def ivfflat_search(vector_store, knn_docs):
     recalls = []
 
     for i in range(len(queries)):
-        ivfflat_docs, latency = await query_vector_with_timing(
-            vector_store, queries[i]
-        )
+        ivfflat_docs, latency = await query_vector_with_timing(vector_store, queries[i])
         latencies.append(latency)
         recalls.append(calculate_recall(knn_docs[i], ivfflat_docs))
 
@@ -156,9 +154,7 @@ async def ivf_search(vector_store, knn_docs):
     recalls = []
 
     for i in range(len(queries)):
-        ivf_docs, latency = await query_vector_with_timing(
-            vector_store, queries[i]
-        )
+        ivf_docs, latency = await query_vector_with_timing(vector_store, queries[i])
         latencies.append(latency)
         recalls.append(calculate_recall(knn_docs[i], ivf_docs))
 
@@ -179,9 +175,7 @@ async def scann_search(vector_store, knn_docs):
     recalls = []
 
     for i in range(len(queries)):
-        scann_docs, latency = await query_vector_with_timing(
-            vector_store, queries[i]
-        )
+        scann_docs, latency = await query_vector_with_timing(vector_store, queries[i])
         latencies.append(latency)
         recalls.append(calculate_recall(knn_docs[i], scann_docs))
 
