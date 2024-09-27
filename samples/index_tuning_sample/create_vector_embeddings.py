@@ -20,7 +20,11 @@ import sqlalchemy
 from langchain_community.document_loaders import CSVLoader
 from langchain_google_vertexai import VertexAIEmbeddings
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg import (
+    AlloyDBEngine,
+    AlloyDBVectorStore,
+    Column,
+)
 
 EMBEDDING_COUNT = 100000
 VECTOR_SIZE = 768
@@ -145,8 +149,8 @@ async def main():
         engine = await get_engine()
     documents = load_csv_documents()
     await create_vector_store_table(documents, engine)
+    await engine.close()
     await engine._connector.close()
-    await engine._engine.dispose()
 
 
 if __name__ == "__main__":

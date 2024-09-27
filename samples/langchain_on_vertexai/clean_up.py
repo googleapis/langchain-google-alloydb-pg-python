@@ -25,6 +25,7 @@ from config import (
     TABLE_NAME,
     USER,
 )
+from sqlalchemy import text
 from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import AlloyDBEngine
@@ -43,10 +44,11 @@ async def delete_databases():
         password=PASSWORD,
     )
 
-    await engine._aexecute_outside_tx(f"DROP TABLE IF EXISTS {TABLE_NAME}")
-    await engine._aexecute_outside_tx(f"DROP TABLE IF EXISTS {CHAT_TABLE_NAME}")
+    async with engine._pool.connect() as conn:
+        await conn.execute(text(f"DROP TABLE IF EXISTS {TABLE_NAME}"))
+        await conn.execute(text(f"DROP TABLE IF EXISTS {CHAT_TABLE_NAME}"))
+    await engine.close()
     await engine._connector.close()
-    await engine._engine.dispose()
 
 
 def delete_engines():
