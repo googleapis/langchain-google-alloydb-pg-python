@@ -83,6 +83,10 @@ class TestAlloyDBModelManager:
         model_info = await model_manager.alist_model(model_id=EMBEDDING_MODEL_NAME)
         assert model_info.model_id == EMBEDDING_MODEL_NAME
 
+    async def test_non_existent_model(self, model_manager):
+        model_info = await model_manager.alist_model(model_id="Non_existent_model")
+        assert model_info is None
+
     @pytest.mark.depends(on=["test_alist_model"])
     async def test_amodel_info_view(self, model_manager):
         models_list = await model_manager.amodel_info_view()

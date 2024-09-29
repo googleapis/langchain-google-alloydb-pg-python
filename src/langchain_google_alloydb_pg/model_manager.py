@@ -52,19 +52,15 @@ class AlloyDBModelManager:
 
         self._engine._run_as_sync(self.__avalidate())
 
-    async def alist_model(
-        self, model_id: str = "textembedding-gecko@003"
-    ) -> AlloyDBModel:
+    async def alist_model(self, model_id: str) -> Optional[AlloyDBModel]:
         """Lists the model details for a specific model_id.
 
         Args:
             model_id (str): A unique ID for the model endpoint that you have defined.
 
         Returns:
-            :class: `AlloyDBModel` object of the specified model.
+            :class: `AlloyDBModel` object of the specified model if it exists otherwise `None`.
 
-        Raises:
-            :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if model has not been created.
         """
         result = await self._engine._run_as_async(self.__alist_model(model_id=model_id))
         return result
@@ -131,7 +127,9 @@ class AlloyDBModelManager:
         extension_version = await self.__fetch_google_ml_extension()
         db_flag = await self.__fetch_db_flag()
         if extension_version < 1.3:
-            raise Exception("google_ml_integration EXTENSION is not 1.3")
+            raise Exception(
+                "Please upgrade google_ml_integration EXTENSION to version 1.3 or above."
+            )
         if db_flag != "on":
             raise Exception(
                 "google_ml_integration.enable_model_support DB Flag not set."
@@ -151,17 +149,12 @@ class AlloyDBModelManager:
             results = result_map.fetchall()
         return results
 
-    async def __alist_model(
-        self,
-        model_id: str = "textembedding-gecko@003",
-    ) -> AlloyDBModel:
-        """Lists the model details for a specific model_id.
+    async def __alist_model(self, model_id: str) -> Optional[AlloyDBModel]:
+        """Lists the model details for a specific model_id. Returns None if it doesn't exist.
 
         Args:
             model_id (str): A unique ID for the model endpoint that you have defined.
 
-        Raises:
-            :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if model has not been created.
         """
         query = f"""SELECT * FROM
                 google_ml.list_model('{model_id}')
@@ -175,7 +168,10 @@ class AlloyDBModelManager:
                 input_transform_fn VARCHAR,
                 output_transform_fn VARCHAR)"""
 
-        result = await self.__query_db(query)
+        try:
+            result = await self.__query_db(query)
+        except Exception:
+            return None
         data_class = self.__convert_dict_to_dataclass(result)[0]
         return data_class
 
@@ -237,9 +233,22 @@ class AlloyDBModelManager:
             await conn.commit()
 
     async def __fetch_google_ml_extension(self) -> float:
-        """Fetches the version of the Google ML Extension."""
-        extension_query = """select coalesce((select extversion FROM pg_extension where extname = 'google_ml_integration'), '0') as extversion;"""
-        result = await self.__query_db(extension_query)
+        """Creates the Google ML Extension if it does not exist and returns the version number (Default creates version 1.3)."""
+        create_extension_query = """
+        DO $$
+        BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_extension WHERE extname = 'google_ml_integration' )
+          THEN CREATE EXTENSION google_ml_integration VERSION '1.3';
+        END IF;
+        END
+        $$;
+        """
+        async with self._engine._pool.connect() as conn:
+            await conn.execute(text(create_extension_query))
+            await conn.commit()
+        extension_version_query = "SELECT extversion FROM pg_extension WHERE extname = 'google_ml_integration';"
+        result = await self.__query_db(extension_version_query)
         version = result[0]["extversion"]
         return float(version)
 

@@ -69,11 +69,10 @@ class AlloyDBEmbeddings(Embeddings):
         Return:
             `Bool`: True if a model with the given name exists, False otherwise.
         """
-        try:
-            await self.model_manager.alist_model(model_id=self.model_id)
+        model = await self.model_manager.alist_model(model_id=self.model_id)
+        if model is not None:
             return True
-        except Exception:
-            return False
+        return False
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         raise NotImplementedError(
