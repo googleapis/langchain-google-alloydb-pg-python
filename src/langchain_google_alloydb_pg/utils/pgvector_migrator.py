@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import json
 import warnings
 from typing import AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
 
-from langchain_core.embeddings import Embeddings
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
-from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 
 COLLECTIONS_TABLE = "langchain_pg_collection"
 EMBEDDINGS_TABLE = "langchain_pg_embedding"

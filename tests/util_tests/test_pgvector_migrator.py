@@ -24,7 +24,6 @@ from sqlalchemy import RowMapping, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
-# from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 from langchain_google_alloydb_pg.utils.pgvector_migrator import (
     aextract_pgvector_collection,
     alist_pgvector_collection_names,
