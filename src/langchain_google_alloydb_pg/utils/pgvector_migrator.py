@@ -187,7 +187,7 @@ async def _alist_pgvector_collection_names(
 async def aextract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-) -> AsyncIterator[RowMapping]:
+) -> AsyncIterator[Sequence[RowMapping]]:
     """
     Extract all data belonging to a PGVector collection.
 
@@ -254,7 +254,7 @@ async def amigrate_pgvector_collection(
 def extract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-) -> Iterator[RowMapping]:
+) -> Iterator[Sequence[RowMapping]]:
     """
     Extract all data belonging to a PGVector collection.
 
