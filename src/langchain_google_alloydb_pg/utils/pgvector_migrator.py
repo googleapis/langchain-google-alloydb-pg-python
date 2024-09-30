@@ -125,8 +125,6 @@ async def _amigrate_pgvector_collection(
     data_batches = _aextract_pgvector_collection(
         engine, collection_name, batch_size=insert_batch_size
     )
-    # data_batches = _batch_data(collection_data, insert_batch_size)
-
     tasks = [
         asyncio.create_task(
             vector_store.aadd_embeddings(
