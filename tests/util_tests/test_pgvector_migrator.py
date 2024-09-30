@@ -19,7 +19,7 @@ from typing import List, Optional, Sequence
 
 import pytest
 import pytest_asyncio
-from langchain_core.embeddings import Embeddings, FakeEmbeddings
+from langchain_core.embeddings import FakeEmbeddings
 from sqlalchemy import RowMapping, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
