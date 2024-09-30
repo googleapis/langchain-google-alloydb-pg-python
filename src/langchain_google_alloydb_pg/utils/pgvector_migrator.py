@@ -262,12 +262,12 @@ async def _amigrate_pgvector_collection(
         raise ValueError("All data not yet migrated.")
     elif delete_pg_collection:
         # Delete PGVector data
-        query = f"DELETE FROM {COLLECTIONS_TABLE} WHERE name='{collection_name}'"
+        query = f"DELETE FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
         async with engine._pool.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
 
-        query = f"DELETE FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
+        query = f"DELETE FROM {COLLECTIONS_TABLE} WHERE name='{collection_name}'"
         async with engine._pool.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
