@@ -57,7 +57,8 @@ async def _aget_collection_uuid(
 async def _aextract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-) -> AsyncIterator[RowMapping]:
+    batch_size: int = 1000,
+) -> AsyncIterator[Sequence[RowMapping]]:
     """
     Extract all data belonging to a PGVector collection.
 
@@ -74,34 +75,12 @@ async def _aextract_pgvector_collection(
         async with engine._pool.connect() as conn:
             result_proxy = await conn.execute(text(query))
             while True:
-                row = result_proxy.fetchone()
-                if not row:
+                rows = result_proxy.fetchmany(size=batch_size)
+                if not rows:
                     break
-                yield row._mapping
+                yield [row._mapping for row in rows]
     except:
         raise ValueError(f"Collection, {collection_name} does not exist.")
-
-
-async def _batch_data(generator, batch_size):
-    """
-    Batches data from a generator.
-
-    Args:
-        generator: A generator function yielding data items.
-        batch_size: The desired batch size.
-
-    Yields:
-        Batches of data as lists.
-    """
-    batch = []
-    async for item in generator:
-        batch.append(item)
-        if len(batch) == batch_size:
-            yield batch
-            batch = []
-
-    if batch:  # Yield remaining items if any
-        yield batch
 
 
 async def _amigrate_pgvector_collection(
@@ -146,8 +125,10 @@ async def _amigrate_pgvector_collection(
         return
 
     # Extract data from the collection and batch insert into the new table
-    collection_data = _aextract_pgvector_collection(engine, collection_name)
-    data_batches = _batch_data(collection_data, insert_batch_size)
+    data_batches = _aextract_pgvector_collection(
+        engine, collection_name, batch_size=insert_batch_size
+    )
+    # data_batches = _batch_data(collection_data, insert_batch_size)
 
     tasks = [
         asyncio.create_task(

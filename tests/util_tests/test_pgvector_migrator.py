@@ -205,18 +205,18 @@ class TestPgvectorengine:
                 num_cols=num_cols,
             )
 
-    async def _collect_async_items(self, docs_generator):
+    async def _collect_async_items(self, batch_docs_generator):
         """Collects items from an async generator."""
         docs = []
-        async for doc in docs_generator:
-            docs.append(doc)
+        async for doc in batch_docs_generator:
+            docs.extend(doc)
         return docs
 
-    def _collect_sync_items(self, docs_generator):
+    def _collect_sync_items(self, batch_docs_generator):
         """Collects items from an async generator."""
         docs = []
-        for doc in docs_generator:
-            docs.append(doc)
+        for doc in batch_docs_generator:
+            docs.extend(doc)
         return docs
 
     async def _clean_tables(self, engine):
