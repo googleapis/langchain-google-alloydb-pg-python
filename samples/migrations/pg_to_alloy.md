@@ -93,6 +93,19 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
         engine,
         embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
         table_name="destination_table",
+    )
+    ```
+
+    If you have any metadata columns, add them to the vector store as follows:
+
+    ```python
+    from langchain_google_alloydb_pg import AlloyDBVectorStore
+    from langchain_core.embeddings import FakeEmbeddings
+
+    vector_store = await AlloyDBVectorStore.create(
+        engine,
+        embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+        table_name="destination_table",
         metadata_columns=[col.name for col in metadata_columns],
     )
     ```
