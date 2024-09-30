@@ -22,7 +22,9 @@ import pytest_asyncio
 from langchain_core.embeddings import Embeddings, FakeEmbeddings
 from sqlalchemy import RowMapping, text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, Column
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+
+# from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 from langchain_google_alloydb_pg.utils.pgvector_migrator import (
     aextract_pgvector_collection,
     alist_pgvector_collection_names,
@@ -262,23 +264,8 @@ class TestPgvectorengine:
             )
         await self._clean_tables(engine)
 
-    async def test_amigrate_pgvector_collection_error(
-        self, engine, sample_embeddings, embeddings_service
-    ):
-        await self._create_pgvector_tables(engine, sample_embeddings)
-        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
-        with pytest.raises(ValueError):
-            await amigrate_pgvector_collection(
-                engine,
-                collection_name=collection_name,
-                embeddings_service=embeddings_service,
-                delete_pg_collection=True,
-            )
-        await self._clean_tables(engine)
-        await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
-
     async def test_amigrate_pgvector_collection_json_metadata(
-        self, engine, sample_embeddings, embeddings_service
+        self, engine, sample_embeddings
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -288,11 +275,15 @@ class TestPgvectorengine:
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = await AlloyDBVectorStore.create(
+            engine,
+            embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+            table_name=collection_name,
+        )
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            use_json_metadata=True,
+            vector_store=vector_store,
         )
 
         # Check that all data has been migrated
@@ -349,11 +340,16 @@ class TestPgvectorengine:
             metadata_columns=metadata_columns,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = await AlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=collection_name,
+            metadata_columns=[col.name for col in metadata_columns],
+        )
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            metadata_columns=[col.name for col in metadata_columns],
+            vector_store=vector_store,
         )
 
         # Check that all data has been migrated
@@ -407,11 +403,15 @@ class TestPgvectorengine:
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = await AlloyDBVectorStore.create(
+            engine,
+            embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+            table_name=collection_name,
+        )
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            use_json_metadata=True,
+            vector_store=vector_store,
             delete_pg_collection=True,
         )
 
@@ -464,12 +464,15 @@ class TestPgvectorengine:
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = await AlloyDBVectorStore.create(
+            engine,
+            embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+            table_name=collection_name,
+        )
         await amigrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            use_json_metadata=True,
-            delete_pg_collection=True,
+            vector_store=vector_store,
             insert_batch_size=5,
         )
 
@@ -569,24 +572,8 @@ class TestPgvectorengine:
             )
         await self._clean_tables(engine)
 
-    async def test_migrate_pgvector_collection_error(
-        self, engine, sample_embeddings, embeddings_service
-    ):
-        await self._create_pgvector_tables(engine, sample_embeddings)
-        collection_name = f"collection_0_{COLLECTION_NAME_SUFFIX}"
-
-        with pytest.raises(ValueError):
-            migrate_pgvector_collection(
-                engine,
-                collection_name=collection_name,
-                embeddings_service=embeddings_service,
-                delete_pg_collection=True,
-            )
-        await self._clean_tables(engine)
-        await aexecute(engine, f"DROP TABLE IF EXISTS {collection_name}")
-
     async def test_migrate_pgvector_collection_json_metadata(
-        self, engine, sample_embeddings, embeddings_service
+        self, engine, sample_embeddings
     ):
         # Set up tables
         await self._create_pgvector_tables(engine, sample_embeddings, num_rows=5)
@@ -597,11 +584,15 @@ class TestPgvectorengine:
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = AlloyDBVectorStore.create_sync(
+            engine,
+            embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+            table_name=collection_name,
+        )
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            use_json_metadata=True,
+            vector_store=vector_store,
         )
 
         # Check that all data has been migrated
@@ -658,11 +649,16 @@ class TestPgvectorengine:
             metadata_columns=metadata_columns,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = AlloyDBVectorStore.create_sync(
+            engine,
+            embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+            table_name=collection_name,
+            metadata_columns=[col.name for col in metadata_columns],
+        )
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            metadata_columns=[col.name for col in metadata_columns],
+            vector_store=vector_store,
         )
 
         # Check that all data has been migrated
@@ -716,11 +712,15 @@ class TestPgvectorengine:
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = AlloyDBVectorStore.create_sync(
+            engine,
+            embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+            table_name=collection_name,
+        )
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            use_json_metadata=True,
+            vector_store=vector_store,
             delete_pg_collection=True,
         )
 
@@ -773,12 +773,15 @@ class TestPgvectorengine:
             vector_size=VECTOR_SIZE,
             id_column=Column("langchain_id", "VARCHAR"),
         )
+        vector_store = AlloyDBVectorStore.create_sync(
+            table_name=collection_name,
+            engine=engine,
+            embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+        )
         migrate_pgvector_collection(
             engine,
             collection_name=collection_name,
-            embeddings_service=embeddings_service,
-            use_json_metadata=True,
-            delete_pg_collection=True,
+            vector_store=vector_store,
             insert_batch_size=5,
         )
 

@@ -82,68 +82,6 @@ async def _aextract_pgvector_collection(
         raise ValueError(f"Collection, {collection_name} does not exist.")
 
 
-async def _ainsert_single_batch(
-    engine: AlloyDBEngine,
-    vector_store: AsyncAlloyDBVectorStore,
-    data: Sequence[RowMapping],
-) -> None:
-    """
-    Create a batch insert SQL query to insert multiple rows at once.
-    Looks like
-    INSERT INTO MyTable ( Column1, Column2 )
-    VALUES ( Value1, Value2 ), ( Value1, Value2 ), ...
-
-    Args:
-        vector_store (AlloyDBVectorStore): The AlloyDB vector store corresponding to the table.
-        engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
-        data (Sequence[RowMapping]): All the data (to be inserted) belonging to a pgvector collection.
-    """
-    metadata_col_names = (
-        ", " + ", ".join(vector_store.metadata_columns)
-        if len(vector_store.metadata_columns) > 0
-        else ""
-    )
-    insert_stmt = f'INSERT INTO "{vector_store.schema_name}"."{vector_store.table_name}"({vector_store.id_column}, {vector_store.content_column}, {vector_store.embedding_column}{metadata_col_names}'
-    insert_stmt += (
-        f", {vector_store.metadata_json_column})"
-        if vector_store.metadata_json_column
-        else ")"
-    )
-
-    values_stmt = "VALUES (:id, :content, :embedding"
-    for metadata_column in vector_store.metadata_columns:
-        values_stmt += f", :{metadata_column}"
-    if vector_store.metadata_json_column:
-        values_stmt += f", :extra_metadata"
-    values_stmt += ")"
-
-    params = []
-    for row in data:
-        curr_value = {
-            "id": row.id,
-            "content": row.document,
-            "embedding": row.embedding,
-        }
-        metadata = row.cmetadata
-        extra_metadata = row.cmetadata
-        for metadata_column in vector_store.metadata_columns:
-            curr_value[metadata_column] = (
-                metadata[metadata_column] if metadata_column in metadata else None
-            )
-            del extra_metadata[metadata_column]
-        if vector_store.metadata_json_column:
-            curr_value["extra_metadata"] = (
-                json.dumps(extra_metadata) if extra_metadata else None
-            )
-        params.append(curr_value)
-
-    # Insert rows
-    insert_query = insert_stmt + values_stmt
-    async with engine._pool.connect() as conn:
-        await conn.execute(text(insert_query), params)
-        await conn.commit()
-
-
 async def _batch_data(generator, batch_size):
     """
     Batches data from a generator.
@@ -169,10 +107,8 @@ async def _batch_data(generator, batch_size):
 async def _amigrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-    embeddings_service: Embeddings,
-    metadata_columns: Optional[List[str]] = [],
+    vector_store: AlloyDBVectorStore,
     destination_table: Optional[str] = None,
-    use_json_metadata: Optional[bool] = False,
     delete_pg_collection: Optional[bool] = False,
     insert_batch_size: int = 1000,
 ) -> None:
@@ -183,25 +119,14 @@ async def _amigrate_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
-        embeddings_service (Embeddings): The embeddings service used in the vectorstore.
-            Embeddings are directly copied from the PGVector database. This service is used only to initialise the vector store.
-        metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
-            Optional.
+        vector_store (AlloyDBVectorStore): The AlloyDB vectorstore object corresponding to the new collection table.
         destination_table (str): The name of the table to insert the data in.
             Optional. defaults to collection_name.
-        use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
-            Default: False. Optional.
         delete_pg_collection (bool): An option to delete the original data upon migration.
             Default: False. Optional.
         insert_batch_size (int): Number of rows to insert at once in the table.
             Default: 1000.
     """
-    if not use_json_metadata and not metadata_columns:
-        raise ValueError(
-            "Please specify the columns for the new table. "
-            "To store data in JSON format, set use_json_metadata=True when calling this method."
-        )
-
     if not destination_table:
         warnings.warn(
             f"Destination table not set. Destination table would default to {collection_name}. "
@@ -224,25 +149,13 @@ async def _amigrate_pgvector_collection(
     collection_data = _aextract_pgvector_collection(engine, collection_name)
     data_batches = _batch_data(collection_data, insert_batch_size)
 
-    if metadata_columns:
-        vector_store = await AsyncAlloyDBVectorStore.create(
-            engine=engine,
-            embedding_service=embeddings_service,
-            table_name=destination_table,
-            metadata_columns=metadata_columns,
-        )
-    else:
-        vector_store = await AsyncAlloyDBVectorStore.create(
-            engine=engine,
-            embedding_service=embeddings_service,
-            table_name=destination_table,
-        )
     tasks = [
         asyncio.create_task(
-            _ainsert_single_batch(
-                engine,
-                vector_store,
-                data=batch_data,
+            vector_store.aadd_embeddings(
+                texts=[data.document for data in batch_data],
+                embeddings=[data.embedding for data in batch_data],
+                metadatas=[data.cmetadata for data in batch_data],
+                ids=[data.id for data in batch_data],
             )
         )
         async for batch_data in data_batches
@@ -259,7 +172,11 @@ async def _amigrate_pgvector_collection(
         raise ValueError(f"Table: {destination_table} does not exist.")
 
     if collection_data_len["count"] != table_size["count"]:
-        raise ValueError("All data not yet migrated.")
+        raise ValueError(
+            "All data not yet migrated.\n"
+            f"Original row count: {collection_data_len['count']}\n"
+            f"Collection table, {destination_table} row count: {table_size['count']}"
+        )
     elif delete_pg_collection:
         # Delete PGVector data
         query = f"DELETE FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
@@ -322,10 +239,8 @@ async def alist_pgvector_collection_names(
 async def amigrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-    embeddings_service: Embeddings,
-    metadata_columns: Optional[List[str]] = [],
+    vector_store: AlloyDBVectorStore,
     destination_table: Optional[str] = None,
-    use_json_metadata: Optional[bool] = False,
     delete_pg_collection: Optional[bool] = False,
     insert_batch_size: int = 1000,
 ) -> None:
@@ -336,10 +251,7 @@ async def amigrate_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
-        embeddings_service (Embeddings): The embeddings service used in the vectorstore.
-            Embeddings are directly copied from the PGVector database. This service is used only to initialise the vector store.
-        metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
-            Optional.
+        vector_store (AlloyDBVectorStore): The AlloyDB vectorstore object corresponding to the new collection table.
         destination_table (str): The name of the table to insert the data in.
             Optional. defaults to collection_name.
         use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
@@ -353,10 +265,8 @@ async def amigrate_pgvector_collection(
         _amigrate_pgvector_collection(
             engine,
             collection_name,
-            embeddings_service,
-            metadata_columns,
+            vector_store,
             destination_table,
-            use_json_metadata,
             delete_pg_collection,
             insert_batch_size,
         )
@@ -394,10 +304,8 @@ def list_pgvector_collection_names(engine: AlloyDBEngine) -> List[str]:
 def migrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
-    embeddings_service: Embeddings,
-    metadata_columns: Optional[List[str]] = [],
+    vector_store: AlloyDBVectorStore,
     destination_table: Optional[str] = None,
-    use_json_metadata: Optional[bool] = False,
     delete_pg_collection: Optional[bool] = False,
     insert_batch_size: int = 1000,
 ) -> None:
@@ -408,14 +316,9 @@ def migrate_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
-        embeddings_service (Embeddings): The embeddings service used in the vectorstore.
-            Embeddings are directly copied from the PGVector database. This service is used only to initialise the vector store.
-        metadata_columns (List[str]): The metadata columns to be created to keep the data in a row-column format.
-            Optional.
+        vector_store (AlloyDBVectorStore): The AlloyDB vectorstore object corresponding to the new collection table.
         destination_table (str): The name of the table to insert the data in.
             Optional. defaults to collection_name.
-        use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
-            Default: False. Optional.
         delete_pg_collection (bool): An option to delete the original data upon migration.
             Default: False. Optional.
         insert_batch_size (int): Number of rows to insert at once in the table.
@@ -425,10 +328,8 @@ def migrate_pgvector_collection(
         _amigrate_pgvector_collection(
             engine,
             collection_name,
-            embeddings_service,
-            metadata_columns,
+            vector_store,
             destination_table,
-            use_json_metadata,
             delete_pg_collection,
             insert_batch_size,
         )
