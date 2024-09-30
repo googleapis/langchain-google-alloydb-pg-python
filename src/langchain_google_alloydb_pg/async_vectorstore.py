@@ -31,6 +31,7 @@ from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from .engine import AlloyDBEngine
+from .explain_mixin import ExplainMixin
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DEFAULT_INDEX_NAME_SUFFIX,
@@ -42,7 +43,7 @@ from .indexes import (
 )
 
 
-class AsyncAlloyDBVectorStore(VectorStore):
+class AsyncAlloyDBVectorStore(VectorStore, ExplainMixin):
     """Google AlloyDB Vector Store class"""
 
     __create_key = object()
@@ -535,19 +536,23 @@ class AsyncAlloyDBVectorStore(VectorStore):
         search_function = self.distance_strategy.search_function
 
         filter = f"WHERE {filter}" if filter else ""
-        stmt = f"SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.schema_name}\".\"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
+        stmt = f"{'EXPLAIN' if self._explain_enabled else ''} SELECT *, {search_function}({self.embedding_column}, '{embedding}') as distance FROM \"{self.schema_name}\".\"{self.table_name}\" {filter} ORDER BY {self.embedding_column} {operator} '{embedding}' LIMIT {k};"
         if self.index_query_options:
             query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
                 await conn.execute(text(query_options_stmt))
                 result = await conn.execute(text(stmt))
+                print("!!!!", stmt)
                 result_map = result.mappings()
                 results = result_map.fetchall()
+                print(">>>>", results)
         else:
             async with self.engine.connect() as conn:
                 result = await conn.execute(text(stmt))
+                print("!!!!@@@@", stmt)
                 result_map = result.mappings()
                 results = result_map.fetchall()
+                print(">>>>", results)
         return results
 
     async def asimilarity_search(

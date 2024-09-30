@@ -14,6 +14,7 @@
 
 from .chat_message_history import AlloyDBChatMessageHistory
 from .engine import AlloyDBEngine, Column
+from .explain_mixin import ExplainMixin
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
@@ -25,5 +26,6 @@ __all__ = [
     "AlloyDBLoader",
     "AlloyDBDocumentSaver",
     "AlloyDBChatMessageHistory",
+    "ExplainMixin",
     "__version__",
 ]
