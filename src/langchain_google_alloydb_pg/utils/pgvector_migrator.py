@@ -13,7 +13,7 @@
 # limitations under the License.
 import asyncio
 import warnings
-from typing import AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
+from typing import Any, AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
 
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError
@@ -125,18 +125,26 @@ async def _amigrate_pgvector_collection(
     data_batches = _aextract_pgvector_collection(
         engine, collection_name, batch_size=insert_batch_size
     )
-    tasks = [
-        asyncio.create_task(
-            vector_store.aadd_embeddings(
-                texts=[data.document for data in batch_data],
-                embeddings=[data.embedding for data in batch_data],
-                metadatas=[data.cmetadata for data in batch_data],
-                ids=[data.id for data in batch_data],
+
+    pending: set[Any] = set()
+    max_concurrency = 5
+    async for batch_data in data_batches:
+        if len(pending) == max_concurrency:
+            _, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
             )
-        )
-        async for batch_data in data_batches
-    ]
-    await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+            pending.add(
+                asyncio.ensure_future(
+                    vector_store.aadd_embeddings(
+                        texts=[data.document for data in batch_data],
+                        embeddings=[data.embedding for data in batch_data],
+                        metadatas=[data.cmetadata for data in batch_data],
+                        ids=[data.id for data in batch_data],
+                    )
+                )
+            )
+    await asyncio.wait(pending)
 
     # Validate data migration
     query = f"SELECT COUNT(*) FROM {destination_table}"
