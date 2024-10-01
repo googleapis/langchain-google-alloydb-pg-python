@@ -4,7 +4,7 @@ This guide shows how to migrate from the [`PGVector`](https://github.com/langcha
 
 ## Why migrate?
 
-The PGVector interface uses a two-table schema to store vector data and collection metadata.  This approach can be less efficient and harder to manage compared to the single-table schema used by the AlloyDB interface.
+This guide explains how to migrate your vector data from a PGVector-style database (two tables) to an AlloyDB-style database (one table per collection) for improved performance and manageability.
 
 Migrating to the AlloyDB interface provides the following benefits:
 
@@ -36,9 +36,13 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
 
 > **_NOTE:_**  The langchain-core library is installed to use the Fake embeddings service. To use a different embedding service, you'll need to install the appropriate library for your chosen provider. Choose embeddings services from [LangChain's Embedding models](https://python.langchain.com/v0.2/docs/integrations/text_embedding/).
 
-## How to migrate
+## Migration process
 
-1. Create an AlloyDB engine.
+While you can use the AlloyDB interface with your existing PGVector database, we **strongly recommend** migrating your data to the AlloyDB-style schema to take full advantage of the performance benefits.
+
+### (Recommended) Data migration
+
+1. **Create an AlloyDB engine.**
 
     ```python
     from langchain_google_alloydb_pg import AlloyDBEngine
@@ -57,10 +61,11 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
 
     > **_NOTE:_** All async methods have corresponding sync methods.
 
-2. Create a new table to migrate existing data.
+2. **Create a new table to migrate existing data.**
 
     ```python
-    # Vertex AI embeddings uses a vector size of 768. Change this according to your embeddings service.
+    # Vertex AI embeddings uses a vector size of 768. 
+    # Adjust this according to your embeddings service.
     VECTOR_SIZE = 768
 
     await engine.ainit_vectorstore_table(
@@ -69,12 +74,12 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
+    **(Optional) Customize your table.**
+
     When creating your vectorstore table, you have the flexibility to define custom metadata and ID columns. This is particularly useful for:
 
     - **Filtering**: Metadata columns allow you to easily filter your data within the vectorstore. For example, you might store the document source, date, or author as metadata for efficient retrieval.
     - **Non-UUID Identifiers**: By default, the id_column uses UUIDs. If you need to use a different type of ID (e.g., an integer or string), you can define a custom id_column.
-
-    Here's how to customize your table:
 
     ```python
     metadata_columns = [
@@ -89,11 +94,11 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-    You can refer to the [API Reference](https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest/langchain_google_alloydb_pg.engine.AlloyDBEngine#langchain_google_alloydb_pg_engine_AlloyDBEngine_ainit_vectorstore_table) for any vector store customisations.
+    You can refer to the [API Reference](https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest/langchain_google_alloydb_pg.engine.AlloyDBEngine#langchain_google_alloydb_pg_engine_AlloyDBEngine_ainit_vectorstore_table) for more customization options.
 
-3. Create a vector store object to interact with the new data.
+3. **Create a vector store object to interact with the new data.**
 
-    > **_NOTE:_** The Fake Embeddings embedding service is only used to initialise a vector store object, not to generate any embeddings. The embeddings are directly copied from the PGVector database.
+    > **_NOTE:_** The `FakeEmbeddings` embedding service is only used to initialise a vector store object, not to generate any embeddings. The embeddings are copied directly from the PGVector database.
 
     ```python
     from langchain_google_alloydb_pg import AlloyDBVectorStore
@@ -121,7 +126,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-4. Migrate data to the new table.
+4. **Migrate the data to the new table.**
 
     ```python
     from langchain_google_alloydb_pg.utils.pgvector_migrator import amigrate_pgvector_collection
@@ -146,3 +151,61 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
 > all_collection_names = await alist_pgvector_collection_names(engine)
 > print(all_collection_names)
 > ```
+
+### (Not Recommended) Use AlloyDB interface on PGVector databases
+
+If you choose not to migrate your data, you can still use the AlloyDB interface with your existing PGVector database. However, you won't benefit from the performance improvements of the AlloyDB-style schema.
+
+1. **Create an AlloyDB engine.**
+
+    ```python
+    from langchain_google_alloydb_pg import AlloyDBEngine
+
+    # Replace these variable values
+    engine = await AlloyDBEngine.afrom_instance(
+        project_id="my-project-id",
+        instance="my-instance-name",
+        region="us-central1",
+        cluster="my-primary",
+        database="test_db",
+        user="user",
+        password="password",
+    )
+    ```
+
+    > **_NOTE:_** All async methods have corresponding sync methods.
+
+2. **Create a vector store object to interact with the data.**
+
+    Use the embeddings service used by your database. See [langchain docs](https://python.langchain.com/docs/integrations/text_embedding/) for reference.
+
+    ```python
+    from langchain_google_alloydb_pg import AlloyDBVectorStore
+    from langchain_core.embeddings import FakeEmbeddings
+
+    vector_store = AlloyDBVectorStore.create_sync(
+        engine=engine,
+        table_name="langchain_pg_embedding",
+        embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
+        content_column="document",
+        metadata_json_column="cmetadata",
+        metadata_columns=["collection_id"],
+        id_column="id",
+    )
+    ```
+
+3. **Perform similarity search.**
+
+    Filter by collection id:
+
+    ```python
+    vector_store.similarity_search("query", k=5, filter=f"collection_id='{uuid}'")
+    ```
+
+    Filter by collection id and metadata:
+
+    ```python
+    vector_store.similarity_search(
+        "query", k=5, filter=f"collection_id='{uuid}' and cmetadata->>'col_name' = 'value'"
+    )
+    ```
