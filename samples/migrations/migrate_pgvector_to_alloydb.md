@@ -52,9 +52,9 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-    > **_NOTE:_** All async methods have corresponding sync Methods.
+    > **_NOTE:_** All async methods have corresponding sync methods.
 
-2. Create a new table to migrate existing data
+2. Create a new table to migrate existing data.
 
     ```python
     # Vertex AI embeddings uses a vector size of 768. Change this according to your embeddings service.
@@ -81,7 +81,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-    You can refer to the [docs](https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest/langchain_google_alloydb_pg.alloydb_vectorstore.AlloyDBVectorStore#langchain_google_alloydb_pg_alloydb_vectorstore_AlloyDBVectorStore_create) for any vector store customisations.
+    You can refer to the [API reference](https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest/langchain_google_alloydb_pg.engine.AlloyDBEngine#langchain_google_alloydb_pg_engine_AlloyDBEngine_ainit_vectorstore_table) for additional vector store customisations.
 
 3. Create a vector store object to interact with the new data.
 
@@ -112,7 +112,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
 
     > **_NOTE:_** The Fake Embeddings embedding service is only used to initialise a vector store object, not to generate any embeddings. The embeddings are directly copied from the PGVector database.
 
-4. Migrate data to the new table
+4. Migrate data to the new table.
 
     ```python
     from langchain_google_alloydb_pg.utils.pgvector_migrator import amigrate_pgvector_collection
@@ -126,7 +126,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-> **TIP:** If you would like to migrate multiple collections, you can use the alist_pgvector_collection_names method to get the names of all collections, allowing you to iterate through them.
+> **TIP:** If you would like to migrate multiple collections, you can use the `alist_pgvector_collection_names` method to get the names of all collections, allowing you to iterate through them.
 >
 > ```python
 > from langchain_google_alloydb_pg.utils.pgvector_migrator import alist_pgvector_collection_names
