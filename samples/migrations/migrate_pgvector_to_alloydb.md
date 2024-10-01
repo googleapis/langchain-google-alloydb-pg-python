@@ -1,6 +1,6 @@
 # Migrate from PGVector to AlloyDB interface
 
-This guide shows how to migrate from the [PGVector](https://github.com/langchain-ai/langchain-postgres) vector store class to the [`AlloyDBVectorStore`](https://github.com/googleapis/langchain-google-alloydb-pg-python) class.
+This guide shows how to migrate from the [`PGVector`](https://github.com/langchain-ai/langchain-postgres) vector store class to the [`AlloyDBVectorStore`](https://github.com/googleapis/langchain-google-alloydb-pg-python) class.
 
 ## Why migrate?
 
@@ -10,10 +10,11 @@ Migrating to the AlloyDB interface provides the following benefits:
 
 - Simplified data management: A single table contains data corresponding to a single collection, making it easier to query, update, and maintain.
 - Improved performance: The single-table schema can lead to faster query execution, especially for large collections.
-- Enhanced security: Leverage AlloyDB's robust security features to protect your vector data.
+- Enhanced security: Easily and securely connect to AlloyDB utilizing IAM for authorization and database authentication without needing to manage SSL certificates, configure firewall rules, or enable authorized networks.
 - Better integration with AlloyDB: Take advantage of AlloyDB's advanced indexing and scalability capabilities.
 
 ## Before you begin
+
 There needs to be an AlloyDB database set up for the migration process.
 
 How to set up AlloyDB:
@@ -73,7 +74,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
         Column(f"col_1_{collection_name}", "VARCHAR"),
     ]
     await engine.ainit_vectorstore_table(
-        table_name=collection_name,
+        table_name="destination_table",
         vector_size=VECTOR_SIZE,
         metadata_columns=metadata_columns,
         id_column=Column("langchain_id", "VARCHAR"),
@@ -118,7 +119,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
 
     await amigrate_pgvector_collection(
         engine,
-        collection_name="collection_name",
+        collection_name="destination_table",
         vector_store=vector_store,
         # This deletes data from the original table upon migration. You can choose to turn it off.
         delete_pg_collection=True,
