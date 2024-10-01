@@ -15,6 +15,7 @@ Migrating to the AlloyDB interface provides the following benefits:
 - **Enhanced security**: Easily and securely connect to AlloyDB utilizing IAM for authorization and database authentication without needing to manage SSL certificates, configure firewall rules, or enable authorized networks.
 - **Better integration with AlloyDB**: Take advantage of AlloyDB's advanced indexing and scalability capabilities.
 - **Clear separation**: AlloyDB classes clearly separate table and extension creation, allowing for distinct permissions and streamlined workflows.
+- **Simplified and Secure Connections:** Connect to AlloyDB effortlessly using the instance name instead of complex connection strings. The AlloyDB interface creates a secure connection pool that can be easily shared across your application using the `engine` object.
 
 ## Before you begin
 
