@@ -1,4 +1,4 @@
-# Migrate from PGVector to AlloyDB interface
+# Migrate a `PGVector` vector store to `AlloyDBVectorStore`
 
 This guide shows the user how to migrate from the [PGVector](https://api.python.langchain.com/en/latest/vectorstores/langchain_postgres.vectorstores.PGVector.html#langchain_postgres.vectorstores.PGVector) to the [AlloyDB interface](https://github.com/googleapis/langchain-google-alloydb-pg-python/blob/main/src/langchain_google_alloydb_pg/vectorstore.py) for AlloyDB Tables.
 
