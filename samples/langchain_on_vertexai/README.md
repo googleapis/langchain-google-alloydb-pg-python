@@ -10,7 +10,7 @@ Use the following templates to deploy Retrieval Augmented Generation (RAG) appli
 Description | Sample
 ----------- | ------
 Deploy a pre-built `LangchainAgent` with custom RAG tool | [prebuilt_langchain_agent_template.py](prebuilt_langchain_agent_template.py)
-Build and deploy a question-answering RAG application | [retriever_chain_template.py](retriever_chai_template.py)
+Build and deploy a question-answering RAG application | [retriever_chain_template.py](retriever_chain_template.py)
 Build and deploy an Agent with RAG tool and Memory | [retriever_agent_with_history_template.py](retriever_agent_with_history_template.py)
 
 ## Before you begin
