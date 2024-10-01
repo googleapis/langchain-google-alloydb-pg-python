@@ -8,13 +8,13 @@ The PGVector interface uses a two-table schema to store vector data and collecti
 
 Migrating to the AlloyDB interface provides the following benefits:
 
-- Simplified data management: A single table contains data corresponding to a single collection, making it easier to query, update, and maintain.
-- Improved metadata handling: Moving the metadata to a column format provides better performance in comparison to keeping all metadata in a json.
-- Schema flexibility: The interface allows users to add tables into any database schema.
-- Improved performance: The single-table schema can lead to faster query execution, especially for large collections.
-- Enhanced security: Easily and securely connect to AlloyDB utilizing IAM for authorization and database authentication without needing to manage SSL certificates, configure firewall rules, or enable authorized networks.
-- Better integration with AlloyDB: Take advantage of AlloyDB's advanced indexing and scalability capabilities.
-- Clear separation: 
+- **Simplified management**: A single table contains data corresponding to a single collection, making it easier to query, update, and maintain.
+- **Improved metadata handling**: AlloyDB stores metadata in columns instead of JSON, resulting in significant performance improvements.
+- **Schema flexibility**: The interface allows users to add tables into any database schema.
+- **Improved performance**: The single-table schema can lead to faster query execution, especially for large collections.
+- **Enhanced security**: Easily and securely connect to AlloyDB utilizing IAM for authorization and database authentication without needing to manage SSL certificates, configure firewall rules, or enable authorized networks.
+- **Better integration with AlloyDB**: Take advantage of AlloyDB's advanced indexing and scalability capabilities.
+- **Clear separation**: AlloyDB classes clearly separate table and extension creation, allowing for distinct permissions and streamlined workflows.
 
 ## Before you begin
 
