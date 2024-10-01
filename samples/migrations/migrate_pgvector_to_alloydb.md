@@ -1,6 +1,6 @@
 # Migrate a `PGVector` vector store to `AlloyDBVectorStore`
 
-This guide shows the user how to migrate from the [PGVector](https://api.python.langchain.com/en/latest/vectorstores/langchain_postgres.vectorstores.PGVector.html#langchain_postgres.vectorstores.PGVector) to the [AlloyDB interface](https://github.com/googleapis/langchain-google-alloydb-pg-python/blob/main/src/langchain_google_alloydb_pg/vectorstore.py) for AlloyDB Tables.
+This guide shows how to migrate from the [`PGVector`](https://github.com/langchain-ai/langchain-postgres) vector store class to the [`AlloyDBVectorStore`](https://github.com/googleapis/langchain-google-alloydb-pg-python) class.
 
 ## Why migrate?
 
@@ -9,11 +9,14 @@ The PGVector interface uses a two-table schema to store vector data and collecti
 Migrating to the AlloyDB interface provides the following benefits:
 
 - Simplified data management: A single table contains data corresponding to a single collection, making it easier to query, update, and maintain.
+- Improved metadata handling: Moving the metadata to a column format provides better performance in comparison to keeping all metadata in a json.
+- Schema flexibility: The interface allows users to add tables into any database schema.
 - Improved performance: The single-table schema can lead to faster query execution, especially for large collections.
-- Enhanced security: Leverage AlloyDB's robust security features to protect your vector data.
+- Enhanced security: Easily and securely connect to AlloyDB utilizing IAM for authorization and database authentication without needing to manage SSL certificates, configure firewall rules, or enable authorized networks.
 - Better integration with AlloyDB: Take advantage of AlloyDB's advanced indexing and scalability capabilities.
+- Clear separation: 
 
-## Prerequisites
+## Before you begin
 
 There needs to be an AlloyDB database set up for the migration process.
 
@@ -52,9 +55,9 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-    > **_NOTE:_** All async methods have corresponding Sync Methods.
+    > **_NOTE:_** All async methods have corresponding sync methods.
 
-2. Create a new table to migrate existing data
+2. Create a new table to migrate existing data.
 
     ```python
     # Vertex AI embeddings uses a vector size of 768. Change this according to your embeddings service.
@@ -66,7 +69,12 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-    You can customise the table by using custom metadata or id columns as follows:
+    When creating your vectorstore table, you have the flexibility to define custom metadata and ID columns. This is particularly useful for:
+
+    - **Filtering**: Metadata columns allow you to easily filter your data within the vectorstore. For example, you might store the document source, date, or author as metadata for efficient retrieval.
+    - **Non-UUID Identifiers**: By default, the id_column uses UUIDs. If you need to use a different type of ID (e.g., an integer or string), you can define a custom id_column.
+
+    Here's how to customize your table:
 
     ```python
     metadata_columns = [
@@ -74,16 +82,18 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
         Column(f"col_1_{collection_name}", "VARCHAR"),
     ]
     await engine.ainit_vectorstore_table(
-        table_name=collection_name,
+        table_name="destination_table",
         vector_size=VECTOR_SIZE,
         metadata_columns=metadata_columns,
         id_column=Column("langchain_id", "VARCHAR"),
     )
     ```
 
-    You can refer to the [docs](https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest/langchain_google_alloydb_pg.alloydb_vectorstore.AlloyDBVectorStore#langchain_google_alloydb_pg_alloydb_vectorstore_AlloyDBVectorStore_create) for any vector store customisations.
+    You can refer to the [API Reference](https://cloud.google.com/python/docs/reference/langchain-google-alloydb-pg/latest/langchain_google_alloydb_pg.engine.AlloyDBEngine#langchain_google_alloydb_pg_engine_AlloyDBEngine_ainit_vectorstore_table) for any vector store customisations.
 
 3. Create a vector store object to interact with the new data.
+
+    > **_NOTE:_** The Fake Embeddings embedding service is only used to initialise a vector store object, not to generate any embeddings. The embeddings are directly copied from the PGVector database.
 
     ```python
     from langchain_google_alloydb_pg import AlloyDBVectorStore
@@ -96,7 +106,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
     )
     ```
 
-    If you have any metadata columns, add them to the vector store as follows:
+    If you have any customisations on the metadata or the id columns, add them to the vector store as follows:
 
     ```python
     from langchain_google_alloydb_pg import AlloyDBVectorStore
@@ -107,12 +117,11 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
         embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
         table_name="destination_table",
         metadata_columns=[col.name for col in metadata_columns],
+        id_column="langchain_id",
     )
     ```
 
-    > **_NOTE:_** The Fake Embeddings embedding service is only used to initialise a vector store object, not to generate any embeddings. The embeddings are directly copied from the PGVector database.
-
-4. Migrate data to the new table
+4. Migrate data to the new table.
 
     ```python
     from langchain_google_alloydb_pg.utils.pgvector_migrator import amigrate_pgvector_collection
@@ -129,7 +138,7 @@ pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
 
     The data will only be deleted from the original table once all of it has been successfully copied to the destination table.
 
-> **TIP:** If you would like to migrate multiple collections, you can use the alist_pgvector_collection_names method to get the names of all collections, allowing you to iterate through them.
+> **TIP:** If you would like to migrate multiple collections, you can use the `alist_pgvector_collection_names` method to get the names of all collections, allowing you to iterate through them.
 >
 > ```python
 > from langchain_google_alloydb_pg.utils.pgvector_migrator import alist_pgvector_collection_names
