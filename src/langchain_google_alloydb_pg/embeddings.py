@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Remove below import when minimum supported Python version is 3.10
-from __future__ import annotations
-
 import json
 from typing import List
 
@@ -28,9 +25,7 @@ from .model_manager import AlloyDBModelManager
 class AlloyDBEmbeddings(Embeddings):
     """Google AlloyDB Embeddings available via Model Endpoint Management."""
 
-    def __init__(
-        self, engine: AlloyDBEngine, model_id: str = "textembedding-gecko@001"
-    ):
+    def __init__(self, engine: AlloyDBEngine, model_id: str):
         """AlloyDBEmbeddings constructor.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.

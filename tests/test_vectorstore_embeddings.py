@@ -31,6 +31,7 @@ from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptio
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_EMBEDDING_MODEL = "textembedding-gecko@001"
 VECTOR_SIZE = 768
 
 
@@ -105,7 +106,7 @@ class TestVectorStoreEmbeddings:
 
     @pytest.fixture(scope="class")
     def embeddings_service(self, engine):
-        return AlloyDBEmbeddings(engine)
+        return AlloyDBEmbeddings(engine, DEFAULT_EMBEDDING_MODEL)
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine, embeddings_service):
@@ -298,7 +299,7 @@ class TestVectorStoreEmbeddingsSync:
 
     @pytest_asyncio.fixture(scope="class")
     def embeddings_service(self, engine_sync):
-        return AlloyDBEmbeddings(engine_sync)
+        return AlloyDBEmbeddings(engine_sync, DEFAULT_EMBEDDING_MODEL)
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom(self, engine_sync, embeddings_service):
