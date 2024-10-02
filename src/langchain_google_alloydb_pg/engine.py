@@ -33,7 +33,7 @@ import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrategy
-from sqlalchemy import MetaData, Table, text
+from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
