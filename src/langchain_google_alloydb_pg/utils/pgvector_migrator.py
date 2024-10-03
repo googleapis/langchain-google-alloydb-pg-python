@@ -16,7 +16,7 @@ import warnings
 from typing import Any, AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
 
 from sqlalchemy import RowMapping, text
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
@@ -40,10 +40,10 @@ async def _aget_collection_uuid(
         The uuid corresponding to the collection.
     """
     query = (
-        f"SELECT name, uuid FROM {COLLECTIONS_TABLE} WHERE name = '{collection_name}'"
+        f"SELECT name, uuid FROM {COLLECTIONS_TABLE} WHERE name = :collection_name"
     )
     async with engine._pool.connect() as conn:
-        result = await conn.execute(text(query))
+        result = await conn.execute(text(query), parameters={"collection_name": collection_name})
         result_map = result.mappings()
         result_fetch = result_map.fetchone()
     if not result_fetch:
@@ -66,18 +66,26 @@ async def _aextract_pgvector_collection(
     Yields:
         The data present in the collection.
     """
-    uuid = await _aget_collection_uuid(engine, collection_name)
     try:
-        query = f"SELECT * FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{uuid}'"
+        uuid = await _aget_collection_uuid(engine, collection_name)
+    except ValueError as e:
+        raise ValueError(f"Collection, {collection_name} does not exist.")
+
+    try:
+        query = f"SELECT * FROM {EMBEDDINGS_TABLE} WHERE collection_id = :id"
         async with engine._pool.connect() as conn:
-            result_proxy = await conn.execute(text(query))
+            result_proxy = await conn.execute(text(query), parameters={"id": uuid})
             while True:
                 rows = result_proxy.fetchmany(size=batch_size)
                 if not rows:
                     break
                 yield [row._mapping for row in rows]
-    except:
-        raise ValueError(f"Collection, {collection_name} does not exist.")
+    except SQLAlchemyError as e:
+        raise ProgrammingError(
+            statement=f"Failed to extract data from collection '{collection_name}': {e}",
+            params={"id": uuid},
+            orig=e,
+        ) from e
 
 
 async def _amigrate_pgvector_collection(
@@ -186,7 +194,9 @@ async def _alist_pgvector_collection_names(
             all_rows = result_map.fetchall()
         return [row["name"] for row in all_rows]
     except ProgrammingError as e:
-        raise ValueError("Please provide the correct collection table name: " + str(e)) from e
+        raise ValueError(
+            "Please provide the correct collection table name: " + str(e)
+        ) from e
 
 
 async def aextract_pgvector_collection(
