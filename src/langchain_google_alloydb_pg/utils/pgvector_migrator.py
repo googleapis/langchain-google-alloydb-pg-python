@@ -39,11 +39,11 @@ async def _aget_collection_uuid(
     Returns:
         The uuid corresponding to the collection.
     """
-    query = (
-        f"SELECT name, uuid FROM {COLLECTIONS_TABLE} WHERE name = :collection_name"
-    )
+    query = f"SELECT name, uuid FROM {COLLECTIONS_TABLE} WHERE name = :collection_name"
     async with engine._pool.connect() as conn:
-        result = await conn.execute(text(query), parameters={"collection_name": collection_name})
+        result = await conn.execute(
+            text(query), parameters={"collection_name": collection_name}
+        )
         result_map = result.mappings()
         result_fetch = result_map.fetchone()
     if not result_fetch:
