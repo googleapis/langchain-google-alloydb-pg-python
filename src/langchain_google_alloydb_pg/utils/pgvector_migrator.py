@@ -62,6 +62,8 @@ async def _aextract_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The name of the collection to get the data for.
+        batch_size (int): The batch size for collection extraction.
+            Default: 1000. Optional.
 
     Yields:
         The data present in the collection.
@@ -86,6 +88,30 @@ async def _aextract_pgvector_collection(
             params={"id": uuid},
             orig=e,
         ) from e
+
+
+async def _concurrent_batch_insert(
+    data_batches: AsyncIterator[Sequence[RowMapping]],
+    vector_store: AlloyDBVectorStore,
+    max_concurrency: int = 100,
+) -> None:
+    pending: set[Any] = set()
+    async for batch_data in data_batches:
+        pending.add(
+            asyncio.ensure_future(
+                vector_store.aadd_embeddings(
+                    texts=[data.document for data in batch_data],
+                    embeddings=[data.embedding for data in batch_data],
+                    metadatas=[data.cmetadata for data in batch_data],
+                    ids=[data.id for data in batch_data],
+                )
+            )
+        )
+        if len(pending) >= max_concurrency:
+            _, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
+            )
+    await asyncio.wait(pending)
 
 
 async def _amigrate_pgvector_collection(
@@ -117,6 +143,9 @@ async def _amigrate_pgvector_collection(
             "Please make sure that there is an existing table with the same name."
         )
         destination_table = collection_name
+    print(
+        "Please make sure that the vector store and the destination table point to the same table."
+    )
 
     # Get row count in PGVector collection
     uuid = await _aget_collection_uuid(engine, collection_name)
@@ -135,25 +164,7 @@ async def _amigrate_pgvector_collection(
     data_batches = _aextract_pgvector_collection(
         engine, collection_name, batch_size=insert_batch_size
     )
-
-    pending: set[Any] = set()
-    max_concurrency = 5
-    async for batch_data in data_batches:
-        pending.add(
-            asyncio.ensure_future(
-                vector_store.aadd_embeddings(
-                    texts=[data.document for data in batch_data],
-                    embeddings=[data.embedding for data in batch_data],
-                    metadatas=[data.cmetadata for data in batch_data],
-                    ids=[data.id for data in batch_data],
-                )
-            )
-        )
-        if len(pending) >= max_concurrency:
-            _, pending = await asyncio.wait(
-                pending, return_when=asyncio.FIRST_COMPLETED
-            )
-    await asyncio.wait(pending)
+    await _concurrent_batch_insert(data_batches, vector_store, max_concurrency=100)
 
     # Validate data migration
     query = f"SELECT COUNT(*) FROM {destination_table}"
@@ -206,6 +217,7 @@ async def _alist_pgvector_collection_names(
 async def aextract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
+    batch_size: int = 1000,
 ) -> AsyncIterator[Sequence[RowMapping]]:
     """
     Extract all data belonging to a PGVector collection.
@@ -213,11 +225,13 @@ async def aextract_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The name of the collection to get the data for.
+        batch_size (int): The batch size for collection extraction.
+            Default: 1000. Optional.
 
     Yields:
         The data present in the collection.
     """
-    iterator = _aextract_pgvector_collection(engine, collection_name)
+    iterator = _aextract_pgvector_collection(engine, collection_name, batch_size)
     while True:
         try:
             result = await engine._run_as_async(iterator.__anext__())
@@ -273,6 +287,7 @@ async def amigrate_pgvector_collection(
 def extract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
+    batch_size: int = 1000,
 ) -> Iterator[Sequence[RowMapping]]:
     """
     Extract all data belonging to a PGVector collection.
@@ -280,11 +295,13 @@ def extract_pgvector_collection(
     Args:
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The name of the collection to get the data for.
+        batch_size (int): The batch size for collection extraction.
+            Default: 1000. Optional.
 
     Yields:
         The data present in the collection.
     """
-    iterator = _aextract_pgvector_collection(engine, collection_name)
+    iterator = _aextract_pgvector_collection(engine, collection_name, batch_size)
     while True:
         try:
             result = engine._run_as_sync(iterator.__anext__())
