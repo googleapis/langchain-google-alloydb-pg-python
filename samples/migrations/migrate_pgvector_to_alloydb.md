@@ -137,6 +137,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
         # Set collection name here
         collection_name="collection_name",
         vector_store=vector_store,
+        destination_table="destination_table",
         # This deletes data from the original table upon migration. You can choose to turn it off.
         delete_pg_collection=True,
     )
