@@ -145,6 +145,7 @@ class TestPgvectorengine:
         yield engine
         await aexecute(engine, f"DROP TABLE {COLLECTIONS_TABLE}")
         await aexecute(engine, f"DROP TABLE {EMBEDDINGS_TABLE}")
+        await engine.close()
 
     @pytest.fixture(scope="module")
     def sample_embeddings(self) -> List[float]:
