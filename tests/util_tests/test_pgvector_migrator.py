@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import os
 import uuid
-from typing import List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
+from unittest import mock
 
 import pytest
 import pytest_asyncio
@@ -24,6 +26,7 @@ from sqlalchemy import RowMapping, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.utils.pgvector_migrator import (
+    _concurrent_batch_insert,
     aextract_pgvector_collection,
     alist_pgvector_collection_names,
     amigrate_pgvector_collection,
@@ -224,6 +227,44 @@ class TestPgvectorengine:
     async def _clean_tables(self, engine):
         await aexecute(engine, f"TRUNCATE TABLE {EMBEDDINGS_TABLE}")
         await aexecute(engine, f"TRUNCATE TABLE {COLLECTIONS_TABLE}")
+
+    @pytest.mark.asyncio
+    async def test_concurrent_batch_insert_concurrency(self):
+        max_concurrency = 5
+        data_batches = mock.AsyncMock()
+        data_batches.__aiter__.return_value = [
+            [
+                mock.Mock(
+                    document=f"doc{i}",
+                    embedding=[i],
+                    cmetadata={"meta": f"data{i}"},
+                    id=f"id{i}",
+                )
+            ]
+            for i in range(10)  # 10 batches
+        ]
+        vector_store = mock.AsyncMock()
+
+        async def delayed_aadd_embeddings(*args, **kwargs):
+            await asyncio.sleep(0.1)  # Simulate a small delay
+
+        vector_store.aadd_embeddings.side_effect = delayed_aadd_embeddings
+
+        concurrent_tasks = set()
+
+        async def track_concurrency(*args, **kwargs):
+            concurrent_tasks.add(asyncio.current_task())
+            assert len(concurrent_tasks) <= max_concurrency
+            try:
+                return await delayed_aadd_embeddings(*args, **kwargs)
+            finally:
+                concurrent_tasks.remove(asyncio.current_task())
+
+        vector_store.aadd_embeddings.side_effect = track_concurrency
+
+        await _concurrent_batch_insert(
+            data_batches, vector_store, max_concurrency=max_concurrency
+        )
 
     #### Async tests
     async def test_aextract_pgvector_collection_exists(self, engine, sample_embeddings):

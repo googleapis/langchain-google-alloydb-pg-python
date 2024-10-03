@@ -111,7 +111,8 @@ async def _concurrent_batch_insert(
             _, pending = await asyncio.wait(
                 pending, return_when=asyncio.FIRST_COMPLETED
             )
-    await asyncio.wait(pending)
+    if pending:
+        await asyncio.wait(pending)
 
 
 async def _amigrate_pgvector_collection(
