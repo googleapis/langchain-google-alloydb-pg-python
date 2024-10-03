@@ -46,7 +46,7 @@ async def _aget_collection_uuid(
         )
         result_map = result.mappings()
         result_fetch = result_map.fetchone()
-    if not result_fetch:
+    if result_fetch is None:
         raise ValueError(f"Collection, {collection_name} not found.")
     return result_fetch.uuid
 
