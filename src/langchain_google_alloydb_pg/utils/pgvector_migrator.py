@@ -129,20 +129,19 @@ async def _amigrate_pgvector_collection(
     pending: set[Any] = set()
     max_concurrency = 5
     async for batch_data in data_batches:
-        if len(pending) == max_concurrency:
+        pending.add(
+            asyncio.ensure_future(
+                vector_store.aadd_embeddings(
+                    texts=[data.document for data in batch_data],
+                    embeddings=[data.embedding for data in batch_data],
+                    metadatas=[data.cmetadata for data in batch_data],
+                    ids=[data.id for data in batch_data],
+                )
+            )
+        )
+        if len(pending) >= max_concurrency:
             _, pending = await asyncio.wait(
                 pending, return_when=asyncio.FIRST_COMPLETED
-            )
-        else:
-            pending.add(
-                asyncio.ensure_future(
-                    vector_store.aadd_embeddings(
-                        texts=[data.document for data in batch_data],
-                        embeddings=[data.embedding for data in batch_data],
-                        metadatas=[data.cmetadata for data in batch_data],
-                        ids=[data.id for data in batch_data],
-                    )
-                )
             )
     await asyncio.wait(pending)
 
