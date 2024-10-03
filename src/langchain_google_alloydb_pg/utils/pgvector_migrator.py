@@ -69,19 +69,18 @@ async def _aextract_pgvector_collection(
         The data present in the collection.
     """
     try:
-        uuid = await _aget_collection_uuid(engine, collection_name)
-    except ValueError as e:
-        raise ValueError(f"Collection, {collection_name} does not exist.")
-
-    try:
+        uuid_task = asyncio.create_task(_aget_collection_uuid(engine, collection_name))
         query = f"SELECT * FROM {EMBEDDINGS_TABLE} WHERE collection_id = :id"
         async with engine._pool.connect() as conn:
+            uuid = await uuid_task
             result_proxy = await conn.execute(text(query), parameters={"id": uuid})
             while True:
                 rows = result_proxy.fetchmany(size=batch_size)
                 if not rows:
                     break
                 yield [row._mapping for row in rows]
+    except ValueError as e:
+        raise ValueError(f"Collection, {collection_name} does not exist.")
     except SQLAlchemyError as e:
         raise ProgrammingError(
             statement=f"Failed to extract data from collection '{collection_name}': {e}",
@@ -149,11 +148,12 @@ async def _amigrate_pgvector_collection(
     )
 
     # Get row count in PGVector collection
-    uuid = await _aget_collection_uuid(engine, collection_name)
+    uuid_task = asyncio.create_task(_aget_collection_uuid(engine, collection_name))
     query = (
         f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id=:collection_id"
     )
     async with engine._pool.connect() as conn:
+        uuid = await uuid_task
         result = await conn.execute(text(query), parameters={"collection_id": uuid})
         result_map = result.mappings()
         collection_data_len = result_map.fetchone()
