@@ -120,9 +120,11 @@ async def _amigrate_pgvector_collection(
 
     # Get row count in PGVector collection
     uuid = await _aget_collection_uuid(engine, collection_name)
-    query = f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
+    query = (
+        f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id=:collection_id"
+    )
     async with engine._pool.connect() as conn:
-        result = await conn.execute(text(query))
+        result = await conn.execute(text(query), parameters={"collection_id": uuid})
         result_map = result.mappings()
         collection_data_len = result_map.fetchone()
     if collection_data_len is None:
@@ -170,14 +172,16 @@ async def _amigrate_pgvector_collection(
         )
     elif delete_pg_collection:
         # Delete PGVector data
-        query = f"DELETE FROM {EMBEDDINGS_TABLE} WHERE collection_id='{uuid}'"
+        query = f"DELETE FROM {EMBEDDINGS_TABLE} WHERE collection_id=:collection_id"
         async with engine._pool.connect() as conn:
-            await conn.execute(text(query))
+            await conn.execute(text(query), parameters={"collection_id": uuid})
             await conn.commit()
 
-        query = f"DELETE FROM {COLLECTIONS_TABLE} WHERE name='{collection_name}'"
+        query = f"DELETE FROM {COLLECTIONS_TABLE} WHERE name=:collection_name"
         async with engine._pool.connect() as conn:
-            await conn.execute(text(query))
+            await conn.execute(
+                text(query), parameters={"collection_name": collection_name}
+            )
             await conn.commit()
         print(f"Successfully deleted PGVector collection, {collection_name}")
 

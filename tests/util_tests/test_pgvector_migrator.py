@@ -36,6 +36,12 @@ COLLECTIONS_TABLE = "langchain_pg_collection"
 EMBEDDINGS_TABLE = "langchain_pg_embedding"
 VECTOR_SIZE = 768
 COLLECTION_NAME_SUFFIX = str(uuid.uuid4()).replace("-", "_")
+EMBEDDINGS_TABLE_COUNT_QUERY = (
+    f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id=:collection_id"
+)
+COLLECTION_TABLE_ENTRY_QUERY = (
+    f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid=:collection_id"
+)
 
 
 async def aexecute(
@@ -49,15 +55,17 @@ async def aexecute(
     await engine._run_as_async(run(engine, query, params))
 
 
-async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
-    async def run(engine, query):
+async def afetch(
+    engine: AlloyDBEngine, query: str, params: Optional[dict] = None
+) -> Sequence[RowMapping]:
+    async def run(engine, query, params):
         async with engine._pool.connect() as conn:
-            result = await conn.execute(text(query))
+            result = await conn.execute(text(query), params)
             result_map = result.mappings()
             result_fetch = result_map.fetchall()
         return result_fetch
 
-    return await engine._run_as_async(run(engine, query))
+    return await engine._run_as_async(run(engine, query, params))
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -305,12 +313,14 @@ class TestPgvectorengine:
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
+            EMBEDDINGS_TABLE_COUNT_QUERY,
+            params={"collection_id": collection_id},
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
+            COLLECTION_TABLE_ENTRY_QUERY,
+            params={"collection_id": collection_id},
         )
         assert collection_table_entry == [{"count": 1}]
 
@@ -373,12 +383,14 @@ class TestPgvectorengine:
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
+            EMBEDDINGS_TABLE_COUNT_QUERY,
+            params={"collection_id": collection_id},
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
+            COLLECTION_TABLE_ENTRY_QUERY,
+            params={"collection_id": collection_id},
         )
         assert collection_table_entry == [{"count": 1}]
 
@@ -434,12 +446,14 @@ class TestPgvectorengine:
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
+            EMBEDDINGS_TABLE_COUNT_QUERY,
+            params={"collection_id": collection_id},
         )
         assert embeddings_table_count == [{"count": 0}]
         collection_table_entry = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
+            f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = :collection_id",
+            params={"collection_id": collection_id},
         )
         assert collection_table_entry == [{"count": 0}]
 
@@ -612,12 +626,14 @@ class TestPgvectorengine:
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
+            EMBEDDINGS_TABLE_COUNT_QUERY,
+            params={"collection_id": collection_id},
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
+            COLLECTION_TABLE_ENTRY_QUERY,
+            params={"collection_id": collection_id},
         )
         assert collection_table_entry == [{"count": 1}]
 
@@ -680,12 +696,14 @@ class TestPgvectorengine:
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
+            f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id=:collection_id",
+            params={"collection_id": collection_id},
         )
         assert embeddings_table_count == [{"count": 5}]
         collection_table_entry = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
+            COLLECTION_TABLE_ENTRY_QUERY,
+            params={"collection_id": collection_id},
         )
         assert collection_table_entry == [{"count": 1}]
 
@@ -741,12 +759,14 @@ class TestPgvectorengine:
         collection_id = f"collection_id_{collection_name}"
         embeddings_table_count = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id = '{collection_id}'",
+            EMBEDDINGS_TABLE_COUNT_QUERY,
+            params={"collection_id": collection_id},
         )
         assert embeddings_table_count == [{"count": 0}]
         collection_table_entry = await afetch(
             engine,
-            f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid = '{collection_id}'",
+            COLLECTION_TABLE_ENTRY_QUERY,
+            params={"collection_id": collection_id},
         )
         assert collection_table_entry == [{"count": 0}]
 
