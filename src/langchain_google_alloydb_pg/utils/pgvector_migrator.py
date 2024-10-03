@@ -186,7 +186,7 @@ async def _alist_pgvector_collection_names(
             all_rows = result_map.fetchall()
         return [row["name"] for row in all_rows]
     except ProgrammingError as e:
-        raise ValueError("Please provide the correct collection table name: " + str(e))
+        raise ValueError("Please provide the correct collection table name: " + str(e)) from e
 
 
 async def aextract_pgvector_collection(
