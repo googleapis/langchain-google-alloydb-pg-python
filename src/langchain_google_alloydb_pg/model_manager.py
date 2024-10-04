@@ -52,7 +52,7 @@ class AlloyDBModelManager:
 
         self._engine._run_as_sync(self.__avalidate())
 
-    async def alist_model(self, model_id: str) -> Optional[AlloyDBModel]:
+    async def aget_model(self, model_id: str) -> Optional[AlloyDBModel]:
         """Lists the model details for a specific model_id.
 
         Args:
@@ -62,16 +62,16 @@ class AlloyDBModelManager:
             :class: `AlloyDBModel` object of the specified model if it exists otherwise `None`.
 
         """
-        result = await self._engine._run_as_async(self.__alist_model(model_id=model_id))
+        result = await self._engine._run_as_async(self.__aget_model(model_id=model_id))
         return result
 
-    async def amodel_info_view(self) -> List[AlloyDBModel]:
+    async def alist_models(self) -> List[AlloyDBModel]:
         """Lists all the models and its details.
 
         Returns:
             List[`AlloyDBModel`] of all available model..
         """
-        results = await self._engine._run_as_async(self.__amodel_info_view())
+        results = await self._engine._run_as_async(self.__alist_models())
         return results
 
     async def acreate_model(
@@ -149,7 +149,7 @@ class AlloyDBModelManager:
             results = result_map.fetchall()
         return results
 
-    async def __alist_model(self, model_id: str) -> Optional[AlloyDBModel]:
+    async def __aget_model(self, model_id: str) -> Optional[AlloyDBModel]:
         """Lists the model details for a specific model_id. Returns None if it doesn't exist.
 
         Args:
@@ -175,7 +175,7 @@ class AlloyDBModelManager:
         data_class = self.__convert_dict_to_dataclass(result)[0]
         return data_class
 
-    async def __amodel_info_view(self) -> List[AlloyDBModel]:
+    async def __alist_models(self) -> List[AlloyDBModel]:
         """Lists all the models and its details."""
         query = "SELECT * FROM google_ml.model_info_view;"
         result = await self.__query_db(query)
@@ -239,7 +239,7 @@ class AlloyDBModelManager:
         BEGIN
         IF NOT EXISTS (
           SELECT 1 FROM pg_extension WHERE extname = 'google_ml_integration' )
-          THEN CREATE EXTENSION google_ml_integration VERSION '1.3';
+          THEN CREATE EXTENSION google_ml_integration VERSION '1.3' CASCADE;
         END IF;
         END
         $$;

@@ -79,21 +79,21 @@ class TestAlloyDBModelManager:
         )
 
     @pytest.mark.depends(on=["test_acreate_model"])
-    async def test_alist_model(self, model_manager):
-        model_info = await model_manager.alist_model(model_id=EMBEDDING_MODEL_NAME)
+    async def test_aget_model(self, model_manager):
+        model_info = await model_manager.aget_model(model_id=EMBEDDING_MODEL_NAME)
         assert model_info.model_id == EMBEDDING_MODEL_NAME
 
     async def test_non_existent_model(self, model_manager):
-        model_info = await model_manager.alist_model(model_id="Non_existent_model")
+        model_info = await model_manager.aget_model(model_id="Non_existent_model")
         assert model_info is None
 
-    @pytest.mark.depends(on=["test_alist_model"])
-    async def test_amodel_info_view(self, model_manager):
-        models_list = await model_manager.amodel_info_view()
+    @pytest.mark.depends(on=["test_aget_model"])
+    async def test_alist_models(self, model_manager):
+        models_list = await model_manager.alist_models()
         assert len(models_list) >= 3
         model_ids = [model_info.model_id for model_info in models_list]
         assert EMBEDDING_MODEL_NAME in model_ids
 
-    @pytest.mark.depends(on=["test_amodel_info_view"])
+    @pytest.mark.depends(on=["test_alist_models"])
     async def test_adrop_model(self, model_manager):
         await model_manager.adrop_model(model_id=EMBEDDING_MODEL_NAME)

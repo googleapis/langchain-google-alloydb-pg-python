@@ -64,7 +64,7 @@ class AlloyDBEmbeddings(Embeddings):
         Return:
             `Bool`: True if a model with the given name exists, False otherwise.
         """
-        model = await self.model_manager.alist_model(model_id=self.model_id)
+        model = await self.model_manager.aget_model(model_id=self.model_id)
         if model is not None:
             return True
         return False
