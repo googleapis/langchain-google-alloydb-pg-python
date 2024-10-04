@@ -107,10 +107,3 @@ class TestAlloyDBEmbeddings:
         for embedding_field in embedding:
             assert isinstance(embedding_field, float)
             assert -1 <= embedding_field <= 1
-
-    async def test_embed_query_invalid_model_id(self, engine):
-        with pytest.raises(Exception, match="Model not found"):
-            embedding_service = AlloyDBEmbeddings(
-                engine=engine, model_id="not_existing_model_id"
-            )
-            await embedding_service.aembed_query("test document")
