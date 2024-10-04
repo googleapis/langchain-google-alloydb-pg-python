@@ -118,7 +118,6 @@ async def _amigrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
     vector_store: AlloyDBVectorStore,
-    destination_table: Optional[str] = None,
     delete_pg_collection: Optional[bool] = False,
     insert_batch_size: int = 1000,
 ) -> None:
@@ -130,22 +129,12 @@ async def _amigrate_pgvector_collection(
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
         vector_store (AlloyDBVectorStore): The AlloyDB vectorstore object corresponding to the new collection table.
-        destination_table (str): The name of the table to insert the data in.
-            Optional. defaults to collection_name.
         delete_pg_collection (bool): An option to delete the original data upon migration.
             Default: False. Optional.
         insert_batch_size (int): Number of rows to insert at once in the table.
             Default: 1000.
     """
-    if not destination_table:
-        warnings.warn(
-            f"Destination table not set. Destination table would default to {collection_name}. "
-            "Please make sure that there is an existing table with the same name."
-        )
-        destination_table = collection_name
-    print(
-        "Please make sure that the vector store and the destination table point to the same table."
-    )
+    destination_table = vector_store.get_table_name()
 
     # Get row count in PGVector collection
     uuid_task = asyncio.create_task(_aget_collection_uuid(engine, collection_name))
@@ -252,7 +241,6 @@ async def amigrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
     vector_store: AlloyDBVectorStore,
-    destination_table: Optional[str] = None,
     delete_pg_collection: Optional[bool] = False,
     insert_batch_size: int = 1000,
 ) -> None:
@@ -264,8 +252,6 @@ async def amigrate_pgvector_collection(
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
         vector_store (AlloyDBVectorStore): The AlloyDB vectorstore object corresponding to the new collection table.
-        destination_table (str): The name of the table to insert the data in.
-            Optional. defaults to collection_name.
         use_json_metadata (bool): An option to keep the PGVector metadata as json in the AlloyDB table.
             Default: False. Optional.
         delete_pg_collection (bool): An option to delete the original data upon migration.
@@ -278,7 +264,6 @@ async def amigrate_pgvector_collection(
             engine,
             collection_name,
             vector_store,
-            destination_table,
             delete_pg_collection,
             insert_batch_size,
         )
@@ -320,7 +305,6 @@ def migrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
     vector_store: AlloyDBVectorStore,
-    destination_table: Optional[str] = None,
     delete_pg_collection: Optional[bool] = False,
     insert_batch_size: int = 1000,
 ) -> None:
@@ -332,8 +316,6 @@ def migrate_pgvector_collection(
         engine (AlloyDBEngine): The AlloyDB engine corresponding to the Database.
         collection_name (str): The collection to migrate.
         vector_store (AlloyDBVectorStore): The AlloyDB vectorstore object corresponding to the new collection table.
-        destination_table (str): The name of the table to insert the data in.
-            Optional. defaults to collection_name.
         delete_pg_collection (bool): An option to delete the original data upon migration.
             Default: False. Optional.
         insert_batch_size (int): Number of rows to insert at once in the table.
@@ -344,7 +326,6 @@ def migrate_pgvector_collection(
             engine,
             collection_name,
             vector_store,
-            destination_table,
             delete_pg_collection,
             insert_batch_size,
         )
