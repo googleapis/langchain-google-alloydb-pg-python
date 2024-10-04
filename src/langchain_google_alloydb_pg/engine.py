@@ -286,6 +286,7 @@ class AlloyDBEngine:
 
         # TODO: Remove before merge, used for debugging
         print(f"User used by engine: {db_user}")
+
         # anonymous function to be used for SQLAlchemy 'creator' argument
         async def getconn() -> asyncpg.Connection:
             conn = await cls._connector.connect(  # type: ignore
