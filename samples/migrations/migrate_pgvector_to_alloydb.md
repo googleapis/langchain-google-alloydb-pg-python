@@ -105,7 +105,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
     from langchain_google_alloydb_pg import AlloyDBVectorStore
     from langchain_core.embeddings import FakeEmbeddings
 
-    vector_store = await AlloyDBVectorStore.create(
+    destination_vector_store = await AlloyDBVectorStore.create(
         engine,
         embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
         table_name="destination_table",
@@ -118,7 +118,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
     from langchain_google_alloydb_pg import AlloyDBVectorStore
     from langchain_core.embeddings import FakeEmbeddings
 
-    vector_store = await AlloyDBVectorStore.create(
+    destination_vector_store = await AlloyDBVectorStore.create(
         engine,
         embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
         table_name="destination_table",
@@ -136,7 +136,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
         engine,
         # Set collection name here
         collection_name="collection_name",
-        vector_store=vector_store,
+        vector_store=destination_vector_store,
         # This deletes data from the original table upon migration. You can choose to turn it off.
         delete_pg_collection=True,
     )
