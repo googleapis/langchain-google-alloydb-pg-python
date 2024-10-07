@@ -104,7 +104,9 @@ class AlloyDBModelManager:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names mismatch create_model function specification.
         """
         await self._engine._run_as_async(
-            self.__acreate_model(model_id, model_provider, model_type, model_qualified_name, **kwargs)
+            self.__acreate_model(
+                model_id, model_provider, model_type, model_qualified_name, **kwargs
+            )
         )
 
     async def adrop_model(self, model_id: str) -> None:
