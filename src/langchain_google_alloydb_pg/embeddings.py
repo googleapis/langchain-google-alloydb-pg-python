@@ -38,7 +38,7 @@ class AlloyDBEmbeddings(Embeddings):
         self._engine = engine
         self.model_id = model_id
 
-        self.model_manager = AlloyDBModelManager(engine=self._engine)
+        self.model_manager = AlloyDBModelManager.create_sync(engine=self._engine)
         if not self.model_exists():
             raise ValueError(f"Model {model_id} does not exist.")
 

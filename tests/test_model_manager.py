@@ -67,8 +67,12 @@ class TestAlloyDBModelManager:
 
     @pytest_asyncio.fixture(scope="module")
     async def model_manager(self, engine):
-        model_manager = AlloyDBModelManager(engine)
+        model_manager = await AlloyDBModelManager.create(engine)
         yield model_manager
+
+    async def test_model_manager_constructor(self, engine):
+        with pytest.raises(Exception):
+            AlloyDBModelManager(engine=engine)
 
     async def test_acreate_model(self, model_manager):
         await model_manager.acreate_model(

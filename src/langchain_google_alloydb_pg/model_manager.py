@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: Remove below import when minimum supported Python version is 3.10
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Type
 
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -39,18 +42,43 @@ class AlloyDBModelManager:
     Refer to [Model Endpoint Management](https://cloud.google.com/alloydb/docs/ai/model-endpoint-overview).
     """
 
+    __create_key = object()
+
     def __init__(
         self,
+        key: object,
         engine: AlloyDBEngine,
     ):
         """AlloyDBModelManager constructor.
         Args:
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
         """
+        if key != AlloyDBModelManager.__create_key:
+            raise Exception(
+                "Only create class through 'create' or 'create_sync' methods!"
+            )
 
         self._engine = engine
 
-        self._engine._run_as_sync(self.__avalidate())
+    @classmethod
+    async def create(
+        cls: Type[AlloyDBModelManager],
+        engine: AlloyDBEngine,
+    ) -> AlloyDBModelManager:
+        manager = AlloyDBModelManager(cls.__create_key, engine)
+        coro = manager.__avalidate()
+        await engine._run_as_async(coro)
+        return manager
+
+    @classmethod
+    def create_sync(
+        cls: Type[AlloyDBModelManager],
+        engine: AlloyDBEngine,
+    ) -> AlloyDBModelManager:
+        manager = AlloyDBModelManager(cls.__create_key, engine)
+        coro = manager.__avalidate()
+        engine._run_as_sync(coro)
+        return manager
 
     async def aget_model(self, model_id: str) -> Optional[AlloyDBModel]:
         """Lists the model details for a specific model_id.
@@ -82,7 +110,7 @@ class AlloyDBModelManager:
         model_qualified_name: str,
         **kwargs: dict[str, str],
     ) -> None:
-        """Creates a custom text embedding model.
+        """Creates a registration for custom text model.
 
         Args:
             model_id (str): A unique ID for the model endpoint that you define.
@@ -110,7 +138,7 @@ class AlloyDBModelManager:
         )
 
     async def adrop_model(self, model_id: str) -> None:
-        """Removes a text embedding model.
+        """Removes an already registered model.
 
         Args:
             model_id (str): A unique ID for the model endpoint that you have defined.
@@ -193,7 +221,7 @@ class AlloyDBModelManager:
         model_qualified_name: str,
         **kwargs: dict[str, str],
     ) -> None:
-        """Creates a custom text embedding model.
+        """Creates a registration for custom text model.
 
         Args:
             model_id (str): A unique ID for the model endpoint that you define.
@@ -227,7 +255,7 @@ class AlloyDBModelManager:
             await conn.commit()
 
     async def __adrop_model(self, model_id: str) -> None:
-        """Removes a text embedding model.
+        """Removes an already registered model.
 
         Args:
             model_id (str): A unique ID for the model endpoint that you have defined.
