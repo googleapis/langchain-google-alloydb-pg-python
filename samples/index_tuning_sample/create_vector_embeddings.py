@@ -145,8 +145,8 @@ async def main():
         engine = await get_engine()
     documents = load_csv_documents()
     await create_vector_store_table(documents, engine)
+    await engine.close()
     await engine._connector.close()
-    await engine._engine.dispose()
 
 
 if __name__ == "__main__":
