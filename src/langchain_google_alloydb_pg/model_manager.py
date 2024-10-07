@@ -27,7 +27,7 @@ class AlloyDBModel:
     model_request_url: Optional[str]
     model_provider: str
     model_type: str
-    model_qualified_name: Optional[str]
+    model_qualified_name: str
     model_auth_type: Optional[str]
     model_auth_id: Optional[str]
     input_transform_fn: Optional[str]
@@ -79,6 +79,7 @@ class AlloyDBModelManager:
         model_id: str,
         model_provider: str,
         model_type: str,
+        model_qualified_name: str,
         **kwargs: dict[str, str],
     ) -> None:
         """Creates a custom text embedding model.
@@ -87,9 +88,9 @@ class AlloyDBModelManager:
             model_id (str): A unique ID for the model endpoint that you define.
             model_provider (str): The provider of the model endpoint.
             model_type (str): The model type. Either text_embedding or generic.
+            model_qualified_name (str): The fully qualified name in case the model endpoint has multiple versions
             **kwargs :
                 model_request_url (str): The model-specific endpoint when adding other text embedding and generic model endpoints
-                model_qualified_name (str): The fully qualified name in case the model endpoint has multiple versions
                 model_auth_type (str): The authentication type used by the model endpoint.
                 model_auth_id (str): The secret ID that you set and is subsequently used when registering a model endpoint.
                 generate_headers_fn (str): 	The SQL function name you set to generate custom headers.
@@ -103,7 +104,7 @@ class AlloyDBModelManager:
             :class:`DBAPIError <sqlalchemy.exc.DBAPIError>`: if argument names mismatch create_model function specification.
         """
         await self._engine._run_as_async(
-            self.__acreate_model(model_id, model_provider, model_type, **kwargs)
+            self.__acreate_model(model_id, model_provider, model_type, model_qualified_name, **kwargs)
         )
 
     async def adrop_model(self, model_id: str) -> None:
@@ -187,6 +188,7 @@ class AlloyDBModelManager:
         model_id: str,
         model_provider: str,
         model_type: str,
+        model_qualified_name: str,
         **kwargs: dict[str, str],
     ) -> None:
         """Creates a custom text embedding model.
@@ -195,9 +197,9 @@ class AlloyDBModelManager:
             model_id (str): A unique ID for the model endpoint that you define.
             model_provider (str): The provider of the model endpoint.
             model_type (str): The model type. Either text_embedding or generic.
+            model_qualified_name (str): The fully qualified name in case the model endpoint has multiple versions.
             **kwargs :
                 model_request_url (str): The model-specific endpoint when adding other text embedding and generic model endpoints
-                model_qualified_name (str): The fully qualified name in case the model endpoint has multiple versions
                 model_auth_type (str): The authentication type used by the model endpoint.
                 model_auth_id (str): The secret ID that you set and is subsequently used when registering a model endpoint.
                 generate_headers_fn (str): 	The SQL function name you set to generate custom headers.
@@ -212,7 +214,8 @@ class AlloyDBModelManager:
         google_ml.create_model(
         model_id => '{model_id}',
         model_provider => '{model_provider}',
-        model_type => '{model_type}',"""
+        model_type => '{model_type}',
+        model_qualified_name => '{model_qualified_name}',"""
         for key, value in kwargs.items():
             query = query + f" {key} => '{value}',"
         query = query.strip(",")
