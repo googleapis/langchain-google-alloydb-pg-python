@@ -26,7 +26,7 @@ EMBEDDINGS_TABLE = "langchain_pg_embedding"
 T = TypeVar("T")
 
 
-async def _aget_collection_uuid(
+async def __aget_collection_uuid(
     engine: AlloyDBEngine,
     collection_name: str,
 ) -> str:
@@ -51,7 +51,7 @@ async def _aget_collection_uuid(
     return result_fetch.uuid
 
 
-async def _aextract_pgvector_collection(
+async def __aextract_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
     batch_size: int = 1000,
@@ -69,7 +69,7 @@ async def _aextract_pgvector_collection(
         The data present in the collection.
     """
     try:
-        uuid_task = asyncio.create_task(_aget_collection_uuid(engine, collection_name))
+        uuid_task = asyncio.create_task(__aget_collection_uuid(engine, collection_name))
         query = f"SELECT * FROM {EMBEDDINGS_TABLE} WHERE collection_id = :id"
         async with engine._pool.connect() as conn:
             uuid = await uuid_task
@@ -94,6 +94,8 @@ async def _concurrent_batch_insert(
     vector_store: AlloyDBVectorStore,
     max_concurrency: int = 100,
 ) -> None:
+    """This is an internal method used for testing purposes. 
+    It is not part of the public API and may be modified or removed in future releases."""
     pending: set[Any] = set()
     async for batch_data in data_batches:
         pending.add(
@@ -114,7 +116,7 @@ async def _concurrent_batch_insert(
         await asyncio.wait(pending)
 
 
-async def _amigrate_pgvector_collection(
+async def __amigrate_pgvector_collection(
     engine: AlloyDBEngine,
     collection_name: str,
     vector_store: AlloyDBVectorStore,
@@ -137,7 +139,7 @@ async def _amigrate_pgvector_collection(
     destination_table = vector_store.get_table_name()
 
     # Get row count in PGVector collection
-    uuid_task = asyncio.create_task(_aget_collection_uuid(engine, collection_name))
+    uuid_task = asyncio.create_task(__aget_collection_uuid(engine, collection_name))
     query = (
         f"SELECT COUNT(*) FROM {EMBEDDINGS_TABLE} WHERE collection_id=:collection_id"
     )
@@ -151,7 +153,7 @@ async def _amigrate_pgvector_collection(
         return
 
     # Extract data from the collection and batch insert into the new table
-    data_batches = _aextract_pgvector_collection(
+    data_batches = __aextract_pgvector_collection(
         engine, collection_name, batch_size=insert_batch_size
     )
     await _concurrent_batch_insert(data_batches, vector_store, max_concurrency=100)
@@ -187,7 +189,7 @@ async def _amigrate_pgvector_collection(
         print(f"Successfully deleted PGVector collection, {collection_name}")
 
 
-async def _alist_pgvector_collection_names(
+async def __alist_pgvector_collection_names(
     engine: AlloyDBEngine,
 ) -> List[str]:
     """Lists all collection names present in PGVector table."""
@@ -221,7 +223,7 @@ async def aextract_pgvector_collection(
     Yields:
         The data present in the collection.
     """
-    iterator = _aextract_pgvector_collection(engine, collection_name, batch_size)
+    iterator = __aextract_pgvector_collection(engine, collection_name, batch_size)
     while True:
         try:
             result = await engine._run_as_async(iterator.__anext__())
@@ -234,7 +236,7 @@ async def alist_pgvector_collection_names(
     engine: AlloyDBEngine,
 ) -> List[str]:
     """Lists all collection names present in PGVector table."""
-    return await engine._run_as_async(_alist_pgvector_collection_names(engine))
+    return await engine._run_as_async(__alist_pgvector_collection_names(engine))
 
 
 async def amigrate_pgvector_collection(
@@ -260,7 +262,7 @@ async def amigrate_pgvector_collection(
             Default: 1000.
     """
     await engine._run_as_async(
-        _amigrate_pgvector_collection(
+        __amigrate_pgvector_collection(
             engine,
             collection_name,
             vector_store,
@@ -287,7 +289,7 @@ def extract_pgvector_collection(
     Yields:
         The data present in the collection.
     """
-    iterator = _aextract_pgvector_collection(engine, collection_name, batch_size)
+    iterator = __aextract_pgvector_collection(engine, collection_name, batch_size)
     while True:
         try:
             result = engine._run_as_sync(iterator.__anext__())
@@ -298,7 +300,7 @@ def extract_pgvector_collection(
 
 def list_pgvector_collection_names(engine: AlloyDBEngine) -> List[str]:
     """Lists all collection names present in PGVector table."""
-    return engine._run_as_sync(_alist_pgvector_collection_names(engine))
+    return engine._run_as_sync(__alist_pgvector_collection_names(engine))
 
 
 def migrate_pgvector_collection(
@@ -322,7 +324,7 @@ def migrate_pgvector_collection(
             Default: 1000.
     """
     engine._run_as_sync(
-        _amigrate_pgvector_collection(
+        __amigrate_pgvector_collection(
             engine,
             collection_name,
             vector_store,
