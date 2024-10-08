@@ -16,7 +16,7 @@ import asyncio
 import json
 import os
 import uuid
-from typing import Any, List, Optional, Sequence
+from typing import List, Optional, Sequence
 from unittest import mock
 
 import pytest
@@ -26,7 +26,7 @@ from sqlalchemy import RowMapping, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.utils.pgvector_migrator import (
-    _concurrent_batch_insert,
+    __concurrent_batch_insert,
     aextract_pgvector_collection,
     alist_pgvector_collection_names,
     amigrate_pgvector_collection,
@@ -45,6 +45,9 @@ EMBEDDINGS_TABLE_COUNT_QUERY = (
 COLLECTION_TABLE_ENTRY_QUERY = (
     f"SELECT COUNT(*) FROM {COLLECTIONS_TABLE} WHERE uuid=:collection_id"
 )
+
+
+concurrent_batch_insert_method = __concurrent_batch_insert
 
 
 async def aexecute(
@@ -263,7 +266,7 @@ class TestPgvectorengine:
 
         vector_store.aadd_embeddings.side_effect = track_concurrency
 
-        await _concurrent_batch_insert(
+        await concurrent_batch_insert_method(
             data_batches, vector_store, max_concurrency=max_concurrency
         )
 

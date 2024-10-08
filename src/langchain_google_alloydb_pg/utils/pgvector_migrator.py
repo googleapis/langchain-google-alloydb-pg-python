@@ -89,14 +89,11 @@ async def __aextract_pgvector_collection(
         ) from e
 
 
-async def _concurrent_batch_insert(
+async def __concurrent_batch_insert(
     data_batches: AsyncIterator[Sequence[RowMapping]],
     vector_store: AlloyDBVectorStore,
     max_concurrency: int = 100,
 ) -> None:
-    """This is an internal method used for testing purposes.
-    It is not part of the public API and may be modified or removed in future releases.
-    """
     pending: set[Any] = set()
     async for batch_data in data_batches:
         pending.add(
@@ -157,7 +154,7 @@ async def __amigrate_pgvector_collection(
     data_batches = __aextract_pgvector_collection(
         engine, collection_name, batch_size=insert_batch_size
     )
-    await _concurrent_batch_insert(data_batches, vector_store, max_concurrency=100)
+    await __concurrent_batch_insert(data_batches, vector_store, max_concurrency=100)
 
     # Validate data migration
     query = f"SELECT COUNT(*) FROM {destination_table}"
