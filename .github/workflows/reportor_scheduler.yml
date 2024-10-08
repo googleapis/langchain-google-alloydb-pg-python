@@ -1,11 +1,11 @@
-name: call 
+name: Schedule Cloud Build failure reporter
 
 on:
   schedule:
     - cron: '0 6 * * *'  # Runs at 6 AM every morning
 
 jobs:
-  call_reusable_workflow:
+  call_cloud_build_failure_reporter:
     uses: ./.github/workflows/cloud_build_failure_reporter.yml
     with:
       test_name_substrings: "nightly,continuous"
