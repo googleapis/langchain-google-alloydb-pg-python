@@ -247,8 +247,8 @@ async def main():
         print(
             f"IVF average recall: {ivf_average_recall}       IVF latency: {ivf_average_latency}"
         )
-    await vector_store.engine._connector.close()
-    await vector_store.engine._engine.dispose()
+    await vector_store._engine.close()
+    await vector_store._engine._connector.close()
 
 
 if __name__ == "__main__":
