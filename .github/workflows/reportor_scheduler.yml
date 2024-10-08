@@ -1,0 +1,11 @@
+name: call 
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Runs at 6 AM every morning
+
+jobs:
+  call_reusable_workflow:
+    uses: ./.github/workflows/cloud_build_failure_reporter.yml
+    with:
+      test_name_substrings: "nightly,continuous"
