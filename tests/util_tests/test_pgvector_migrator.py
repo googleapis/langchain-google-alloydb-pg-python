@@ -25,8 +25,8 @@ from langchain_core.embeddings import FakeEmbeddings
 from sqlalchemy import RowMapping, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg.utils import pgvector_migrator
 from langchain_google_alloydb_pg.utils.pgvector_migrator import (
-    _concurrent_batch_insert,
     aextract_pgvector_collection,
     alist_pgvector_collection_names,
     amigrate_pgvector_collection,
@@ -263,7 +263,7 @@ class TestPgvectorengine:
 
         vector_store.aadd_embeddings.side_effect = track_concurrency
 
-        await _concurrent_batch_insert(
+        await pgvector_migrator.__concurrent_batch_insert(
             data_batches, vector_store, max_concurrency=max_concurrency
         )
 
