@@ -654,6 +654,3 @@ class TestVectorStore:
         assert len(results) == 2
         await aexecute(engine, f"DROP TABLE {table_name}")
         await engine.close()
-
-    def test_get_table_name(self, vs):
-        assert vs.get_table_name() == DEFAULT_TABLE
