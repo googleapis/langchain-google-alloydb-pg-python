@@ -302,7 +302,9 @@ class TestVectorStoreSearch:
         results = await vs_custom.asimilarity_search_by_vector(embedding)
         assert len(results) == 4
         assert results[0] == Document(page_content="foo")
-        results = await vs_custom.asimilarity_search_with_score_by_vector(embedding)
+        results = await vs_custom.explain(
+            vs_custom.asimilarity_search_with_score_by_vector, embedding
+        )
         assert results[0][0] == Document(page_content="foo")
         assert results[0][1] == 0
 

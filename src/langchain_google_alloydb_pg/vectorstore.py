@@ -23,6 +23,7 @@ from langchain_core.vectorstores import VectorStore
 
 from .async_vectorstore import AsyncAlloyDBVectorStore
 from .engine import AlloyDBEngine
+from .explain_mixin import ExplainMixin
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     BaseIndex,
@@ -31,7 +32,7 @@ from .indexes import (
 )
 
 
-class AlloyDBVectorStore(VectorStore):
+class AlloyDBVectorStore(VectorStore, ExplainMixin):
     """Google AlloyDB Vector Store class"""
 
     __create_key = object()
