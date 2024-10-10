@@ -66,7 +66,7 @@ class TestAlloyDBEmbeddings:
 
     @pytest_asyncio.fixture
     def embeddings(self, engine, model_id):
-        return AlloyDBEmbeddings(engine=engine, model_id=model_id)
+        return AlloyDBEmbeddings.create_sync(engine=engine, model_id=model_id)
 
     async def test_aembed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
@@ -98,7 +98,14 @@ class TestAlloyDBEmbeddings:
 
     async def test_embed_query_invalid_model_id(self, engine):
         with pytest.raises(Exception, match="Model not found"):
-            embedding_service = AlloyDBEmbeddings(
+            embedding_service = AlloyDBEmbeddings.create_sync(
+                engine=engine, model_id="not_existing_model_id"
+            )
+            embedding_service.embed_query("test document")
+
+    async def test_embed_query_invalid_model_id(self, engine):
+        with pytest.raises(Exception, match="Model not found"):
+            embedding_service = await AlloyDBEmbeddings.create(
                 engine=engine, model_id="not_existing_model_id"
             )
             await embedding_service.aembed_query("test document")

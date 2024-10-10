@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: Remove below import when minimum supported Python version is 3.10
+from __future__ import annotations
+
 import json
-from typing import List
+from typing import List, Type
 
 from langchain_core.embeddings import Embeddings
 from sqlalchemy import text
@@ -24,20 +27,67 @@ from .engine import AlloyDBEngine
 class AlloyDBEmbeddings(Embeddings):
     """Google AlloyDB Embeddings available via Model Endpoint Management."""
 
-    def __init__(self, engine: AlloyDBEngine, model_id: str):
+    __create_key = object()
+
+    def __init__(self, key: object, engine: AlloyDBEngine, model_id: str):
         """AlloyDBEmbeddings constructor.
         Args:
+            key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
             model_id (str): The model id used for generating embeddings.
 
         """
+        if key != AlloyDBEmbeddings.__create_key:
+            raise Exception(
+                "Only create class through 'create' or 'create_sync' methods!"
+            )
         self._engine = engine
         self.model_id = model_id
 
+    @classmethod
+    async def create(
+        cls: Type[AlloyDBEmbeddings], engine: AlloyDBEngine, model_id: str
+    ) -> AlloyDBEmbeddings:
+        """Create AlloyDBEmbeddings instance.
+
+        Args:
+            key (object): Prevent direct constructor usage.
+            engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
+            model_id (str): The model id used for generating embeddings.
+
+        Returns:
+            AlloyDBEmbeddings: Instance of AlloyDBEmbeddings.
+        """
+
+        embeddings = cls(cls.__create_key, engine, model_id)
         # TODO: @vishwarajanand - We should validate the model_id here
-        # models = AlloyDBModel(engine, model_id)
+        # models = await AlloyDBModel.create(engine, model_id)
+        # model_exists = await models.aexists()
+        # if not model_exists:
+        #     raise IllegalArgumentError(f"Model {model_id} does not exist.")
+        return embeddings
+
+    @classmethod
+    def create_sync(
+        cls: Type[AlloyDBEmbeddings], engine: AlloyDBEngine, model_id: str
+    ) -> AlloyDBEmbeddings:
+        """Create AlloyDBEmbeddings instance.
+
+        Args:
+            key (object): Prevent direct constructor usage.
+            engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
+            model_id (str): The model id used for generating embeddings.
+
+        Returns:
+            AlloyDBEmbeddings: Instance of AlloyDBEmbeddings.
+        """
+
+        embeddings = cls(cls.__create_key, engine, model_id)
+        # TODO: @vishwarajanand - We should validate the model_id here
+        # models = AlloyDBModel.create_sync(engine, model_id)
         # if not models.exists():
         #     raise IllegalArgumentError(f"Model {model_id} does not exist.")
+        return embeddings
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         raise NotImplementedError(
