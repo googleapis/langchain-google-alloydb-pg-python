@@ -66,19 +66,19 @@ class TestAlloyDBEmbeddings:
 
     @pytest_asyncio.fixture
     def embeddings(self, engine, model_id):
-        return AlloyDBEmbeddings(engine=engine, model_id=model_id)
+        return AlloyDBEmbeddings.create_sync(engine=engine, model_id=model_id)
 
     async def test_model_exists(self, sync_engine):
         test_model_id = "test_sample_text_embedding_model"
         error_message = f"Model {test_model_id} does not exist."
         with pytest.raises(Exception, match=error_message):
-            AlloyDBEmbeddings(engine=sync_engine, model_id=test_model_id)
+            AlloyDBEmbeddings.create_sync(engine=sync_engine, model_id=test_model_id)
 
     async def test_amodel_exists(self, engine):
         test_model_id = "test_sample_text_embedding_model"
         error_message = f"Model {test_model_id} does not exist."
         with pytest.raises(Exception, match=error_message):
-            AlloyDBEmbeddings(engine=engine, model_id=test_model_id)
+            await AlloyDBEmbeddings.create(engine=engine, model_id=test_model_id)
 
     async def test_aembed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
