@@ -35,6 +35,10 @@ VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
+# Note: The following texts are chosen to produce diverse
+# similarity scores when using the DeterministicFakeEmbedding service. This ensures
+# that the test cases can effectively validate the filtering and scoring logic.
+# The scoring might be different if using a different embedding service.
 texts = ["foo", "bar", "baz", "boo"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
 metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
