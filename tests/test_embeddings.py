@@ -68,6 +68,18 @@ class TestAlloyDBEmbeddings:
     def embeddings(self, engine, model_id):
         return AlloyDBEmbeddings.create_sync(engine=engine, model_id=model_id)
 
+    async def test_model_exists(self, sync_engine):
+        test_model_id = "test_sample_text_embedding_model"
+        error_message = f"Model {test_model_id} does not exist."
+        with pytest.raises(Exception, match=error_message):
+            AlloyDBEmbeddings.create_sync(engine=sync_engine, model_id=test_model_id)
+
+    async def test_amodel_exists(self, engine):
+        test_model_id = "test_sample_text_embedding_model"
+        error_message = f"Model {test_model_id} does not exist."
+        with pytest.raises(Exception, match=error_message):
+            await AlloyDBEmbeddings.create(engine=engine, model_id=test_model_id)
+
     async def test_aembed_documents(self, embeddings):
         with pytest.raises(NotImplementedError):
             await embeddings.aembed_documents([Document(page_content="test document")])
@@ -95,17 +107,3 @@ class TestAlloyDBEmbeddings:
         for embedding_field in embedding:
             assert isinstance(embedding_field, float)
             assert -1 <= embedding_field <= 1
-
-    async def test_embed_query_invalid_model_id(self, engine):
-        with pytest.raises(Exception, match="Model not found"):
-            embedding_service = await AlloyDBEmbeddings.create(
-                engine=engine, model_id="not_existing_model_id"
-            )
-            await embedding_service.aembed_query("test document")
-
-    async def test_embed_query_invalid_model_id_sync(self, engine):
-        with pytest.raises(Exception, match="Model not found"):
-            embedding_service = AlloyDBEmbeddings.create_sync(
-                engine=engine, model_id="not_existing_model_id"
-            )
-            embedding_service.embed_query("test document")
