@@ -905,3 +905,6 @@ class AlloyDBVectorStore(VectorStore):
     ) -> bool:
         """Check if index exists in the table."""
         return self._engine._run_as_sync(self.__vs.is_valid_index(index_name))
+
+    def get_table_name(self) -> str:
+        return self.__vs.table_name
