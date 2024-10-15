@@ -26,6 +26,7 @@ jobs:
 
     permissions:
       issues: 'write'
+      checks: 'read'
 
     runs-on: 'ubuntu-latest'
 
@@ -34,7 +35,7 @@ jobs:
         with:
           script: |-
                   // parse test names
-                  const testNameSubstring = '${{ inputs.test_name_substrings }}';
+                  const testNameSubstring = '${{ inputs.trigger_includes }}';
                   const testNameList = testNameSubstring.split(',');
 
                   // label for all issues opened by reporter
