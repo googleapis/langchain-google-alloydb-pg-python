@@ -19,7 +19,7 @@ on:
     - cron: '0 6 * * *'  # Runs at 6 AM every morning
 
 jobs:
-  call_cloud_build_failure_reporter:
+  run_reporter:
     uses: ./.github/workflows/cloud_build_failure_reporter.yml
     with:
       test_name_substrings: "nightly,continuous"

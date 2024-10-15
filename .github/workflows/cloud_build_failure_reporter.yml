@@ -99,7 +99,6 @@ jobs:
                   });
 
                   var foundCheck = false;
-                  let periodicCheck = {};
 
                   for (const commit of commits) {
                     console.log(
@@ -109,45 +108,46 @@ jobs:
                       ...context.repo,
                       ref: commit.sha
                     });
-                    // find runs for this commit
+
+                    // Store relevant checks in an array
+                    const relevantChecks = [];
                     for (const check of checks.data.check_runs) {
-                      console.log(`found run ${check.name} for ${commit.html_url}`);
-                      if (testNameList.some(substring => check.name.includes(substring))) {
-                        foundCheck = true;
-                        periodicCheck = check;
-                        break;
-                      }
+                        console.log(`found run ${check.name} for ${commit.html_url}`);
+                        if (testNameList.some(substring => check.name.includes(substring))) {
+                          foundCheck = true;
+                          relevantChecks.push(check);
+                        }
                     }
 
-                    if (foundCheck) {
-                      if (
-                        periodicCheck.status === 'completed' &&
-                        periodicCheck.conclusion === 'success'
-                      ) {
-                        updateIssues(
-                          `[Passing periodic](${periodicCheck.html_url}) at ${commit.html_url}. Closing this issue.`
-                        );
-                      } else if (periodicCheck.status === 'in_progress') {
-                        console.log(
-                          `Check is pending ${periodicCheck.html_url} for ${commit.html_url}. Retry again later.`
-                        );
+                    // Handle each relevant check
+                    for (const check of relevantChecks) {
+                        if (
+                            check.status === 'completed' &&
+                            check.conclusion === 'success'
+                        ) {
+                            updateIssues(
+                                `[Passing periodic](${check.html_url}) at ${commit.html_url}. Closing this issue.`
+                            );
+                        } else if (check.status === 'in_progress') {
+                            console.log(
+                                `Check is pending ${check.html_url} for ${commit.html_url}. Retry again later.`
+                            );
+                        } else {
+                            createOrCommentIssue(
+                                `[Cloud Build Failure Reporter] test failing for **${check.name}**`,
+                                `Cloud Build Failure Reporter found test failure for **${check.name}** ([link to check](${check.html_url})) at [link to commit](${commit.html_url}). Please fix the error and then close the issue after the **${check.name}** test passes.`
+                            );
+                        }
                       }
-                      // error case
-                      else {
-                        createOrCommentIssue(
-                          '[Cloud Build Failure Reporter] test failing for ${check.name}',
-                          `Cloud Build Failure Reporter found test failure for ${check.name} (${periodicCheck.html_url}) at ${commit.html_url}. Please fix the error and then close the issue after the ${check.name} test passes.`
-                        );
-                      }
-                      // exit early as check was found
-                      return;
                     }
-                  }
 
                   // no periodic checks found across all commits, report it
-                  createOrCommentIssue(
-                    'Missing periodic',
-                    `Periodic test is not found. Last checked from ${
-                      commits[0].html_url
-                    } to ${commits[commits.length - 1].html_url}.`
-                  );
+                  if (!foundCheck){
+                    createOrCommentIssue(
+                      'Missing periodic',
+                      `Periodic test is not found. Last checked from ${
+                        commits[0].html_url
+                      } to ${commits[commits.length - 1].html_url}.`
+                    );
+                  }
+                  
