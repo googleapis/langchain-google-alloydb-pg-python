@@ -17,7 +17,7 @@ name: 'reporter'
 on:
   workflow_call:
     inputs:
-      test_name_substrings:
+      trigger_includes:
           required: true
           type: string
 
