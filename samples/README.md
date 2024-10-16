@@ -13,4 +13,5 @@ This directory provides code samples to help you get started with LangChain and 
 | [How to Choose a Nearest-Neighbor Index Guide](../docs/how_to_choose_an_index_guide.md) | This guide outlines different indexing strategies for approximate nearest neighbor (ANN) search. |
 | [Index Tuning Sample](./index_tuning_sample) | This guide demonstrates how to fine-tune your LangChain PostgreSQL index for better vector similarity search results. |
 | [Langchain on VertexAI](./langchain_on_vertexai) | This guide explains how to build and deploy LangChain apps to a managed Reasoning Engine runtime using LangChain on Vertex AI. |
+| [Migrate from PG vectorstore class to AlloyDB vectorstore class](./migrations/migrate_pgvector_to_alloydb.md) | This guide explains how to migrate your vector data from a PGVector-style database to an AlloyDB-style database for improved performance and manageability. |
 | [Migrate a Vector Store to AlloyDB](./migrations/migrate_vectorstore_to_alloydb.md) | This guide provides step-by-step instructions on migrating data from existing vector stores to  AlloyDB. |
