@@ -22,6 +22,7 @@ from langchain_core.embeddings import Embeddings
 from sqlalchemy import text
 
 from .engine import AlloyDBEngine
+from .model_manager import AlloyDBModelManager
 
 
 class AlloyDBEmbeddings(Embeddings):
@@ -35,6 +36,9 @@ class AlloyDBEmbeddings(Embeddings):
             key (object): Prevent direct constructor usage.
             engine (AlloyDBEngine): Connection pool engine for managing connections to Postgres database.
             model_id (str): The model id used for generating embeddings.
+
+        Raises:
+            :class:`ValueError`: if model does not exist. Use AlloyDBModelManager to create the model.
 
         """
         if key != AlloyDBEmbeddings.__create_key:
@@ -60,11 +64,10 @@ class AlloyDBEmbeddings(Embeddings):
         """
 
         embeddings = cls(cls.__create_key, engine, model_id)
-        # TODO: @vishwarajanand - We should validate the model_id here
-        # models = await AlloyDBModel.create(engine, model_id)
-        # model_exists = await models.aexists()
-        # if not model_exists:
-        #     raise IllegalArgumentError(f"Model {model_id} does not exist.")
+        model_exists = await embeddings.amodel_exists()
+        if not model_exists:
+            raise ValueError(f"Model {model_id} does not exist.")
+
         return embeddings
 
     @classmethod
@@ -83,11 +86,38 @@ class AlloyDBEmbeddings(Embeddings):
         """
 
         embeddings = cls(cls.__create_key, engine, model_id)
-        # TODO: @vishwarajanand - We should validate the model_id here
-        # models = AlloyDBModel.create_sync(engine, model_id)
-        # if not models.exists():
-        #     raise IllegalArgumentError(f"Model {model_id} does not exist.")
+        if not embeddings.model_exists():
+            raise ValueError(f"Model {model_id} does not exist.")
+
         return embeddings
+
+    async def amodel_exists(self) -> bool:
+        """Checks if the embedding model exists.
+
+        Return:
+            `Bool`: True if a model with the given name exists, False otherwise.
+        """
+        return await self._engine._run_as_async(self.__amodel_exists())
+
+    def model_exists(self) -> bool:
+        """Checks if the embedding model exists.
+
+        Return:
+            `Bool`: True if a model with the given name exists, False otherwise.
+        """
+        return self._engine._run_as_sync(self.__amodel_exists())
+
+    async def __amodel_exists(self) -> bool:
+        """Checks if the embedding model exists.
+
+        Return:
+            `Bool`: True if a model with the given name exists, False otherwise.
+        """
+        model_manager = await AlloyDBModelManager.create(self._engine)
+        model = await model_manager.aget_model(model_id=self.model_id)
+        if model is not None:
+            return True
+        return False
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         raise NotImplementedError(
