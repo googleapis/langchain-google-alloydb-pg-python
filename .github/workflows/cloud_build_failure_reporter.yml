@@ -17,7 +17,7 @@ name: Cloud Build Reporter
 on:
   workflow_call:
     inputs:
-      trigger_includes:
+      trigger_names:
           required: true
           type: string
   workflow_dispatch:
@@ -36,10 +36,10 @@ jobs:
         with:
           script: |-
                   // parse test names
-                  const testNameSubstring = '${{ inputs.trigger_includes }}';
-                  const testNameFound = {}; //keeps track of whether each test is found
+                  const testNameSubstring = '${{ inputs.trigger_names }}';
+                  const testNameFound = new Map(); //keeps track of whether each test is found
                   testNameSubstring.split(',').forEach(testName => {
-                    testNameFound[testName] = false; 
+                    testNameFound.set(testName, false); 
                   });
                   
                   // label for all issues opened by reporter
@@ -112,16 +112,19 @@ jobs:
                       ref: commit.sha
                     });
 
-                    // Store relevant checks in an array
+                    
                     const relevantChecks = [];
-                    for (const testName of testNameFound) {
-                      if (testNameFound[name] === true){
-                        //skip if a check is already found for this name
-                        continue; 
-                      }
-                      if (check.name.includes(testName)) {
-                        relevantChecks.push(check.name);
-                        testNameFound[testName] = true;
+                    // Iterate through each check and find matching names
+                    for (const check of checks.data.check_runs) {
+                      for (const testName of testNameFound.keys()) {
+                        if (testNameFound.get(testName) === true){
+                          //skip if a check is already found for this name
+                          continue; 
+                        }
+                        if (check.name == testName) {
+                          relevantChecks.push(check);
+                          testNameFound.set(testName, true);
+                        }
                       }
                     }
 
@@ -148,7 +151,7 @@ jobs:
                     }
 
                   // no periodic checks found across all commits, report it
-                  const noTestFound = Object.values(testNameFound).every(value => value === false);
+                  const noTestFound = Array.from(testNameFound.values()).every(value => value === false);
                   if (noTestFound){
                     createOrCommentIssue(
                       'Missing periodic',
