@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: 'reporter'
+name: Cloud Build Reporter
 
 on:
   workflow_call:
@@ -20,6 +20,7 @@ on:
       trigger_includes:
           required: true
           type: string
+  workflow_dispatch:
 
 jobs:
   report:

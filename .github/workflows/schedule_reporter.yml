@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Schedule Cloud Build failure reporter
+name: Schedule Reporter
 
 on:
   schedule:
