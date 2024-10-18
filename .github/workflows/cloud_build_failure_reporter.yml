@@ -37,8 +37,11 @@ jobs:
           script: |-
                   // parse test names
                   const testNameSubstring = '${{ inputs.trigger_includes }}';
-                  const testNameList = testNameSubstring.split(',');
-
+                  const testNameFound = {}; //keeps track of whether each test is found
+                  testNameSubstring.split(',').forEach(testName => {
+                    testNameFound[testName] = false; 
+                  });
+                  
                   // label for all issues opened by reporter
                   const periodicLabel = 'periodic-failure';
 
@@ -100,8 +103,6 @@ jobs:
                     ...context.repo
                   });
 
-                  var foundCheck = false;
-
                   for (const commit of commits) {
                     console.log(
                       `checking runs at ${commit.html_url}: ${commit.commit.message}`
@@ -113,12 +114,15 @@ jobs:
 
                     // Store relevant checks in an array
                     const relevantChecks = [];
-                    for (const check of checks.data.check_runs) {
-                        console.log(`found run ${check.name} for ${commit.html_url}`);
-                        if (testNameList.some(substring => check.name.includes(substring))) {
-                          foundCheck = true;
-                          relevantChecks.push(check);
-                        }
+                    for (const testName of testNameFound) {
+                      if (testNameFound[name] === true){
+                        //skip if a check is already found for this name
+                        continue; 
+                      }
+                      if (check.name.includes(testName)) {
+                        relevantChecks.push(check.name);
+                        testNameFound[testName] = true;
+                      }
                     }
 
                     // Handle each relevant check
@@ -128,7 +132,7 @@ jobs:
                             check.conclusion === 'success'
                         ) {
                             updateIssues(
-                                `[Passing periodic](${check.html_url}) at ${commit.html_url}. Closing this issue.`
+                                `[Passing periodic](${check.html_url}) at ${commit.html_url}.`
                             );
                         } else if (check.status === 'in_progress') {
                             console.log(
@@ -144,10 +148,11 @@ jobs:
                     }
 
                   // no periodic checks found across all commits, report it
-                  if (!foundCheck){
+                  const noTestFound = Object.values(testNameFound).every(value => value === false);
+                  if (noTestFound){
                     createOrCommentIssue(
                       'Missing periodic',
-                      `Periodic test is not found. Last checked from ${
+                      `No periodic test is found. Last checked from ${
                         commits[0].html_url
                       } to ${commits[commits.length - 1].html_url}.`
                     );
