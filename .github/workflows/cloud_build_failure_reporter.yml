@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Cloud Build Reporter
+name: Cloud Build Failure Reporter
 
 on:
   workflow_call:
@@ -103,6 +103,7 @@ jobs:
                     ...context.repo
                   });
 
+                  const relevantChecks = [];
                   for (const commit of commits) {
                     console.log(
                       `checking runs at ${commit.html_url}: ${commit.commit.message}`
@@ -112,8 +113,6 @@ jobs:
                       ref: commit.sha
                     });
 
-                    
-                    const relevantChecks = [];
                     // Iterate through each check and find matching names
                     for (const check of checks.data.check_runs) {
                       for (const testName of testNameFound.keys()) {
@@ -128,27 +127,27 @@ jobs:
                       }
                     }
 
-                    // Handle each relevant check
-                    for (const check of relevantChecks) {
-                        if (
-                            check.status === 'completed' &&
-                            check.conclusion === 'success'
-                        ) {
-                            updateIssues(
-                                `[Passing periodic](${check.html_url}) at ${commit.html_url}.`
-                            );
-                        } else if (check.status === 'in_progress') {
-                            console.log(
-                                `Check is pending ${check.html_url} for ${commit.html_url}. Retry again later.`
-                            );
-                        } else {
-                            createOrCommentIssue(
-                                `[Cloud Build Failure Reporter] test failing for **${check.name}**`,
-                                `Cloud Build Failure Reporter found test failure for **${check.name}** ([link to check](${check.html_url})) at [link to commit](${commit.html_url}). Please fix the error and then close the issue after the **${check.name}** test passes.`
-                            );
-                        }
+                  // Handle each relevant check
+                  for (const check of relevantChecks) {
+                      if (
+                          check.status === 'completed' &&
+                          check.conclusion === 'success'
+                      ) {
+                          updateIssues(
+                              `[Passing periodic](${check.html_url}) at ${commit.html_url}.`
+                          );
+                      } else if (check.status === 'in_progress') {
+                          console.log(
+                              `Check is pending ${check.html_url} for ${commit.html_url}. Retry again later.`
+                          );
+                      } else {
+                          createOrCommentIssue(
+                              `[Cloud Build Failure Reporter] test failing for **${check.name}**`,
+                              `Cloud Build Failure Reporter found test failure for **${check.name}** ([link to check](${check.html_url})) at [link to commit](${commit.html_url}). Please fix the error and then close the issue after the **${check.name}** test passes.`
+                          );
                       }
                     }
+                  }
 
                   // no periodic checks found across all commits, report it
                   const noTestFound = Array.from(testNameFound.values()).every(value => value === false);
