@@ -134,7 +134,7 @@ jobs:
                           check.conclusion === 'success'
                       ) {
                           updateIssues(
-                              `[Passing periodic](${check.html_url}) at ${commit.html_url}.`
+                              `[Tests are passing](${check.html_url}) for commit [${commit.sha}](${commit.html_url}).`
                           );
                       } else if (check.status === 'in_progress') {
                           console.log(
