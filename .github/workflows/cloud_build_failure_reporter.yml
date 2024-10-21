@@ -126,6 +126,12 @@ jobs:
                         }
                       }
                     }
+                    // Break out of the loop early if all tests are found
+                    const allTestsFound = Array.from(testNameFound.values()).every(value => value === true);
+                    if (allTestsFound){
+                      break;
+                    }
+                  }
 
                   // Handle each relevant check
                   for (const check of relevantChecks) {
@@ -142,8 +148,8 @@ jobs:
                           );
                       } else {
                           createOrCommentIssue(
-                              `[Cloud Build Failure Reporter] test failing for **${check.name}**`,
-                              `Cloud Build Failure Reporter found test failure for **${check.name}** ([link to check](${check.html_url})) at [link to commit](${commit.html_url}). Please fix the error and then close the issue after the **${check.name}** test passes.`
+                              `Cloud Build Failure Reporter: ${check.name} failed`,
+                              `Cloud Build Failure Reporter found test failure for **${check.name}** ([check.name](${check.html_url})) at [commit sha](${commit.html_url}). Please fix the error and then close the issue after the **${check.name}** test passes.`
                           );
                       }
                     }
@@ -153,8 +159,8 @@ jobs:
                   const noTestFound = Array.from(testNameFound.values()).every(value => value === false);
                   if (noTestFound){
                     createOrCommentIssue(
-                      'Missing periodic',
-                      `No periodic test is found. Last checked from ${
+                      'Missing periodic tests: ${{ inputs.trigger_names }}',
+                      `No periodic test is found for triggers: ${{ inputs.trigger_names }}. Last checked from ${
                         commits[0].html_url
                       } to ${commits[commits.length - 1].html_url}.`
                     );
