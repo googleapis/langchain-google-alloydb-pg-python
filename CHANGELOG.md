@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.7.0...v0.8.0) (2024-10-23)
+
+
+### Features
+
+* Add GCS URI support for image embedding ([#247](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/247)) ([2f4ee36](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2f4ee3644675ca7fcb05ed779adeb2672b73f7c7))
+* Enable model endpoint management for embeddings ([#233](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/233)) ([247b9cf](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/247b9cfdbc758c68b976183831cdff7d41f11848))
+* Functionality to help users migrate data from PGVector to AlloyDB ([#235](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/235)) ([013e2a1](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/013e2a179e9d4ec0d2ede111f187a98affa57d61))
+* Remove support for Python 3.8 ([#237](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/237)) ([d0a8801](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/d0a8801e3c569647cc9392ea25a5d22b4aff889f))
+
+
+### Documentation
+
+* Added pg to alloy migration guide ([#249](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/249)) ([3ee3601](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/3ee360128c4687311a7c20a38ca2a1b0f9861c1b))
+
 ## [0.7.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.6.0...v0.7.0) (2024-09-17)
 
 
