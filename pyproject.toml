@@ -45,6 +45,7 @@ test = [
     "pytest-asyncio==0.24.0",
     "pytest==8.3.3",
     "pytest-cov==5.0.0",
+    "pytest-depends==1.0.1",
     "Pillow==11.0.0"
 ]
 
