@@ -21,6 +21,11 @@ on:
           required: true
           type: string
   workflow_dispatch:
+    inputs:
+      trigger_names:
+        description: 'Cloud Build trigger names separated by comma.'
+        required: true
+        default: ''
 
 jobs:
   report:
@@ -103,7 +108,7 @@ jobs:
                     ...context.repo
                   });
 
-                  const relevantChecks = [];
+                  const relevantChecks = new Map();
                   for (const commit of commits) {
                     console.log(
                       `checking runs at ${commit.html_url}: ${commit.commit.message}`
@@ -115,13 +120,14 @@ jobs:
 
                     // Iterate through each check and find matching names
                     for (const check of checks.data.check_runs) {
+                      console.log(`Handling test name ${check.name}`);
                       for (const testName of testNameFound.keys()) {
                         if (testNameFound.get(testName) === true){
                           //skip if a check is already found for this name
                           continue; 
                         }
-                        if (check.name == testName) {
-                          relevantChecks.push(check);
+                        if (check.name.includes(testName)) {
+                          relevantChecks.set(check, commit);
                           testNameFound.set(testName, true);
                         }
                       }
@@ -134,7 +140,7 @@ jobs:
                   }
 
                   // Handle each relevant check
-                  for (const check of relevantChecks) {
+                  relevantChecks.forEach((commit, check) => {
                     if (
                         check.status === 'completed' &&
                         check.conclusion === 'success'
@@ -149,10 +155,10 @@ jobs:
                     } else {
                         createOrCommentIssue(
                             `Cloud Build Failure Reporter: ${check.name} failed`,
-                            `Cloud Build Failure Reporter found test failure for **${check.name}** ([check.name](${check.html_url})) at [commit sha](${commit.html_url}). Please fix the error and then close the issue after the **${check.name}** test passes.`
+                            `Cloud Build Failure Reporter found test failure for [**${check.name}** ](${check.html_url}) at [${commit.sha}](${commit.html_url}). Please fix the error and then close the issue after the **${check.name}** test passes.`
                         );
                     }
-                  }
+                  });
 
                   // no periodic checks found across all commits, report it
                   const noTestFound = Array.from(testNameFound.values()).every(value => value === false);
