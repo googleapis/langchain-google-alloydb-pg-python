@@ -57,6 +57,7 @@ jobs:
                     creator: 'github-actions[bot]',
                     labels: [periodicLabel]
                   });
+
                   // createOrCommentIssue creates a new issue or comments on an existing issue.
                   const createOrCommentIssue = async function (title, txt) {
                     if (prevIssues.length < 1) {
@@ -69,34 +70,38 @@ jobs:
                       });
                       return;
                     }
-                    if (prevIssues.length > 1) {
-                      console.warn(
-                        `found ${prevIssues.length} issues but only adding comment to ${prevIssues[0].html_url}`
-                      );
-                    }
-                    console.log(
-                      `found previous issue ${prevIssues[0].html_url}, adding comment`
-                    );
-                    await github.rest.issues.createComment({
-                      ...context.repo,
-                      issue_number: prevIssues[0].number,
-                      body: txt
-                    });
-                  };
-
-                  // updateIssues comments on any existing issues. No-op if no issue exists.
-                  const updateIssues = async function (txt) {
-                    if (prevIssues.length < 1) {
-                      console.log('no previous issues found.');
-                      return;
-                    }
+                    // only comment on issue related to the current test
                     for (const prevIssue of prevIssues) {
-                      console.log(`found previous issue ${prevIssue.html_url}, adding comment`);
+                      if (prevIssue.title.includes(title)){
+                        console.log(
+                        `found previous issue ${prevIssue.html_url}, adding comment`
+                      );
+                      
                       await github.rest.issues.createComment({
                         ...context.repo,
                         issue_number: prevIssue.number,
                         body: txt
                       });
+                      return;
+                    }
+                  };
+
+                  // updateIssues comments on any existing issues. No-op if no issue exists.
+                  const updateIssues = async function (checkName, txt) {
+                    if (prevIssues.length < 1) {
+                      console.log('no previous issues found.');
+                      return;
+                    }
+                    // only comment on issue related to the current test
+                    for (const prevIssue of prevIssues) {
+                      if (prevIssue.title.includes(checkName)){
+                        console.log(`found previous issue ${prevIssue.html_url}, adding comment`);
+                        await github.rest.issues.createComment({
+                          ...context.repo,
+                          issue_number: prevIssue.number,
+                          body: txt
+                        });
+                      }
                     }
                   };
 
@@ -146,6 +151,7 @@ jobs:
                         check.conclusion === 'success'
                     ) {
                         updateIssues(
+                            check.name,
                             `[Tests are passing](${check.html_url}) for commit [${commit.sha}](${commit.html_url}).`
                         );
                     } else if (check.status === 'in_progress') {
