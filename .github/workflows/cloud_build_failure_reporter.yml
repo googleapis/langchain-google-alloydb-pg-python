@@ -73,16 +73,17 @@ jobs:
                     // only comment on issue related to the current test
                     for (const prevIssue of prevIssues) {
                       if (prevIssue.title.includes(title)){
-                        console.log(
-                        `found previous issue ${prevIssue.html_url}, adding comment`
-                      );
-                      
-                      await github.rest.issues.createComment({
-                        ...context.repo,
-                        issue_number: prevIssue.number,
-                        body: txt
-                      });
-                      return;
+                          console.log(
+                          `found previous issue ${prevIssue.html_url}, adding comment`
+                        );
+                        
+                        await github.rest.issues.createComment({
+                          ...context.repo,
+                          issue_number: prevIssue.number,
+                          body: txt
+                        });
+                        return;
+                      }
                     }
                   };
 
