@@ -57,7 +57,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "only create class through 'create' or 'create_sync' methods"
             )
         self.pool = pool
-        self.serde = serde
         
     @classmethod
     async def create(

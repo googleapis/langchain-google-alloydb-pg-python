@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, AsyncIterator, Sequence
 from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
@@ -96,7 +96,7 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             IndexError: If the table provided does not contain required schema.
 
         Returns:
-            AlloyDBChatMessageHistory: A newly created instance of AlloyDBSaver.
+            AlloyDBSaver: A newly created instance of AlloyDBSaver.
         """
         coro = AsyncAlloyDBSaver.create(
             engine, serde
@@ -110,7 +110,7 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             filter: Optional[dict[str, Any]] = None,
             before: Optional[RunnableConfig] = None,
             limit: Optional[int] = None
-    ) -> Iterator[CheckpointTuple]:
+    ) -> AsyncIterator[CheckpointTuple]:
         '''List checkpoints from AlloyDB '''
         await self._engine._run_as_async(self.__checkpoint.alist(config, filter, before, limit))
     

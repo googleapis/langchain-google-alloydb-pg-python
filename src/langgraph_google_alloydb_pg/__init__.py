@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from .checkpoint import AlloyDBSaver
-from .async_checkpoint import AsyncAlloyDBSaver
 from .version import __version__
 
 __all__ = [
     "AlloyDBSaver",
-    "AsyncAlloyDBSaver",
     "__version__",
 ]
