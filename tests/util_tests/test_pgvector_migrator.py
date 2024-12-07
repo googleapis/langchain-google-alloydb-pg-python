@@ -16,7 +16,7 @@ import asyncio
 import json
 import os
 import uuid
-from typing import List, Optional, Sequence
+from typing import Optional, Sequence
 from unittest import mock
 
 import pytest
@@ -151,7 +151,7 @@ class TestPgvectorengine:
         await engine.close()
 
     @pytest.fixture(scope="module")
-    def sample_embeddings(self) -> List[float]:
+    def sample_embeddings(self) -> list[float]:
         return [0.1] * (VECTOR_SIZE - 1) + [0.2]
 
     def _create_metadata_for_collection(
@@ -168,7 +168,7 @@ class TestPgvectorengine:
         self,
         engine: AlloyDBEngine,
         collection_name: str,
-        sample_embeddings: List[float],
+        sample_embeddings: list[float],
         num_rows: int = 2,
         num_cols: int = 3,
     ) -> None:
@@ -198,7 +198,7 @@ class TestPgvectorengine:
     async def _create_pgvector_tables(
         self,
         engine: AlloyDBEngine,
-        sample_embeddings: List[float],
+        sample_embeddings: list[float],
         num_rows: int = 2,
         num_collections: int = 1,
         num_cols: int = 3,

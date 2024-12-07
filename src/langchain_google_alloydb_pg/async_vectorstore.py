@@ -19,7 +19,7 @@ import base64
 import json
 import re
 import uuid
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Iterable, Optional, Sequence
 
 import numpy as np
 import requests
@@ -57,7 +57,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
-        metadata_columns: List[str] = [],
+        metadata_columns: list[str] = [],
         id_column: str = "langchain_id",
         metadata_json_column: Optional[str] = "langchain_metadata",
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
@@ -75,7 +75,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             schema_name (str, optional): Name of the database schema. Defaults to "public".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
+            metadata_columns (list[str]): Column(s) that represent a document's metadata.
             id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
             distance_strategy (DistanceStrategy): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
@@ -110,15 +110,15 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     @classmethod
     async def create(
-        cls: Type[AsyncAlloyDBVectorStore],
+        cls: type[AsyncAlloyDBVectorStore],
         engine: AlloyDBEngine,
         embedding_service: Embeddings,
         table_name: str,
         schema_name: str = "public",
         content_column: str = "content",
         embedding_column: str = "embedding",
-        metadata_columns: List[str] = [],
-        ignore_metadata_columns: Optional[List[str]] = None,
+        metadata_columns: list[str] = [],
+        ignore_metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
         metadata_json_column: Optional[str] = "langchain_metadata",
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
@@ -136,8 +136,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
             schema_name (str, optional): Name of the database schema. Defaults to "public".
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            metadata_columns (list[str]): Column(s) that represent a document's metadata.
+            ignore_metadata_columns (list[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
             id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
             distance_strategy (DistanceStrategy): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
@@ -225,11 +225,11 @@ class AsyncAlloyDBVectorStore(VectorStore):
     async def aadd_embeddings(
         self,
         texts: Iterable[str],
-        embeddings: List[List[float]],
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List] = None,
+        embeddings: list[list[float]],
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Add data along with embeddings to the table.
 
         Raises:
@@ -282,17 +282,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
     async def aadd_texts(
         self,
         texts: Iterable[str],
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List] = None,
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Embed texts and add to the table.
 
         Raises:
             :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
         """
         if isinstance(self.embedding_service, AlloyDBEmbeddings):
-            embeddings: List[List[float]] = [[] for _ in list(texts)]
+            embeddings: list[list[float]] = [[] for _ in list(texts)]
         else:
             embeddings = await self.embedding_service.aembed_documents(list(texts))
 
@@ -303,10 +303,10 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def aadd_documents(
         self,
-        documents: List[Document],
-        ids: Optional[List] = None,
+        documents: list[Document],
+        ids: Optional[list] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Embed documents and add to the table.
 
         Raises:
@@ -338,17 +338,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def aadd_images(
         self,
-        uris: List[str],
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        uris: list[str],
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list[str]] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Embed images and add to the table.
 
         Args:
-            uris (List[str]): List of local image URIs to add to the table.
-            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
-            ids: (Optional[List[str]]): List of IDs to add to table records.
+            uris (list[str]): List of local image URIs to add to the table.
+            metadatas (Optional[list[dict]]): List of metadatas to add to table records.
+            ids: (Optional[list[str]]): List of IDs to add to table records.
 
         Returns:
             List of record IDs added.
@@ -369,7 +369,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def adelete(
         self,
-        ids: Optional[List] = None,
+        ids: Optional[list] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
         """Delete records from the table.
@@ -389,18 +389,18 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     @classmethod
     async def afrom_texts(  # type: ignore[override]
-        cls: Type[AsyncAlloyDBVectorStore],
-        texts: List[str],
+        cls: type[AsyncAlloyDBVectorStore],
+        texts: list[str],
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
         schema_name: str = "public",
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List] = None,
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
-        metadata_columns: List[str] = [],
-        ignore_metadata_columns: Optional[List[str]] = None,
+        metadata_columns: list[str] = [],
+        ignore_metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
         metadata_json_column: str = "langchain_metadata",
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
@@ -413,16 +413,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """Create an AsyncAlloyDBVectorStore instance from texts.
 
         Args:
-            texts (List[str]): Texts to add to the vector store.
+            texts (list[str]): Texts to add to the vector store.
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
-            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
-            ids: (Optional[List[str]]): List of IDs to add to table records.
+            metadatas (Optional[list[dict]]): List of metadatas to add to table records.
+            ids: (Optional[list[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            metadata_columns (list[str]): Column(s) that represent a document's metadata.
+            ignore_metadata_columns (list[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
             id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
             distance_strategy (DistanceStrategy): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
@@ -459,17 +459,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     @classmethod
     async def afrom_documents(  # type: ignore[override]
-        cls: Type[AsyncAlloyDBVectorStore],
-        documents: List[Document],
+        cls: type[AsyncAlloyDBVectorStore],
+        documents: list[Document],
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
         schema_name: str = "public",
-        ids: Optional[List] = None,
+        ids: Optional[list] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
-        metadata_columns: List[str] = [],
-        ignore_metadata_columns: Optional[List[str]] = None,
+        metadata_columns: list[str] = [],
+        ignore_metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
         metadata_json_column: str = "langchain_metadata",
         distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
@@ -482,16 +482,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """Create an AsyncAlloyDBVectorStore instance from documents.
 
         Args:
-            documents (List[Document]): Documents to add to the vector store.
+            documents (list[Document]): Documents to add to the vector store.
             embedding (Embeddings): Text embedding model to use.
             engine (AlloyDBEngine): Connection pool engine for managing connections to AlloyDB database.
             table_name (str): Name of an existing table.
-            metadatas (Optional[List[dict]]): List of metadatas to add to table records.
-            ids: (Optional[List[str]]): List of IDs to add to table records.
+            metadatas (Optional[list[dict]]): List of metadatas to add to table records.
+            ids: (Optional[list[str]]): List of IDs to add to table records.
             content_column (str): Column that represent a Document’s page_content. Defaults to "content".
             embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
-            metadata_columns (List[str]): Column(s) that represent a document's metadata.
-            ignore_metadata_columns (List[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            metadata_columns (list[str]): Column(s) that represent a document's metadata.
+            ignore_metadata_columns (list[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
             id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
             metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
             distance_strategy (DistanceStrategy): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
@@ -531,7 +531,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def __query_collection(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
@@ -571,7 +571,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs selected by similarity search on query."""
         embedding = (
             []
@@ -584,7 +584,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             embedding=embedding, k=k, filter=filter, **kwargs
         )
 
-    def _images_embedding_helper(self, image_uris: List[str]) -> List[List[float]]:
+    def _images_embedding_helper(self, image_uris: list[str]) -> list[list[float]]:
         # check if either `embed_images()` or `embed_image()` API is supported by the embedding service used
         if hasattr(self.embedding_service, "embed_images"):
             try:
@@ -612,7 +612,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs selected by similarity search on query."""
         embedding = self._images_embedding_helper([image_uri])[0]
 
@@ -637,7 +637,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
         embedding = (
             []
@@ -653,11 +653,11 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def asimilarity_search_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs selected by vector similarity search."""
         docs_and_scores = await self.asimilarity_search_with_score_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
@@ -667,11 +667,11 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def asimilarity_search_with_score_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
         results = await self.__query_collection(
             embedding=embedding, k=k, filter=filter, **kwargs
@@ -706,7 +706,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
         embedding = await self.embedding_service.aembed_query(text=query)
 
@@ -721,13 +721,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def amax_marginal_relevance_search_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
         docs_and_scores = (
             await self.amax_marginal_relevance_search_with_score_by_vector(
@@ -744,13 +744,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     async def amax_marginal_relevance_search_with_score_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
         results = await self.__query_collection(
             embedding=embedding, k=fetch_k, filter=filter, **kwargs
@@ -875,38 +875,38 @@ class AsyncAlloyDBVectorStore(VectorStore):
     def add_texts(
         self,
         texts: Iterable[str],
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List] = None,
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
 
     def add_documents(
         self,
-        documents: List[Document],
-        ids: Optional[List] = None,
+        documents: list[Document],
+        ids: Optional[list] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
 
     def add_images(
         self,
-        uris: List[str],
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        uris: list[str],
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list[str]] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
 
     def delete(
         self,
-        ids: Optional[List] = None,
+        ids: Optional[list] = None,
         **kwargs: Any,
     ) -> Optional[bool]:
         raise NotImplementedError(
@@ -915,17 +915,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     @classmethod
     def from_texts(  # type: ignore[override]
-        cls: Type[AsyncAlloyDBVectorStore],
-        texts: List[str],
+        cls: type[AsyncAlloyDBVectorStore],
+        texts: list[str],
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List] = None,
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
-        metadata_columns: List[str] = [],
-        ignore_metadata_columns: Optional[List[str]] = None,
+        metadata_columns: list[str] = [],
+        ignore_metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
         metadata_json_column: str = "langchain_metadata",
         **kwargs: Any,
@@ -936,16 +936,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
     @classmethod
     def from_documents(  # type: ignore[override]
-        cls: Type[AsyncAlloyDBVectorStore],
-        documents: List[Document],
+        cls: type[AsyncAlloyDBVectorStore],
+        documents: list[Document],
         embedding: Embeddings,
         engine: AlloyDBEngine,
         table_name: str,
-        ids: Optional[List] = None,
+        ids: Optional[list] = None,
         content_column: str = "content",
         embedding_column: str = "embedding",
-        metadata_columns: List[str] = [],
-        ignore_metadata_columns: Optional[List[str]] = None,
+        metadata_columns: list[str] = [],
+        ignore_metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
         metadata_json_column: str = "langchain_metadata",
         **kwargs: Any,
@@ -960,7 +960,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
@@ -971,7 +971,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
@@ -982,29 +982,29 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
 
     def similarity_search_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
 
     def similarity_search_with_score_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
@@ -1017,33 +1017,33 @@ class AsyncAlloyDBVectorStore(VectorStore):
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
 
     def max_marginal_relevance_search_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
 
     def max_marginal_relevance_search_with_score_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
         filter: Optional[str] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )

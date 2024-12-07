@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Type
+from typing import Optional, Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -62,7 +62,7 @@ class AlloyDBModelManager:
 
     @classmethod
     async def create(
-        cls: Type[AlloyDBModelManager],
+        cls: type[AlloyDBModelManager],
         engine: AlloyDBEngine,
     ) -> AlloyDBModelManager:
         manager = AlloyDBModelManager(cls.__create_key, engine)
@@ -72,7 +72,7 @@ class AlloyDBModelManager:
 
     @classmethod
     def create_sync(
-        cls: Type[AlloyDBModelManager],
+        cls: type[AlloyDBModelManager],
         engine: AlloyDBEngine,
     ) -> AlloyDBModelManager:
         manager = AlloyDBModelManager(cls.__create_key, engine)
@@ -93,11 +93,11 @@ class AlloyDBModelManager:
         result = await self._engine._run_as_async(self.__aget_model(model_id=model_id))
         return result
 
-    async def alist_models(self) -> List[AlloyDBModel]:
+    async def alist_models(self) -> list[AlloyDBModel]:
         """Lists all the models and its details.
 
         Returns:
-            List[`AlloyDBModel`] of all available model..
+            list[`AlloyDBModel`] of all available model..
         """
         results = await self._engine._run_as_async(self.__alist_models())
         return results
@@ -206,7 +206,7 @@ class AlloyDBModelManager:
         data_class = self.__convert_dict_to_dataclass(result)[0]
         return data_class
 
-    async def __alist_models(self) -> List[AlloyDBModel]:
+    async def __alist_models(self) -> list[AlloyDBModel]:
         """Lists all the models and its details."""
         query = "SELECT * FROM google_ml.model_info_view;"
         result = await self.__query_db(query)
@@ -294,7 +294,7 @@ class AlloyDBModelManager:
 
     def __convert_dict_to_dataclass(
         self, list_of_rows: Sequence[RowMapping]
-    ) -> List[AlloyDBModel]:
+    ) -> list[AlloyDBModel]:
         """Converts a list of DB rows to list of AlloyDBModel dataclass.
 
         Args:

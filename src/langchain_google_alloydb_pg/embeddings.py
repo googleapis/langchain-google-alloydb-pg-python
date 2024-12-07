@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import json
-from typing import List, Type
 
 from langchain_core.embeddings import Embeddings
 from sqlalchemy import text
@@ -50,7 +49,7 @@ class AlloyDBEmbeddings(Embeddings):
 
     @classmethod
     async def create(
-        cls: Type[AlloyDBEmbeddings], engine: AlloyDBEngine, model_id: str
+        cls: type[AlloyDBEmbeddings], engine: AlloyDBEngine, model_id: str
     ) -> AlloyDBEmbeddings:
         """Create AlloyDBEmbeddings instance.
 
@@ -72,7 +71,7 @@ class AlloyDBEmbeddings(Embeddings):
 
     @classmethod
     def create_sync(
-        cls: Type[AlloyDBEmbeddings], engine: AlloyDBEngine, model_id: str
+        cls: type[AlloyDBEmbeddings], engine: AlloyDBEngine, model_id: str
     ) -> AlloyDBEmbeddings:
         """Create AlloyDBEmbeddings instance.
 
@@ -119,12 +118,12 @@ class AlloyDBEmbeddings(Embeddings):
             return True
         return False
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         raise NotImplementedError(
             "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
         )
 
-    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         raise NotImplementedError(
             "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
         )
@@ -132,37 +131,37 @@ class AlloyDBEmbeddings(Embeddings):
     def embed_query_inline(self, query: str) -> str:
         return f"embedding('{self.model_id}', '{query}')::vector"
 
-    async def aembed_query(self, text: str) -> List[float]:
+    async def aembed_query(self, text: str) -> list[float]:
         """Asynchronous Embed query text.
 
         Args:
             query (str): Text to embed.
 
         Returns:
-            List[float]: Embedding.
+            list[float]: Embedding.
         """
         embeddings = await self._engine._run_as_async(self.__aembed_query(text))
         return embeddings
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Embed query text.
 
         Args:
             query (str): Text to embed.
 
         Returns:
-            List[float]: Embedding.
+            list[float]: Embedding.
         """
         return self._engine._run_as_sync(self.__aembed_query(text))
 
-    async def __aembed_query(self, query: str) -> List[float]:
+    async def __aembed_query(self, query: str) -> list[float]:
         """Coroutine for generating embeddings for a given query.
 
         Args:
             query (str): Text to embed.
 
         Returns:
-            List[float]: Embedding.
+            list[float]: Embedding.
         """
         query = f" SELECT embedding('{self.model_id}', '{query}')::vector "
         async with self._engine._pool.connect() as conn:
