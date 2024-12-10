@@ -14,7 +14,6 @@
 
 import os
 import uuid
-from typing import List
 
 import pytest
 import pytest_asyncio
@@ -50,7 +49,7 @@ embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
 
 class FakeImageEmbedding(DeterministicFakeEmbedding):
 
-    def embed_image(self, image_paths: List[str]) -> List[List[float]]:
+    def embed_image(self, image_paths: list[str]) -> list[list[float]]:
         return [self.embed_query(path) for path in image_paths]
 
 
