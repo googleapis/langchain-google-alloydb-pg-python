@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.8.0...v0.8.1) (2024-11-15)
+
+
+### Bug Fixes
+
+* Cloud Build reporter issue comment ([#278](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/278)) ([a24109b](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/a24109b6f7a359b024ad9e05a477146fda450488))
+
 ## [0.8.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.7.0...v0.8.0) (2024-10-23)
 
 
