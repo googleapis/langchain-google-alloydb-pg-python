@@ -187,7 +187,7 @@ class HNSWIndex(
     index_type: str = "hnsw",
     # Distance strategy does not affect recall and has minimal little on latency; refer to this guide to learn more https://cloud.google.com/spanner/docs/choose-vector-distance-function
     distance_strategy: DistanceStrategy = lambda : DistanceStrategy.COSINE_DISTANCE,
-    partial_indexes: List[str] | None = None,
+    partial_indexes: list[str] | None = None,
     m: int = 16,
     ef_construction: int = 64
 )
@@ -235,7 +235,7 @@ class IVFFlatIndex(
     name: str = DEFAULT_INDEX_NAME,
     index_type: str = "ivfflat",
     distance_strategy: DistanceStrategy = lambda : DistanceStrategy.COSINE_DISTANCE,
-    partial_indexes: List[str] | None = None,
+    partial_indexes: list[str] | None = None,
     lists: int = 1
 )
 
