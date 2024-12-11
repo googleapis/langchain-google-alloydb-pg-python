@@ -17,8 +17,9 @@ import uuid
 
 import pytest
 import pytest_asyncio
+from helpers.fake_embeddings import FakeEmbedding
+from helpers.fake_image_embeddings import FakeImageEmbedding
 from langchain_core.documents import Document
-from langchain_core.embeddings import DeterministicFakeEmbedding
 from PIL import Image
 from sqlalchemy import text
 
@@ -31,28 +32,19 @@ CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 IMAGE_TABLE = "test_image_table" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
-embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
 # Note: The following texts are chosen to produce diverse
-# similarity scores when using the DeterministicFakeEmbedding service. This ensures
+# similarity scores when using the FakeEmbedding service. This ensures
 # that the test cases can effectively validate the filtering and scoring logic.
 # The scoring might be different if using a different embedding service.
-texts = ["foo", "bar", "baz", "boo"]
+texts = ["foo", "bar", "faz", "bao"]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
 metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
     Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
 ]
-
+embeddings_service = FakeEmbedding(size=VECTOR_SIZE)
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
-
-
-class FakeImageEmbedding(DeterministicFakeEmbedding):
-
-    def embed_image(self, image_paths: list[str]) -> list[list[float]]:
-        return [self.embed_query(path) for path in image_paths]
-
-
 image_embedding_service = FakeImageEmbedding(size=VECTOR_SIZE)
 
 
@@ -111,7 +103,7 @@ class TestVectorStoreSearch:
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
         await engine._ainit_vectorstore_table(
-            DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False
+            DEFAULT_TABLE, VECTOR_SIZE, store_metadata=False, overwrite_existing=True
         )
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
@@ -219,7 +211,7 @@ class TestVectorStoreSearch:
         )
         assert len(results) == 4
 
-        score_threshold = {"score_threshold": 0.02}
+        score_threshold = {"score_threshold": 0.5}
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
         )
@@ -232,7 +224,7 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results[0][0] == Document(page_content="foo")
 
-        score_threshold = {"score_threshold": 0.02}
+        score_threshold = {"score_threshold": 0.8}
         vs.distance_strategy = DistanceStrategy.EUCLIDEAN
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
@@ -260,9 +252,9 @@ class TestVectorStoreSearch:
         results = await vs.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar")
         results = await vs.amax_marginal_relevance_search(
-            "bar", filter="content = 'boo'"
+            "bar", filter="content = 'bao'"
         )
-        assert results[0] == Document(page_content="boo")
+        assert results[0] == Document(page_content="bao")
 
     async def test_amax_marginal_relevance_search_vector(self, vs):
         embedding = embeddings_service.embed_query("bar")
@@ -313,9 +305,9 @@ class TestVectorStoreSearch:
         results = await vs_custom.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar")
         results = await vs_custom.amax_marginal_relevance_search(
-            "bar", filter="mycontent = 'boo'"
+            "bar", filter="mycontent = 'bao'"
         )
-        assert results[0] == Document(page_content="boo")
+        assert results[0] == Document(page_content="bao")
 
     async def test_max_marginal_relevance_search_vector(self, vs_custom):
         embedding = embeddings_service.embed_query("bar")
