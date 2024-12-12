@@ -240,38 +240,49 @@ The process of getting data from vector stores varies depending on the specific 
     > **_NOTE:_**  The embeddings service defined here is not used to generate the embeddings, but required by the vectorstore.
     > Embeddings are directly copied from the original table.
 
-2. Create AlloyDB table and Vector Store
+2. Prepare AlloyDB table
+    1. Connect to AlloyDB
 
-    ```python
-    from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+        ```python
+        from langchain_google_alloydb_pg import AlloyDBEngine
 
-    # Replace these variable values
-    engine = await AlloyDBEngine.afrom_instance(
-        project_id="my-project-id",
-        instance="my-instance-name",
-        region="us-central1",
-        cluster="my-primary",
-        database="test_db",
-        user="user",
-        password="password",
-    )
+        # Replace these variable values
+        engine = await AlloyDBEngine.afrom_instance(
+            project_id="my-project-id",
+            instance="my-instance-name",
+            region="us-central1",
+            cluster="my-primary",
+            database="test_db",
+            user="user",
+            password="password",
+        )
+        ```
 
-    # Create an AlloyDB table. Set the table name.
-    await engine.ainit_vectorstore_table(
-        table_name='table_name',
+    1. Create a table to copy data into (if it does not exist).
 
-        # Fake embeddings use a vector size of 768.
-        # If you're choosing another vector embeddings service, choose the corresponding vector size
-        vector_size=768,
-    )
+        ```python
+        # Create an AlloyDB table. Set the table name.
+        await engine.ainit_vectorstore_table(
+            table_name='table_name',
 
-    # Create a vector store instance
-    vector_store = await AlloyDBVectorStore.create(
-        engine=engine,
-        embedding_service=embeddings_service,
-        table_name='table_name',
-    )
-    ```
+            # Fake embeddings use a vector size of 768.
+            # If you're choosing another vector embeddings service, choose the corresponding vector size
+            vector_size=768,
+        )
+        ```
+
+    1. Initialise a vector store object
+
+        ```python
+        from langchain_google_alloydb_pg import AlloyDBVectorStore
+
+        # Create a vector store instance
+        vector_store = await AlloyDBVectorStore.create(
+            engine=engine,
+            embedding_service=embeddings_service,
+            table_name='table_name',
+        )
+        ```
 
     > **_NOTE:_** This code adds metadata to the "langchain_metadata" column in a JSON format. For more efficient filtering, you can organize this metadata into separate columns. Refer to the [vector store docs](https://github.com/googleapis/langchain-google-alloydb-pg-python/blob/main/docs/vector_store.ipynb) for examples of creating metadata columns.
 
