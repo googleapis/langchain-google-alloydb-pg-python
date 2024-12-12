@@ -179,6 +179,7 @@ Converting Sync to Async
 Update sync methods to `await` async methods
 
 .. code:: python
+
    engine = await AlloyDBEngine.afrom_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
    await engine.ainit_vectorstore_table(table_name="my-table", vector_size=768)
    vectorstore = await AlloyDBVectorStore.create(
@@ -198,9 +199,10 @@ Run the code: FastAPI
 Update routes to use `async def`.
 
 .. code:: python
- @app.get("/invoke/")
- async def invoke(query: str):
-    return await retriever.ainvoke(query)
+
+   @app.get("/invoke/")
+   async def invoke(query: str):
+      return await retriever.ainvoke(query)
 
 
 Run the code: Local python file
@@ -210,11 +212,12 @@ It is recommend to create a top-level async method definition: `async def` to wr
 Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
 
 .. code:: python
- async def main():
-    response = await retriever.ainvoke(query)
-    print(response)
 
- asyncio.run(main())
+   async def main():
+      response = await retriever.ainvoke(query)
+      print(response)
+
+   asyncio.run(main())
 
 
 Contributions
