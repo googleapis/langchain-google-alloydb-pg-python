@@ -255,8 +255,12 @@ The process of getting data from vector stores varies depending on the specific 
             database="test_db",
             user="user",
             password="password",
+            # The default IP type here is public.
+            # ip_type=IPTypes.PUBLIC,
         )
         ```
+
+        > **_NOTE:_** We are using a public IP connection as mentioned [here](https://github.com/GoogleCloudPlatform/alloydb-python-connector?tab=readme-ov-file#specifying-ip-address-type).
 
     1. Create a table to copy data into (if it does not exist).
 
