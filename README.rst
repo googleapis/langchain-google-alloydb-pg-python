@@ -187,32 +187,28 @@ Converting Sync to Async
       embedding_service=VertexAIEmbeddings(model_name="textembedding-gecko@003")
    )
 
-1. Run the code:
+2. Run the code: ipython and jupyter notebooks support the use of the `await` keyword without any additional setup
 
-   * ipython and jupyter notebooks
+2. Run the code: FastAPI
 
-   ipython and jupyter notebooks support the use of the `await` keyword without any additional setup
+Update routes to use `async def`.
 
-   * FastAPI
+.. code:: python
+ @app.get("/invoke/")
+ async def invoke(query: str):
+    return await retriever.ainvoke(query)
 
- Update routes to use `async def`.
+1. Run the code: Local python file
 
- .. code:: python
-    @app.get("/invoke/")
-    async def invoke(query: str):
-       return await retriever.ainvoke(query)
+It is recommend to create a top-level async method definition: `async def` to wrap multiple async methods.
+Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
 
-   * Local python file
+.. code:: python
+ async def main():
+    response = await retriever.ainvoke(query)
+    print(response)
 
- It is recommend to create a top-level async method definition: `async def` to wrap multiple async methods.
- Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
-
- .. code:: python
-    async def main():
-       response = await retriever.ainvoke(query)
-       print(response)
-
-    asyncio.run(main())
+ asyncio.run(main())
 
 
 Contributions
