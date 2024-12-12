@@ -178,41 +178,41 @@ Converting Sync to Async
 
 1. Update sync methods to `await` async methods:
 
-   .. code:: python
-      engine = await AlloyDBEngine.afrom_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
-      await engine.ainit_vectorstore_table(table_name="my-table", vector_size=768)
-      vectorstore = await AlloyDBVectorStore.create(
-         engine,
-         table_name="my-table",
-         embedding_service=VertexAIEmbeddings(model_name="textembedding-gecko@003")
-      )
+.. code:: python
+   engine = await AlloyDBEngine.afrom_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+   await engine.ainit_vectorstore_table(table_name="my-table", vector_size=768)
+   vectorstore = await AlloyDBVectorStore.create(
+      engine,
+      table_name="my-table",
+      embedding_service=VertexAIEmbeddings(model_name="textembedding-gecko@003")
+   )
 
-2. Run the code:
+1. Run the code:
 
-* ipython and jupyter notebooks
+   * ipython and jupyter notebooks
 
    ipython and jupyter notebooks support the use of the `await` keyword without any additional setup
 
-* FastAPI
+   * FastAPI
 
-   Update routes to use `async def`.
+ Update routes to use `async def`.
 
-   .. code:: python
-      @app.get("/invoke/")
-      async def invoke(query: str):
-         return await retriever.ainvoke(query)
+ .. code:: python
+    @app.get("/invoke/")
+    async def invoke(query: str):
+       return await retriever.ainvoke(query)
 
-* Local python file
+   * Local python file
 
-   It is recommend to create a top-level async method definition: `async def` to wrap multiple async methods.
-   Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
+ It is recommend to create a top-level async method definition: `async def` to wrap multiple async methods.
+ Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
 
-   .. code:: python
-      async def main():
-         response = await retriever.ainvoke(query)
-         print(response)
+ .. code:: python
+    async def main():
+       response = await retriever.ainvoke(query)
+       print(response)
 
-      asyncio.run(main())
+    asyncio.run(main())
 
 
 Contributions
