@@ -176,7 +176,7 @@ non-blocking I/O-bound tasks using one thread with cooperative multitasking inst
 Converting Sync to Async
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Update sync methods to `await` async methods:
+Update sync methods to `await` async methods
 
 .. code:: python
    engine = await AlloyDBEngine.afrom_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
@@ -187,9 +187,13 @@ Converting Sync to Async
       embedding_service=VertexAIEmbeddings(model_name="textembedding-gecko@003")
    )
 
-2. Run the code: ipython and jupyter notebooks support the use of the `await` keyword without any additional setup
+Run the code: notebooks
+^^^^^^^^^^^^^^^^^^^^^^^
 
-2. Run the code: FastAPI
+ipython and jupyter notebooks support the use of the `await` keyword without any additional setup
+
+Run the code: FastAPI
+^^^^^^^^^^^^^^^^^^^^^
 
 Update routes to use `async def`.
 
@@ -198,7 +202,9 @@ Update routes to use `async def`.
  async def invoke(query: str):
     return await retriever.ainvoke(query)
 
-1. Run the code: Local python file
+
+Run the code: Local python file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is recommend to create a top-level async method definition: `async def` to wrap multiple async methods.
 Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
