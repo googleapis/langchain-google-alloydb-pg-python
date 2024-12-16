@@ -78,6 +78,35 @@ The process of getting data from vector stores varies depending on the specific 
             return ids, content, embeddings, metadatas
         ```
 
+    Get all data from index from a specific namespace
+
+        ```python
+        def get_all_ids(namespace):
+            results = index.list_paginated(prefix="", namespace=namespace)
+            ids = [v.id for v in results.vectors]
+            while results.pagination is not None:
+                pagination_token = results.pagination.next
+                results = index.list_paginated(prefix="", pagination_token=pagination_token)
+                ids.extend([v.id for v in results.vectors])
+            return ids
+
+        def get_all_data():
+            all_data = index.fetch(ids=get_all_ids(index), namespace=namespace)
+            ids = []
+            embeddings = []
+            content = []
+            metadatas = []
+            for doc in all_data["vectors"].values():
+                ids.append(doc["id"])
+                embeddings.append(doc["values"])
+                content.append(doc["metadata"]["text"])
+                metadata = doc["metadata"]
+                del metadata["text"]
+                metadatas.append(metadata)
+            return ids, content, embeddings, metadatas
+        ```
+    To know more about working with multiple namespaces, see [docs](https://docs.pinecone.io/guides/indexes/use-namespaces)
+
 #### Weaviate
 
    1. Install any prerequisites using the [docs](https://weaviate.io/developers/weaviate/client-libraries/python#installation).
