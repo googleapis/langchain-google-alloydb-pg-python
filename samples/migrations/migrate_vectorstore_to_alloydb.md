@@ -1,8 +1,10 @@
 # Migrate a Vector Store to AlloyDB
 
-This guide provides step-by-step instructions on migrating data from existing vector stores to AlloyDB.
+This guide provides step-by-step instructions on migrating data from existing LangChain vector stores to AlloyDB.
+This guide uses default values from the supported LangChain vector stores and may need to be updated if the vector
+store is customized or uses advanced features.
 
-Supported Vector Stores
+**Supported Vector Stores**
 
 - Pinecone
 - Weaviate
@@ -22,7 +24,7 @@ How to set up AlloyDB:
 - [Create an AlloyDB database.](https://cloud.google.com/alloydb/docs/quickstart/create-and-connect)
 - [Add a User to the database.](https://cloud.google.com/alloydb/docs/database-users/about)
 
-Install required libraries
+Install required libraries:
 
 ```bash
 pip install --upgrade --quiet langchain-google-alloydb-pg langchain-core
