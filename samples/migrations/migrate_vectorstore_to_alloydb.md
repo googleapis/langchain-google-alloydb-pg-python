@@ -86,7 +86,7 @@ The process of getting data from vector stores varies depending on the specific 
             ids = [v.id for v in results.vectors]
             while results.pagination is not None:
                 pagination_token = results.pagination.next
-                results = index.list_paginated(prefix="", pagination_token=pagination_token)
+                results = index.list_paginated(prefix="", pagination_token=pagination_token, namespace=namespace)
                 ids.extend([v.id for v in results.vectors])
             return ids
 
