@@ -105,7 +105,7 @@ The process of getting data from vector stores varies depending on the specific 
                 metadatas.append(metadata)
             return ids, content, embeddings, metadatas
         ```
-    To know more about working with multiple namespaces, see [docs](https://docs.pinecone.io/guides/indexes/use-namespaces)
+        To know more about working with multiple namespaces, see [docs](https://docs.pinecone.io/guides/indexes/use-namespaces)
 
 #### Weaviate
 
