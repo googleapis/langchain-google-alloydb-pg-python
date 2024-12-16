@@ -78,7 +78,7 @@ The process of getting data from vector stores varies depending on the specific 
             return ids, content, embeddings, metadatas
         ```
 
-    Get all data from index from a specific namespace
+   4. (Optional) Get all data from index from a specific namespace
 
         ```python
         def get_all_ids(namespace):
