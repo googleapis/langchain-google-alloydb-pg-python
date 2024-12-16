@@ -90,7 +90,7 @@ The process of getting data from vector stores varies depending on the specific 
                 ids.extend([v.id for v in results.vectors])
             return ids
 
-        def get_all_data():
+        def get_all_data(namespace):
             all_data = index.fetch(ids=get_all_ids(index), namespace=namespace)
             ids = []
             embeddings = []
