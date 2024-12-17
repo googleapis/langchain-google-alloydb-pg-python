@@ -33,6 +33,7 @@ class AlloyDBModel:
     model_qualified_name: str
     model_auth_type: Optional[str]
     model_auth_id: Optional[str]
+    header_gen_fn: Optional[str]
     input_transform_fn: Optional[str]
     output_transform_fn: Optional[str]
 
@@ -192,7 +193,17 @@ class AlloyDBModelManager:
 
         """
         query = f"""SELECT * FROM
-                google_ml.list_model('{model_id}')"""
+                google_ml.list_model('{model_id}')
+                AS t(model_id VARCHAR,
+                model_request_url VARCHAR,
+                model_provider google_ml.model_provider,
+                model_type google_ml.model_type,
+                model_qualified_name VARCHAR,
+                model_auth_type google_ml.auth_type,
+                model_auth_id VARCHAR,
+                header_gen_fn VARCHAR,
+                input_transform_fn VARCHAR,
+                output_transform_fn VARCHAR)"""
 
         try:
             result = await self.__query_db(query)
