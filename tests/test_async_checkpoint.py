@@ -20,44 +20,36 @@ import pytest_asyncio
 
 from sqlalchemy import text
 
-
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
 cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
-table_name = "message_store" + str(uuid.uuid4())
-table_name_async = "message_store" + str(uuid.uuid4())
 
-from langchain_google_alloydb_pg import AlloyDBEngine
-from langchain_google_alloydb_pg.async_chat_message_history import (
-    AsyncAlloyDBChatMessageHistory,
-)
-
-from ..src.langgraph_google_alloydb_pg.engine import AlloyDBEngine
-from ..src.langgraph_google_alloydb_pg.checkpoint import AsyncAlloyDBSaver
+from langgraph_google_alloydb_pg import AlloyDBEngine
+from langgraph_google_alloydb_pg.async_checkpoint import AsyncAlloyDBSaver
 
         
+async def aexecute(engine: AlloyDBEngine, query: str) -> None:
+    async with engine._pool.connect() as conn:
+        await conn.execute(text(query))
+        await conn.commit()
+
+
 @pytest_asyncio.fixture
 async def async_engine():
     async_engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
         region=region,
+        cluster=cluster_id,
         instance=instance_id,
         database=db_name,
     )
-    
-    await async_engine.setup()
+    await async_engine._ainit_checkpoint_table()
+    yield async_engine
+    checkpoints_query = "DROP TABLE IF EXISTS checkpoints"
+    await aexecute(async_engine, checkpoints_query)
+    checkpoint_writes_query = "DROP TABLE IF EXISTS checkpoint_writes"
+    await aexecute(async_engine, checkpoint_writes_query)
     await async_engine.close()
-    
-@pytest.mark.asyncio
-async def test_alloydb_checkpoint_async(
-    async_engine: AlloyDBEngine
-) -> None:
-    pass
 
-@pytest.mark.asyncio
-async def test_alloydb_checkpoint_sync(
-    async_engine: AlloyDBEngine
-) -> None:
-    pass

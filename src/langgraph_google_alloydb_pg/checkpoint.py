@@ -29,6 +29,7 @@ from .async_checkpoint import AsyncAlloyDBSaver
 from .engine import AlloyDBEngine
 
 class AlloyDBSaver(BaseCheckpointSaver[str]):
+    """Checkpoint stored in an AlloyDB for PostgreSQL database."""
     
     __create_key = object()
     
@@ -51,7 +52,6 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
     async def create(
         cls,
         engine: AlloyDBEngine,
-        table_name: str,
         schema_name: str = "public",
         serde: Optional[SerializerProtocol] = None
     ) -> "AlloyDBSaver":
@@ -59,8 +59,6 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
 
         Args:
             engine (AlloyDBEngine): AlloyDB engine to use.
-            session_id (str): Retrieve the table content with this session ID.
-            table_name (str): Table name that stores the chat message history.
             schema_name (str): The schema name where the table is located (default: "public").
             serde (SerializerProtocol): Serializer for encoding/decoding checkpoints (default: None).
 
@@ -71,16 +69,15 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             AlloyDBSaver: A newly created instance of AlloyDBSaver.
         """
         coro = AsyncAlloyDBSaver.create(
-            engine, table_name, schema_name, serde
+            engine, schema_name, serde
         )
-        checkpoint = engine._run_as_async(coro)
-        return cls(cls.__create_key, engine, table_name, schema_name, serde)  
+        checkpoint = await engine._run_as_async(coro)
+        return cls(cls.__create_key, engine, checkpoint)  
     
     @classmethod
     def create_sync(
         cls,
         engine: AlloyDBEngine,
-        table_name: str,
         schema_name: str = "public",
         serde: Optional[SerializerProtocol] = None
     ) -> "AlloyDBSaver":
@@ -88,7 +85,6 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
 
         Args:
             engine (AlloyDBEngine): AlloyDB engine to use.
-            table_name (str): Table name that stores the chat message history.
             schema_name (str): The schema name where the table is located (default: "public").
             serde (SerializerProtocol): Serializer for encoding/decoding checkpoints (default: None).
 
@@ -99,75 +95,80 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             AlloyDBSaver: A newly created instance of AlloyDBSaver.
         """
         coro = AsyncAlloyDBSaver.create(
-            engine, serde
+            engine, schema_name, serde
         )
         checkpoint = engine._run_as_sync(coro)
-        return cls(cls.__create_key, engine, table_name, schema_name, serde)  
+        return cls(cls.__create_key, engine, checkpoint)  
     
-    async def alist(self,
-            config: Optional[RunnableConfig],
-            *,
-            filter: Optional[dict[str, Any]] = None,
-            before: Optional[RunnableConfig] = None,
-            limit: Optional[int] = None
+
+    async def alist(
+        self,
+        config: Optional[RunnableConfig],
+        filter: Optional[dict[str, Any]] = None,
+        before: Optional[RunnableConfig] = None,
+        limit: Optional[int] = None
     ) -> AsyncIterator[CheckpointTuple]:
         '''List checkpoints from AlloyDB '''
-        await self._engine._run_as_async(self.__checkpoint.alist(config, filter, before, limit))
+        yield await self._engine._run_as_async(self.__checkpoint.alist(config, filter, before, limit))
     
-    def list(self,
-            config: Optional[RunnableConfig],
-            *,
-            filter: Optional[dict[str, Any]] = None,
-            before: Optional[RunnableConfig] = None,
-            limit: Optional[int] = None
+    def list(
+        self,
+        config: Optional[RunnableConfig],
+        filter: Optional[dict[str, Any]] = None,
+        before: Optional[RunnableConfig] = None,
+        limit: Optional[int] = None
     ) -> Iterator[CheckpointTuple]:
         '''List checkpoints from AlloyDB '''
-        self._engine._run_as_sync(self.__checkpoint.alist(config, filter, before, limit))
+        return self._engine._run_as_sync(self.__checkpoint.alist(config, filter, before, limit))
         
     async def aget_tuple(
         self,
         config: RunnableConfig
     ) -> Optional[CheckpointTuple]:
         '''Get a checkpoint tuple from AlloyDB'''
-        await self._engine._run_as_sync(self.__checkpoint.aget_tuple(config))
+        return await self._engine._run_as_async(self.__checkpoint.aget_tuple(config))
     
     def get_tuple(
         self,
         config: RunnableConfig
     ) -> Optional[CheckpointTuple]:
         '''Get a checkpoint tuple from AlloyDB'''
-        self._engine._run_as_sync(self.__checkpoint.aget_tuple(config))
+        return self._engine._run_as_sync(self.__checkpoint.aget_tuple(config))
         
-    async def aput(self,
-            config: RunnableConfig,
-            checkpoint: Checkpoint,
-            metadata: CheckpointMetadata,
-            new_versions: ChannelVersions
+    async def aput(
+        self,
+        config: RunnableConfig,
+        checkpoint: Checkpoint,
+        metadata: CheckpointMetadata,
+        new_versions: ChannelVersions
     ) -> RunnableConfig:
         '''Save a checkpoint to AlloyDB'''
-        await self._engine._run_as_async(self.__checkpoint.aput(config, checkpoint, metadata, new_versions))
+        return await self._engine._run_as_async(self.__checkpoint.aput(config, checkpoint, metadata, new_versions))
     
-    def put(self,
-            config: RunnableConfig,
-            checkpoint: Checkpoint,
-            metadata: CheckpointMetadata,
-            new_versions: ChannelVersions
+    def put(
+        self,
+        config: RunnableConfig,
+        checkpoint: Checkpoint,
+        metadata: CheckpointMetadata,
+        new_versions: ChannelVersions
     ) -> RunnableConfig:
         '''Save a checkpoint to AlloyDB'''
-        self._engine._run_as_sync(self.__checkpoint.aput(config, checkpoint, metadata, new_versions))
+        return self._engine._run_as_sync(self.__checkpoint.aput(config, checkpoint, metadata, new_versions))
         
-    async def aput_writes(self,
-                config: RunnableConfig,
-                writes: Sequence[tuple[str, Any]],
-                task_id: str
+    async def aput_writes(
+        self,
+        config: RunnableConfig,
+        writes: Sequence[tuple[str, Any]],
+        task_id: str
     ) -> None:
         '''Store intermediate writes linked to a checkpoint'''
-        await self._engine._run_as_sync(self.__checkpoint.aput_writes(config, writes, task_id))
+        await self._engine._run_as_async(self.__checkpoint.aput_writes(config, writes, task_id))
     
-    def put_writes(self,
-                config: RunnableConfig,
-                writes: Sequence[tuple[str, Any]],
-                task_id: str
+    def put_writes(
+        self,
+        config: RunnableConfig,
+        writes: Sequence[tuple[str, Any]],
+        task_id: str
     ) -> None:
         '''Store intermediate writes linked to a checkpoint'''
         self._engine._run_as_sync(self.__checkpoint.aput_writes(config, writes, task_id))

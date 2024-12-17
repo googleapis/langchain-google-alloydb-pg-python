@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .engine import AlloyDBEngine
 from .checkpoint import AlloyDBSaver
 from .version import __version__
 
 __all__ = [
+    "AlloyDBEngine",
     "AlloyDBSaver",
     "__version__",
 ]
