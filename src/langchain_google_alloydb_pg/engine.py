@@ -195,7 +195,9 @@ class AlloyDBEngine:
             password (Optional[str]): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
-            engine_args (Mapping): Additional arguments that are passed directly to  :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be used
+            engine_args (Mapping): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during it's creation.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
@@ -244,8 +246,9 @@ class AlloyDBEngine:
             loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
             thread (Optional[Thread]): Thread used to create the engine async.
             iam_account_email (Optional[str]): IAM service account email.
-            engine_args (Mapping): Additional arguments that are passed directly to  :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be used
-
+            engine_args (Mapping): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during it's creation.
         Raises:
             ValueError: Raises error if only one of 'user' or 'password' is specified.
 
@@ -327,8 +330,9 @@ class AlloyDBEngine:
             password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
-            engine_args (Mapping): Additional arguments that are passed directly to  :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be used
-
+            engine_args (Mapping): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during it's creation.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
@@ -359,7 +363,7 @@ class AlloyDBEngine:
     @classmethod
     def from_engine_args(
         cls,
-        url: str| URL,
+        url: str | URL,
         **kwargs: Any,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine instance from arguments
