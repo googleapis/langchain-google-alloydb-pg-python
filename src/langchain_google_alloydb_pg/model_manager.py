@@ -192,16 +192,7 @@ class AlloyDBModelManager:
 
         """
         query = f"""SELECT * FROM
-                google_ml.list_model('{model_id}')
-                AS t(model_id VARCHAR,
-                model_request_url VARCHAR,
-                model_provider google_ml.model_provider,
-                model_type google_ml.model_type,
-                model_qualified_name VARCHAR,
-                model_auth_type google_ml.auth_type,
-                model_auth_id VARCHAR,
-                input_transform_fn VARCHAR,
-                output_transform_fn VARCHAR)"""
+                google_ml.list_model('{model_id}')"""
 
         try:
             result = await self.__query_db(query)
