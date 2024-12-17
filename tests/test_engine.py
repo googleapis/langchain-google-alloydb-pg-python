@@ -136,7 +136,7 @@ class TestEngineAsync:
         await aexecute(engine, stmt)
 
     async def test_engine_args(self, engine):
-        assert engine.size() == 3
+        assert engine._pool.QueuePool.size() == 3
 
     async def test_init_table_custom(self, engine):
         await engine.ainit_vectorstore_table(
