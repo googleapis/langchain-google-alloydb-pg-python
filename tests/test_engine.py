@@ -115,6 +115,11 @@ class TestEngineAsync:
             instance=db_instance,
             region=db_region,
             database=db_name,
+            engine_args={
+                # add some connection args to validate engine_args works correctly
+                "pool_size": 3,
+                "max_overflow": 2,
+            },
         )
         yield engine
         await aexecute(engine, f'DROP TABLE "{CUSTOM_TABLE}"')
@@ -129,6 +134,9 @@ class TestEngineAsync:
         embedding = await embeddings_service.aembed_query(content)
         stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         await aexecute(engine, stmt)
+
+    async def test_engine_args(self, engine):
+        assert engine.size() == 3
 
     async def test_init_table_custom(self, engine):
         await engine.ainit_vectorstore_table(
