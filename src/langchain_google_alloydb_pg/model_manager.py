@@ -90,9 +90,7 @@ class AlloyDBModelManager:
             :class: `AlloyDBModel` object of the specified model if it exists otherwise `None`.
 
         """
-        result = await self._engine._run_as_async(
-            self.__aget_model(model_id=model_id)
-        )
+        result = await self._engine._run_as_async(self.__aget_model(model_id=model_id))
         return result
 
     async def alist_models(self) -> list[AlloyDBModel]:
