@@ -90,7 +90,9 @@ class AlloyDBModelManager:
             :class: `AlloyDBModel` object of the specified model if it exists otherwise `None`.
 
         """
-        result = await self._engine._run_as_async(self.__aget_model(model_id=model_id))
+        result = await self._engine._run_as_async(
+            self.__aget_model(model_id=model_id)
+        )
         return result
 
     async def alist_models(self) -> list[AlloyDBModel]:
@@ -133,7 +135,11 @@ class AlloyDBModelManager:
         """
         await self._engine._run_as_async(
             self.__acreate_model(
-                model_id, model_provider, model_type, model_qualified_name, **kwargs
+                model_id,
+                model_provider,
+                model_type,
+                model_qualified_name,
+                **kwargs,
             )
         )
 
@@ -157,7 +163,7 @@ class AlloyDBModelManager:
         """
         extension_version = await self.__fetch_google_ml_extension()
         db_flag = await self.__fetch_db_flag()
-        if extension_version < 1.3:
+        if extension_version < "1.3":
             raise Exception(
                 "Please upgrade google_ml_integration EXTENSION to version 1.3 or above."
             )
@@ -265,7 +271,7 @@ class AlloyDBModelManager:
             await conn.execute(text(query))
             await conn.commit()
 
-    async def __fetch_google_ml_extension(self) -> float:
+    async def __fetch_google_ml_extension(self) -> str:
         """Creates the Google ML Extension if it does not exist and returns the version number (Default creates version 1.3)."""
         create_extension_query = """
         DO $$
@@ -283,7 +289,7 @@ class AlloyDBModelManager:
         extension_version_query = "SELECT extversion FROM pg_extension WHERE extname = 'google_ml_integration';"
         result = await self.__query_db(extension_version_query)
         version = result[0]["extversion"]
-        return float(version)
+        return version
 
     async def __fetch_db_flag(self) -> str:
         """Fetches the enable_model_support DB flag."""
