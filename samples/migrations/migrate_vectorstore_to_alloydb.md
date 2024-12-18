@@ -278,7 +278,7 @@ The process of getting data from vector stores varies depending on the specific 
         from langchain_google_alloydb_pg import AlloyDBEngine
 
         # Replace these variable values
-        engine = await AlloyDBEngine.afrom_instance(
+        engine = AlloyDBEngine.from_instance(
             project_id="my-project-id",
             instance="my-instance-name",
             region="us-central1",
@@ -297,7 +297,7 @@ The process of getting data from vector stores varies depending on the specific 
 
         ```python
         # Create an AlloyDB table. Set the table name.
-        await engine.ainit_vectorstore_table(
+        engine.init_vectorstore_table(
             table_name='table_name',
 
             # Fake embeddings use a vector size of 768.
@@ -312,7 +312,7 @@ The process of getting data from vector stores varies depending on the specific 
         from langchain_google_alloydb_pg import AlloyDBVectorStore
 
         # Create a vector store instance
-        vector_store = await AlloyDBVectorStore.create(
+        vector_store = AlloyDBVectorStore.create_sync(
             engine=engine,
             embedding_service=embeddings_service,
             table_name='table_name',
@@ -327,7 +327,7 @@ The process of getting data from vector stores varies depending on the specific 
 
     ```python
     ids, content, embeddings, metadatas = get_all_data()
-    await vector_store.aadd_embeddings(
+    vector_store.add_embeddings(
         texts=content,
         embeddings=embeddings,
         metadatas=metadatas,
@@ -342,7 +342,7 @@ The process of getting data from vector stores varies depending on the specific 
     ```python
     from langchain_google_alloydb_pg import AlloyDBLoader
 
-    loader = await AlloyDBLoader.create(
+    loader = AlloyDBLoader.create_sync(
         engine=engine,
         query=f"SELECT * FROM table_name;",
         content_columns="content",
