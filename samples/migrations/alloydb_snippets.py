@@ -17,7 +17,7 @@
 import asyncio
 import sys
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 # [START langchain_alloydb_get_client]
 from langchain_google_alloydb_pg import AlloyDBEngine
@@ -64,7 +64,7 @@ def get_embeddings_service(size: int) -> FakeEmbeddings:
 
 # [START langchain_create_alloydb_vector_store_table]
 async def ainit_vector_store(
-    engine: AlloyDBEngine, table_name: str, vector_size: int, **kwargs: dict
+    engine: AlloyDBEngine, table_name: str, vector_size: int, **kwargs: Any
 ) -> None:
     await engine.ainit_vectorstore_table(
         table_name=table_name,
@@ -106,7 +106,7 @@ async def ainsert_data(
     vector_store: AlloyDBVectorStore,
     texts: list[str],
     embeddings: list[list[float]],
-    metadatas: list[dict],
+    metadatas: list[dict[str, Any]],
     ids: list[str],
 ) -> list[str]:
     inserted_ids = await vector_store.aadd_embeddings(
@@ -147,13 +147,13 @@ async def main() -> None:
     )
     # sample rows
     ids = [str(uuid.uuid4())]
-    contents = ["content_1"]
-    embeddings = embeddings_service.embed_documents(contents)
-    metadatas = [{} for _ in contents]
+    texts = ["content_1"]
+    embeddings = embeddings_service.embed_documents(texts)
+    metadatas: list[dict[str, Any]] = [{} for _ in texts]
     ids = await ainsert_data(
         vector_store=vs,
         ids=ids,
-        contents=contents,
+        texts=texts,
         embeddings=embeddings,
         metadatas=metadatas,
     )

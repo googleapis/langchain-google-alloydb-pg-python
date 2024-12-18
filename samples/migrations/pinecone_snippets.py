@@ -47,7 +47,7 @@ def get_index(client: Pinecone, index_name: str = "index-name") -> Index:
 
 
 # [START pinecone_get_all_ids]
-def get_all_ids(index: Index, namespace="") -> list[str]:
+def get_all_ids(index: Index, namespace: str = "") -> list[str]:
     results = index.list_paginated(prefix="", namespace=namespace)
     ids = [v.id for v in results.vectors]
     while results.pagination is not None:
