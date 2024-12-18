@@ -249,7 +249,7 @@ class AlloyDBEngine:
             engine_args (Mapping): Additional arguments that are passed directly to
                 :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
                 used to specify additional parameters to the underlying pool during it's creation.
-                
+
         Raises:
             ValueError: Raises error if only one of 'user' or 'password' is specified.
 
