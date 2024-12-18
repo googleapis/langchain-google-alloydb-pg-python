@@ -55,7 +55,7 @@ async def aexecute(
     query: str,
 ) -> None:
     async def run(engine, query):
-        async with engine._pool.pool().connect() as conn:
+        async with engine._pool.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
 
