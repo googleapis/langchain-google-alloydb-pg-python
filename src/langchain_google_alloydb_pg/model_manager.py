@@ -24,18 +24,31 @@ from sqlalchemy.engine.row import RowMapping
 from .engine import AlloyDBEngine
 
 
-@dataclass
 class AlloyDBModel:
-    model_id: str
-    model_request_url: Optional[str]
-    model_provider: str
-    model_type: str
-    model_qualified_name: str
-    model_auth_type: Optional[str]
-    model_auth_id: Optional[str]
-    header_gen_fn: Optional[str]
-    input_transform_fn: Optional[str]
-    output_transform_fn: Optional[str]
+    def __init__(
+        self,
+        model_id: str,
+        model_request_url: Optional[str],
+        model_provider: str,
+        model_type: str,
+        model_qualified_name: str,
+        model_auth_type: Optional[str],
+        model_auth_id: Optional[str],
+        input_transform_fn: Optional[str],
+        output_transform_fn: Optional[str],
+        generate_headers_fn: Optional[str] = None,
+        **kwargs,
+    ):
+        self.model_id = model_id
+        self.model_request_url = model_request_url
+        self.model_provider = model_provider
+        self.model_type = model_type
+        self.model_qualified_name = model_qualified_name
+        self.model_auth_type = model_auth_type
+        self.model_auth_id = model_auth_id
+        self.input_transform_fn = input_transform_fn
+        self.output_transform_fn = output_transform_fn
+        self.generate_headers_fn = generate_headers_fn or kwargs.get("header_gen_fn")
 
 
 class AlloyDBModelManager:
@@ -201,7 +214,7 @@ class AlloyDBModelManager:
                 model_qualified_name VARCHAR,
                 model_auth_type google_ml.auth_type,
                 model_auth_id VARCHAR,
-                header_gen_fn VARCHAR,
+                generate_headers_fn VARCHAR,
                 input_transform_fn VARCHAR,
                 output_transform_fn VARCHAR)"""
 
