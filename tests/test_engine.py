@@ -55,7 +55,7 @@ async def aexecute(
     query: str,
 ) -> None:
     async def run(engine, query):
-        async with engine._pool.connect() as conn:
+        async with engine._pool.pool().connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
 
@@ -136,7 +136,7 @@ class TestEngineAsync:
         await aexecute(engine, stmt)
 
     async def test_engine_args(self, engine):
-        assert engine._pool.size() == 3
+        assert "Pool size: 3" in engine._pool.pool.status()
 
     async def test_init_table_custom(self, engine):
         await engine.ainit_vectorstore_table(
