@@ -15,8 +15,7 @@
 # TODO: Remove below import when minimum supported Python version is 3.10
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -37,7 +36,7 @@ class AlloyDBModel:
         input_transform_fn: Optional[str],
         output_transform_fn: Optional[str],
         generate_headers_fn: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         self.model_id = model_id
         self.model_request_url = model_request_url
@@ -48,6 +47,7 @@ class AlloyDBModel:
         self.model_auth_id = model_auth_id
         self.input_transform_fn = input_transform_fn
         self.output_transform_fn = output_transform_fn
+        # List models is returning column name "header_gen_fn"
         self.generate_headers_fn = generate_headers_fn or kwargs.get("header_gen_fn")
 
 
