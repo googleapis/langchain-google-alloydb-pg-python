@@ -374,6 +374,7 @@ The process of getting data from vector stores varies depending on the specific 
 
     ```python
     ids, content, embeddings, metadatas = get_all_data()
+    documents_length = len(ids)
     vector_store.add_embeddings(
         texts=content,
         embeddings=embeddings,
@@ -386,7 +387,9 @@ The process of getting data from vector stores varies depending on the specific 
 
     ```python
     iterator = get_all_pinecone_data(pinecone_index, batch_size=5)
+    documents_length = 0
     for ids, embeddings, content, metadatas  in iterator:
+      documents_length = documents_length + len(ids)
         await vector_store.aadd_embeddings(
             texts=content,
             embeddings=embeddings,
@@ -411,7 +414,7 @@ The process of getting data from vector stores varies depending on the specific 
     )
 
     documents = loader.load()
-    assert len(documents) == len(ids)
+    assert len(documents) == len(documents_length)
     ```
 
 2. Delete existing data in the collection
