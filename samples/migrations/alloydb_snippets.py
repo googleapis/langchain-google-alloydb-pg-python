@@ -14,23 +14,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import sys
-import uuid
+import os
 from typing import Any, Optional
 
-# [START langchain_alloydb_get_client]
+# TODO(dev): Replace the values below
+project_id = os.environ["PROJECT_ID"]
+region = os.environ["REGION"]
+cluster = os.environ["CLUSTER_ID"]
+instance = os.environ["INSTANCE_ID"]
+db_name = os.environ["DATABASE_ID"]
+
+# TODO(dev): (optional values) Replace the values below
+db_user = os.environ.get("DB_USER", "")
+db_pwd = os.environ.get("DB_PASSWORD", "")
+table_name = os.environ.get("TABLE_NAME", "alloy_db_migration_table")
+vector_size = int(os.environ.get("VECTOR_SIZE", "768"))
+
+
+# [START langchain_alloydb_migration_get_client]
 from langchain_google_alloydb_pg import AlloyDBEngine
 
 
-async def aget_client(
-    project_id: str,
-    region: str,
-    cluster: str,
-    instance: str,
-    database: str,
-    user: Optional[str] = None,
-    password: Optional[str] = None,
+async def aget_alloydb_client(
+    project_id: str = project_id,
+    region: str = region,
+    cluster: str = cluster,
+    instance: str = instance,
+    database: str = db_name,
+    user: Optional[str] = db_user,
+    password: Optional[str] = db_pwd,
 ) -> AlloyDBEngine:
     engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
@@ -46,62 +58,68 @@ async def aget_client(
     return engine
 
 
-# [END langchain_alloydb_get_client]
+# [END langchain_alloydb_migration_get_client]
 
-# [START langchain_alloydb_fake_embedding_service]
+# [START langchain_alloydb_migration_fake_embedding_service]
 from langchain_core.embeddings import FakeEmbeddings
 
 
-def get_embeddings_service(size: int) -> FakeEmbeddings:
+def get_embeddings_service(size: int = vector_size) -> FakeEmbeddings:
     embeddings_service = FakeEmbeddings(size=size)
 
     print("Langchain FakeEmbeddings service initiated.")
     return embeddings_service
 
 
-# [END langchain_alloydb_fake_embedding_service]
+# [END langchain_alloydb_migration_fake_embedding_service]
 
 
-# [START langchain_create_alloydb_vector_store_table]
+# [START langchain_create_alloydb_migration_vector_store_table]
 async def ainit_vector_store(
-    engine: AlloyDBEngine, table_name: str, vector_size: int, **kwargs: Any
+    engine: AlloyDBEngine,
+    table_name: str = table_name,
+    vector_size: int = vector_size,
+    **kwargs: Any,
 ) -> None:
     await engine.ainit_vectorstore_table(
         table_name=table_name,
         vector_size=vector_size,
-        overwrite_existing=True,
         **kwargs,
     )
 
     print("Langchain AlloyDB vector store table initialized.")
 
 
-# [END langchain_create_alloydb_vector_store_table]
+# [END langchain_create_alloydb_migration_vector_store_table]
 
 
-# [START langchain_get_alloydb_vector_store]
+# [START langchain_get_alloydb_migration_vector_store]
 from langchain_core.embeddings import Embeddings
 
 from langchain_google_alloydb_pg import AlloyDBVectorStore
 
 
 async def aget_vector_store(
-    engine: AlloyDBEngine, embeddings_service: Embeddings, table_name: str
+    engine: AlloyDBEngine,
+    embeddings_service: Embeddings,
+    table_name: str = table_name,
+    **kwargs: Any,
 ) -> AlloyDBVectorStore:
     vector_store = await AlloyDBVectorStore.create(
         engine=engine,
         embedding_service=embeddings_service,
         table_name=table_name,
+        **kwargs,
     )
 
     print("Langchain AlloyDB vector store instantiated.")
     return vector_store
 
 
-# [END langchain_get_alloydb_vector_store]
+# [END langchain_get_alloydb_migration_vector_store]
 
 
-# [START langchain_alloydb_vector_store_insert_data]
+# [START langchain_alloydb_migration_vector_store_insert_data]
 async def ainsert_data(
     vector_store: AlloyDBVectorStore,
     texts: list[str],
@@ -116,50 +134,8 @@ async def ainsert_data(
         ids=ids,
     )
 
-    print("AlloyDB client fetched all data from index.")
+    print("AlloyDB client inserted the provided data.")
     return inserted_ids
 
 
-# [END langchain_alloydb_vector_store_insert_data]
-
-
-async def main() -> None:
-    client = await aget_client(
-        project_id=sys.argv[1],
-        region=sys.argv[2],
-        cluster=sys.argv[3],
-        instance=sys.argv[4],
-        database=sys.argv[5],
-        user=sys.argv[6],
-        password=sys.argv[7],
-    )
-    # In case you're using a different embeddings service, choose one from [LangChain's Embedding models](https://python.langchain.com/v0.2/docs/integrations/text_embedding/).
-    embeddings_service = get_embeddings_service(size=768)
-    await ainit_vector_store(
-        engine=client,
-        table_name=sys.argv[8],
-        vector_size=768,
-    )
-    vs = await aget_vector_store(
-        engine=client,
-        embeddings_service=embeddings_service,
-        table_name=sys.argv[8],
-    )
-    # sample rows
-    ids = [str(uuid.uuid4())]
-    texts = ["content_1"]
-    embeddings = embeddings_service.embed_documents(texts)
-    metadatas: list[dict[str, Any]] = [{} for _ in texts]
-    ids = await ainsert_data(
-        vector_store=vs,
-        ids=ids,
-        texts=texts,
-        embeddings=embeddings,
-        metadatas=metadatas,
-    )
-    await client.close()
-    print(f"Inserted {len(ids)} values to Langchain Alloy DB Vector Store.")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+# [END langchain_alloydb_migration_vector_store_insert_data]
