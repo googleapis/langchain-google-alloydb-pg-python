@@ -109,6 +109,53 @@ The process of getting data from vector stores varies depending on the specific 
         ```
         To know more about working with multiple namespaces, see [docs](https://docs.pinecone.io/guides/indexes/use-namespaces).
 
+   5. (Optional) For large datasets we can return an iterator
+
+        ```python
+
+        def get_all_pinecone_ids(index, batch_size):
+            results = index.list_paginated(prefix="", limit=batch_size)
+            # Yield the first batch of IDs
+            ids = [v.id for v in results.vectors]
+            yield ids
+
+            while results.pagination is not None:
+                pagination_token = results.pagination.next
+                results = index.list_paginated(prefix="", pagination_token=pagination_token, limit=batch_size)
+
+                # Extract and yield the next batch of IDs
+                ids = [v.id for v in results.vectors]
+                yield ids
+
+        def get_all_pinecone_data(index, batch_size=100):
+            id_iterator = get_all_pinecone_ids(index, batch_size)
+
+            # Iterate through the batches of IDs and process them
+            for ids in id_iterator:
+
+                # Fetch vectors for the current batch of IDs
+                all_data = index.fetch(ids=ids)
+                ids = []
+                embeddings = []
+                content = []
+                metadatas = []
+
+                # Process each vector in the current batch
+                for doc in all_data["vectors"].values():
+                    ids.append(doc["id"])
+                    embeddings.append(doc["values"])
+                    content.append(doc["metadata"])
+
+                    # Remove 'text' field from metadata
+                    metadata = doc["metadata"]
+                    del metadata["text"]
+                    metadatas.append(metadata)
+
+                # Yield the current batch of results
+                yield ids, embeddings, content, metadatas
+
+        ```
+
 #### Weaviate
 
    1. Install any prerequisites using the [docs](https://weaviate.io/developers/weaviate/client-libraries/python#installation).
@@ -333,6 +380,20 @@ The process of getting data from vector stores varies depending on the specific 
         metadatas=metadatas,
         ids=ids,
     )
+    ```
+
+4. (Optional) To add in large data from the iterator
+
+    ```python
+    iterator = get_all_pinecone_data(pinecone_index, batch_size=5)
+    for ids, embeddings, content, metadatas  in iterator:
+        await vector_store.aadd_embeddings(
+            texts=content,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
+        )
+
     ```
 
 ### Step 3. **Delete data from existing Vector Database**
