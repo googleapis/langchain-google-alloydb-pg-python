@@ -1,0 +1,11 @@
+langchain-google-alloydb-pg==0.8.0
+langchain-core==0.3.25
+# Pinecone has a grpc option
+# pinecone[grpc]==5.0.1
+pinecone==5.4.2
+weaviate-client==4.10.2
+langchain-chroma==0.1.4
+qdrant-client==1.12.1
+pymilvus==2.5.0
+protobuf==5.29.1
+grpcio-tools==1.67.1
