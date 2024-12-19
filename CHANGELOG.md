@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.9.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.8.0...v0.9.0) (2024-12-19)
+
+
+### Features
+
+* Add engine_args argument to engine creation functions ([#293](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/293)) ([3cfa2f6](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/3cfa2f620050742cb87e8510564d58bcfac3a9f4))
+
+
+### Bug Fixes
+
+* Update MEM version comparison ([#291](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/291)) ([b31e8aa](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/b31e8aa99f6a3c8cb8a708e501faf3b25cb910e5))
+
+
+### Documentation
+
+* Update docs to convert sync to async ([#287](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/287)) ([c953125](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/c953125f63ecfe228d1dbc6150eacbcfb1b94e9c))
+
 ## [0.8.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.7.0...v0.8.0) (2024-10-23)
 
 
