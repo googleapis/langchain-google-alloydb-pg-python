@@ -47,7 +47,7 @@ Installation
 Install this library in a `virtualenv`_ using pip. `virtualenv`_ is a tool to create isolated Python environments. The basic problem it addresses is
 one of dependencies and versions, and indirectly permissions.
 
-With `virtualenv`_, it’s
+With `virtualenv`_, it's
 possible to install this library without needing system install
 permissions, and without clashing with the installed system
 dependencies.
@@ -79,12 +79,6 @@ Windows
     <your-env>\Scripts\activate
     <your-env>\Scripts\pip.exe install langchain-google-alloydb-pg
 
-Example Usage
--------------
-
-Code samples and snippets live in the `samples/`_ folder.
-
-.. _samples/: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/samples
 
 
 Vector Store Usage
@@ -153,19 +147,92 @@ See the full `Chat Message History`_ tutorial.
 
 .. _`Chat Message History`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/chat_message_history.ipynb
 
+Example Usage
+-------------
+
+Code examples can be found in the `samples/`_ folder.
+
+.. _samples/: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/samples
+
+Converting between Sync & Async Usage
+-------------------------------------
+
+Async functionality improves the speed and efficiency of database connections through concurrency,
+which is key for providing enterprise quality performance and scaling in GenAI applications. This
+package uses a native async Postgres driver, `asyncpg`_, to optimize Python's async functionality.
+
+LangChain supports `async programming`_, since LLM based application utilize many I/O-bound operations,
+such as making API calls to language models, databases, or other services. All components should provide
+both async and sync versions of all methods.
+
+`asyncio`_ is a Python library used for concurrent programming and is used as the foundation for multiple
+Python asynchronous frameworks. asyncio uses `async` / `await` syntax to achieve concurrency for
+non-blocking I/O-bound tasks using one thread with cooperative multitasking instead of multi-threading.
+
+.. _`async programming`: https://python.langchain.com/docs/concepts/async/
+.. _`asyncio`: https://docs.python.org/3/library/asyncio.html
+.. _`asyncpg`: https://github.com/MagicStack/asyncpg
+
+Converting Sync to Async
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Update sync methods to `await` async methods
+
+.. code:: python
+
+   engine = await AlloyDBEngine.afrom_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+   await engine.ainit_vectorstore_table(table_name="my-table", vector_size=768)
+   vectorstore = await AlloyDBVectorStore.create(
+      engine,
+      table_name="my-table",
+      embedding_service=VertexAIEmbeddings(model_name="textembedding-gecko@003")
+   )
+
+Run the code: notebooks
+^^^^^^^^^^^^^^^^^^^^^^^
+
+ipython and jupyter notebooks support the use of the `await` keyword without any additional setup
+
+Run the code: FastAPI
+^^^^^^^^^^^^^^^^^^^^^
+
+Update routes to use `async def`.
+
+.. code:: python
+
+   @app.get("/invoke/")
+   async def invoke(query: str):
+      return await retriever.ainvoke(query)
+
+
+Run the code: Local python file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is recommend to create a top-level async method definition: `async def` to wrap multiple async methods.
+Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
+
+.. code:: python
+
+   async def main():
+      response = await retriever.ainvoke(query)
+      print(response)
+
+   asyncio.run(main())
+
 
 Contributions
-~~~~~~~~~~~~~
+-------------
 
 Contributions to this library are always welcome and highly encouraged.
 
-See `CONTRIBUTING`_ for more information how to get started.
+See `CONTRIBUTING`_ and `DEVELOPER`_ for more information how to get started.
 
 Please note that this project is released with a Contributor Code of Conduct. By participating in
 this project you agree to abide by its terms. See `Code of Conduct`_ for more
 information.
 
 .. _`CONTRIBUTING`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/CONTRIBUTING.md
+.. _`DEVELOPER`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/DEVELOPER.md
 .. _`Code of Conduct`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/CODE_OF_CONDUCT.md
 
 License
