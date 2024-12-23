@@ -139,10 +139,7 @@ async def main(
     )
 
     # [START pinecone_alloydb_migration_get_alloydb_vectorstore]
-    from alloydb_snippets import (
-        aget_vector_store,
-        get_embeddings_service,
-    )
+    from alloydb_snippets import aget_vector_store, get_embeddings_service
 
     from langchain_google_alloydb_pg import Column
 
