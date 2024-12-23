@@ -18,11 +18,11 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
+from migrate_pinecone_vectorstore_to_alloydb import main
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
 from langchain_google_alloydb_pg import AlloyDBEngine
-from migrate_pinecone_vectorstore_to_alloydb import main
 
 DEFAULT_TABLE = "test_pinecone_migration" + str(uuid.uuid4())
 

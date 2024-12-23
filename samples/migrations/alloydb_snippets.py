@@ -87,8 +87,7 @@ async def ainit_vector_store(
     print("Langchain AlloyDB vector store table initialized.")
 
 
-from langchain_google_alloydb_pg import AlloyDBEngine
-from langchain_google_alloydb_pg import AlloyDBVectorStore
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
 
 async def aget_vector_store(
