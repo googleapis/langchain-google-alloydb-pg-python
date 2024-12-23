@@ -97,19 +97,19 @@ def get_data_batch(
 
 
 async def main(
-    pinecone_api_key=PINECONE_API_KEY,
-    pinecone_index_name=PINECONE_INDEX_NAME,
-    pinecone_namespace=PINECONE_NAMESPACE,
-    pinecone_vector_size=PINECONE_VECTOR_SIZE,
-    pinecone_batch_size=PINECONE_BATCH_SIZE,
-    project_id=PROJECT_ID,
-    region=REGION,
-    cluster=CLUSTER,
-    instance=INSTANCE,
-    alloydb_table=ALLOYDB_TABLE_NAME,
-    db_name=DB_NAME,
-    db_user=DB_USER,
-    db_pwd=DB_PWD,
+    pinecone_api_key: str = PINECONE_API_KEY,
+    pinecone_index_name: str = PINECONE_INDEX_NAME,
+    pinecone_namespace: str = PINECONE_NAMESPACE,
+    pinecone_vector_size: int = PINECONE_VECTOR_SIZE,
+    pinecone_batch_size: int = PINECONE_BATCH_SIZE,
+    project_id: str = PROJECT_ID,
+    region: str = REGION,
+    cluster: str = CLUSTER,
+    instance: str = INSTANCE,
+    alloydb_table: str = ALLOYDB_TABLE_NAME,
+    db_name: str = DB_NAME,
+    db_user: str = DB_USER,
+    db_pwd: str = DB_PWD,
 ) -> None:
     # [START pinecone_get_client]
     from pinecone import Pinecone, ServerlessSpec  # type: ignore
