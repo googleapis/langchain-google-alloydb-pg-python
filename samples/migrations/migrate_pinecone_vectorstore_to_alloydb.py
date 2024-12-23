@@ -141,15 +141,9 @@ async def main(
     # [START pinecone_alloydb_migration_get_alloydb_vectorstore]
     from alloydb_snippets import aget_vector_store, get_embeddings_service
 
-    from langchain_google_alloydb_pg import Column
-
-    # Note that the vector size and id_column name/type are configurable.
-    # We need to customize the vector store table because the sample data has
-    # 1024 vectors and integer like id values (not UUIDs).
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=pinecone_vector_size,
-        id_column=Column("langchain_id", "text", nullable=False),
         overwrite_existing=True,
     )
 
