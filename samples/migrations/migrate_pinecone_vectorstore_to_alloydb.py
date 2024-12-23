@@ -16,38 +16,42 @@
 
 
 import asyncio
-import os
 from typing import Any, Iterator
 
-"""Migrate Pinecone to Langchain AlloyDBVectorStore.
+"""Migrate PineconeVectorStore to Langchain AlloyDBVectorStore.
 
 Given a pinecone index, the following code fetches the data from pinecone
 in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
-pinecone_api_key = os.environ["PINECONE_API_KEY"]
+PINECONE_API_KEY = "YOUR_API_KEY"
+PINECONE_INDEX_NAME = "YOUR_INDEX_NAME"
+PROJECT_ID = "YOUR_PROJECT_ID"
+REGION = "YOUR_REGION"
+CLUSTER = "YOUR_CLUSTER_ID"
+INSTANCE = "YOUR_INSTANCE_ID"
+DB_NAME = "YOUR_DATABASE_ID"
+DB_USER = "YOUR_DATABASE_USERNAME"
+DB_PWD = "YOUR_DATABASE_PASSWORD"
 
-# TODO(dev): (optional values) Replace the values below
-pinecone_index_name = os.environ.get("PINECONE_INDEX_NAME", "sample-movies")
-pinecone_namespace = os.environ.get("PINECONE_NAMESPACE", "")
-pinecone_serverless_cloud = os.environ.get("PINECONE_SERVERLESS_CLOUD", "aws")
-pinecone_serverless_region = os.environ.get("PINECONE_SERVERLESS_REGION", "us-east-1")
-pinecone_migration_table = os.environ.get(
-    "PINECONE_MIGRATION_TABLE", "pinecone_migration"
-)
-pinecone_batch_size = int(os.environ.get("PINECONE_BATCH_SIZE", "100"))
-pinecone_vector_size = int(os.environ.get("PINECONE_VECTOR_SIZE", "1024"))
+# TODO(developer): Optional, change the values below.
+PINECONE_NAMESPACE = ""
+PINECONE_VECTOR_SIZE = 768
+PINECONE_BATCH_SIZE = 10
+ALLOYDB_TABLE_NAME = "alloydb_table"
+EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
 
-# [START pinecone_get_ids_batch]
 from pinecone import Index  # type: ignore
 
 
 def get_ids_batch(
-    pinecone_index: Index, namespace: str = "", batch_size: int = 100
+    pinecone_index: Index,
+    pinecone_namespace: str = PINECONE_NAMESPACE,
+    pinecone_batch_size: int = PINECONE_BATCH_SIZE,
 ) -> Iterator[list[str]]:
     results = pinecone_index.list_paginated(
-        prefix="", namespace=namespace, limit=batch_size
+        prefix="", namespace=pinecone_namespace, limit=pinecone_batch_size
     )
     ids = [v.id for v in results.vectors]
     yield ids
@@ -55,30 +59,22 @@ def get_ids_batch(
     while results.pagination is not None:
         pagination_token = results.pagination.next
         results = pinecone_index.list_paginated(
-            prefix="", pagination_token=pagination_token, limit=batch_size
+            prefix="", pagination_token=pagination_token, limit=pinecone_batch_size
         )
 
         # Extract and yield the next batch of IDs
         ids = [v.id for v in results.vectors]
         yield ids
+    # [END pinecone_get_ids_batch]
     print("Pinecone client fetched all ids from index.")
 
 
-# [END pinecone_get_ids_batch]
-
-
-# [START pinecone_get_data_batch]
-from pinecone import Index  # type: ignore
-
-
 def get_data_batch(
-    pinecone_index: Index, namespace: str = "", batch_size: int = 100
+    pinecone_index: Index, id_iterator: Iterator[list[str]]
 ) -> Iterator[tuple[list[str], list[Any], list[str], list[Any]]]:
-
-    id_iterator = get_ids_batch(pinecone_index, namespace, batch_size)
-    # Iterate through the batches of IDs and process them
+    # [START pinecone_get_data_batch]
+    # Iterate through the IDs and download their contents
     for ids in id_iterator:
-
         # Fetch vectors for the current batch of IDs
         all_data = pinecone_index.fetch(ids=ids)
         ids = []
@@ -96,36 +92,57 @@ def get_data_batch(
 
         # Yield the current batch of results
         yield ids, embeddings, contents, metadatas
+    # [END pinecone_get_data_batch]
     print("Pinecone client fetched all data from index.")
 
 
-# [END pinecone_get_data_batch]
-
-
-async def main() -> None:
+async def main(
+    pinecone_api_key=PINECONE_API_KEY,
+    pinecone_index_name=PINECONE_INDEX_NAME,
+    pinecone_namespace=PINECONE_NAMESPACE,
+    pinecone_vector_size=PINECONE_VECTOR_SIZE,
+    pinecone_batch_size=PINECONE_BATCH_SIZE,
+    project_id=PROJECT_ID,
+    region=REGION,
+    cluster=CLUSTER,
+    instance=INSTANCE,
+    alloydb_table=ALLOYDB_TABLE_NAME,
+    db_name=DB_NAME,
+    db_user=DB_USER,
+    db_pwd=DB_PWD,
+) -> None:
     # [START pinecone_get_client]
     from pinecone import Pinecone, ServerlessSpec  # type: ignore
 
     pinecone_client = Pinecone(
         api_key=pinecone_api_key,
-        spec=ServerlessSpec(
-            cloud=pinecone_serverless_cloud, region=pinecone_serverless_region
-        ),
+        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
     )
-    print("Pinecone client initiated.")
     # [END pinecone_get_client]
+    print("Pinecone client initiated.")
 
     # [START pinecone_get_index]
     pinecone_index = pinecone_client.Index(pinecone_index_name)
-    print("Pinecone index reference initiated.")
     # [END pinecone_get_index]
+    print("Pinecone index reference initiated.")
 
-    from alloydb_snippets import aget_alloydb_client
+    from alloydb_snippets import acreate_alloydb_client
 
-    alloydb_engine = await aget_alloydb_client()
+    alloydb_engine = await acreate_alloydb_client(
+        project_id=project_id,
+        region=region,
+        cluster=cluster,
+        instance=instance,
+        db_name=db_name,
+        db_user=db_user,
+        db_pwd=db_pwd,
+    )
 
     # [START pinecone_alloydb_migration_get_alloydb_vectorstore]
-    from alloydb_snippets import aget_vector_store, get_embeddings_service
+    from alloydb_snippets import (
+        aget_vector_store,
+        get_embeddings_service,
+    )
 
     from langchain_google_alloydb_pg import Column
 
@@ -133,36 +150,37 @@ async def main() -> None:
     # We need to customize the vector store table because the sample data has
     # 1024 vectors and integer like id values (not UUIDs).
     await alloydb_engine.ainit_vectorstore_table(
-        table_name=pinecone_migration_table,
+        table_name=alloydb_table,
         vector_size=pinecone_vector_size,
         id_column=Column("langchain_id", "text", nullable=False),
         overwrite_existing=True,
     )
-    print("Pinecone migration AlloyDBVectorStore table created.")
 
-    embeddings_service = get_embeddings_service(pinecone_vector_size)
+    embeddings_service = get_embeddings_service(
+        project_id, model_name=EMBEDDING_MODEL_NAME
+    )
     vs = await aget_vector_store(
         engine=alloydb_engine,
         embeddings_service=embeddings_service,
-        table_name=pinecone_migration_table,
+        table_name=alloydb_table,
     )
     # [END pinecone_alloydb_migration_get_alloydb_vectorstore]
+    print("Pinecone migration AlloyDBVectorStore table created.")
 
-    # [START pinecone_alloydb_migration_insert_data_batch]
+    id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     for ids, embeddings, contents, metadatas in get_data_batch(
         pinecone_index=pinecone_index,
-        namespace=pinecone_namespace,
-        batch_size=pinecone_batch_size,
+        id_iterator=id_iterator,
     ):
+        # [START pinecone_alloydb_migration_insert_data_batch]
         inserted_ids = await vs.aadd_embeddings(
             texts=contents,
             embeddings=embeddings,
             metadatas=metadatas,
             ids=ids,
         )
-
+        # [END pinecone_alloydb_migration_insert_data_batch]
     print("Migration completed, inserted all the batches of data to AlloyDB.")
-    # [END pinecone_alloydb_migration_insert_data_batch]
 
 
 if __name__ == "__main__":

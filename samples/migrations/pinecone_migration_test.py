@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import subprocess
 import uuid
 from typing import Sequence
 
@@ -23,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
 from langchain_google_alloydb_pg import AlloyDBEngine
+from migrate_pinecone_vectorstore_to_alloydb import main
 
 DEFAULT_TABLE = "test_pinecone_migration" + str(uuid.uuid4())
 
@@ -80,11 +80,11 @@ class TestMigrations:
         return get_env_var("DATABASE_ID", "database name on AlloyDB instance")
 
     @pytest.fixture(scope="module")
-    def user(self) -> str:
+    def db_user(self) -> str:
         return get_env_var("DB_USER", "database user for AlloyDB")
 
     @pytest.fixture(scope="module")
-    def password(self) -> str:
+    def db_password(self) -> str:
         return get_env_var("DB_PASSWORD", "database password for AlloyDB")
 
     @pytest.fixture(scope="module")
@@ -97,7 +97,14 @@ class TestMigrations:
 
     @pytest_asyncio.fixture(scope="class")
     async def engine(
-        self, db_project, db_region, db_cluster, db_instance, db_name, user, password
+        self,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        db_user,
+        db_password,
     ):
         engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
@@ -105,40 +112,56 @@ class TestMigrations:
             instance=db_instance,
             region=db_region,
             database=db_name,
-            user=user,
-            password=password,
+            user=db_user,
+            password=db_password,
         )
 
         yield engine
         await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
         await engine.close()
 
-    async def test_pinecone(self, engine, pinecone_api_key, pinecone_index_name):
-        # Run your external script
-        env_vars = os.environ.copy()
-        env_vars["PINECONE_MIGRATION_TABLE"] = DEFAULT_TABLE
-
-        process = subprocess.run(
-            ["python", "pinecone_migration.py"],
-            capture_output=True,
-            text=True,
-            env=env_vars,  # Inherit existing environment
-            check=True,  # Raise an exception if the script fails
+    async def test_pinecone(
+        self,
+        engine,
+        capsys,
+        pinecone_api_key,
+        pinecone_index_name,
+        db_project,
+        db_region,
+        db_cluster,
+        db_instance,
+        db_name,
+        db_user,
+        db_password,
+    ):
+        await main(
+            pinecone_api_key=pinecone_api_key,
+            pinecone_index_name=pinecone_index_name,
+            pinecone_namespace="",
+            pinecone_vector_size=768,
+            pinecone_batch_size=50,
+            project_id=db_project,
+            region=db_region,
+            cluster=db_cluster,
+            instance=db_instance,
+            alloydb_table=DEFAULT_TABLE,
+            db_name=db_name,
+            db_user=db_user,
+            db_pwd=db_password,
         )
+
+        out, err = capsys.readouterr()
 
         # Assert on the script's output
-        assert "Error" not in process.stderr  # Check for errors
-        assert "Pinecone client initiated" in process.stdout
-        assert "Pinecone index reference initiated" in process.stdout
-        assert "Langchain AlloyDB client initiated" in process.stdout
-        assert "Langchain FakeEmbeddings service initiated" in process.stdout
-        assert "Pinecone migration AlloyDBVectorStore table created" in process.stdout
-        assert "Langchain AlloyDB vector store instantiated" in process.stdout
-        assert "Pinecone client fetched all ids from index" in process.stdout
-        assert "Pinecone client fetched all data from index" in process.stdout
-        assert (
-            "Migration completed, inserted all the batches of data to AlloyDB"
-            in process.stdout
-        )
+        assert "Error" not in err  # Check for errors
+        assert "Pinecone client initiated" in out
+        assert "Pinecone index reference initiated" in out
+        assert "Langchain AlloyDB client initiated" in out
+        assert "Langchain Vertex AI Embeddings service initiated" in out
+        assert "Pinecone migration AlloyDBVectorStore table created" in out
+        assert "Langchain AlloyDB vector store instantiated" in out
+        assert "Pinecone client fetched all ids from index" in out
+        assert "Pinecone client fetched all data from index" in out
+        assert "Migration completed, inserted all the batches of data to AlloyDB" in out
         results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
         assert len(results) == 100
