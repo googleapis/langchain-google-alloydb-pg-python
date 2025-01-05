@@ -23,13 +23,13 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
-PROJECT_ID = "dishaprakash-playground"
-REGION = "us-central1"
-CLUSTER = "my-cluster-2"
-INSTANCE = "my-cluster-2-primary"
-DB_NAME = "postgres"
-DB_USER = "postgres"
-DB_PWD = "demo-project"
+PROJECT_ID = "YOUR_PROJECT_ID"
+REGION = "YOUR_REGION"
+CLUSTER = "YOUR_CLUSTER_ID"
+INSTANCE = "YOUR_INSTANCE_ID"
+DB_NAME = "YOUR_DATABASE_ID"
+DB_USER = "YOUR_DATABASE_USERNAME"
+DB_PWD = "YOUR_DATABASE_PASSWORD"
 
 # TODO(developer): Optional, change the values below.
 MILVUS_URI = ""
