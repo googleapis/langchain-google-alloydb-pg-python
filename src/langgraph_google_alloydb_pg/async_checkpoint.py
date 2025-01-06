@@ -18,7 +18,7 @@ import asyncpg # type: ignore
 from contextlib import asynccontextmanager
 
 import json
-from typing import List, Sequence, Any, AsyncIterator, Iterator, Optional, Dict, Tuple
+from typing import List, Sequence, Any, AsyncIterator, Iterator, Optional, cast, Dict, Tuple
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -41,14 +41,20 @@ from langgraph.checkpoint.serde.base import SerializerProtocol
 
 MetadataInput = Optional[dict[str, Any]]
 
-from .engine import AlloyDBEngine
+from .engine import (
+    CHECKPOINTS_TABLE,
+    CHECKPOINT_WRITES_TABLE,
+    AlloyDBEngine
+)
 
 
 class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
     """Checkpoint stored in an AlloyDB for PostgreSQL database."""
     
     __create_key = object()
-    
+
+    jsonplus_serde = JsonPlusSerializer()
+
     def __init__(
         self,
         key: object,
@@ -85,7 +91,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             AsyncAlloyDBSaver: A newly created instance of AsyncAlloyDBSaver.
         """
         
-        checkpoints_table_schema = await engine._aload_table_schema("checkpoints", schema_name)
+        checkpoints_table_schema = await engine._aload_table_schema(CHECKPOINTS_TABLE, schema_name)
         checkpoints_column_names = checkpoints_table_schema.columns.keys()
         
         checkpoints_required_columns = ["thread_id",
@@ -114,7 +120,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "\n);"
             )
             
-        checkpoint_writes_table_schema = await engine._aload_table_schema("checkpoint_writes", schema_name)
+        checkpoint_writes_table_schema = await engine._aload_table_schema(CHECKPOINT_WRITES_TABLE, schema_name)
         checkpoint_writes_column_names = checkpoint_writes_table_schema.columns.keys()
         
         checkpoint_writes_columns = ["thread_id",
@@ -161,12 +167,133 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
 
         Returns:
             AsyncIterator[CheckpointTuple]: Async iterator of matching checkpoint tuples.
-
-        Raises:
-            NotImplementedError: Implement this method in your custom checkpoint saver.
         """
-        raise NotImplementedError
-        yield
+        
+        wheres = []
+        param_values = []
+
+        # construct predicate for config filter
+        if config:
+            wheres.append("thread_id = %s ")
+            param_values.append(config["configurable"]["thread_id"])
+            checkpoint_ns = config["configurable"].get("checkpoint_ns")
+            if checkpoint_ns is not None:
+                wheres.append("checkpoint_ns = %s ")
+                param_values.append(checkpoint_ns)
+
+            if checkpoint_id := get_checkpoint_id(config):
+                wheres.append("checkpoint_id = %s ")
+                param_values.append(checkpoint_id)
+
+        # construct predicate for metadata filter
+        if filter:
+            wheres.append("metadata @> %s ")
+            param_values.append(json.dumps(filter)) 
+
+        # construct predicate for `before`
+        if before is not None:
+            wheres.append("checkpoint_id < %s ")
+            param_values.append(get_checkpoint_id(before))
+        
+        where, args = (
+            "WHERE " + " AND ".join(wheres) if wheres else "",
+            param_values,
+        )
+
+        # Check channel values on select varible
+        select = f"""
+        select
+            thread_id,
+            checkpoint,
+            checkpoint_ns,
+            checkpoint_id,
+            parent_checkpoint_id,
+            metadata,
+            (
+                select array_agg(array[bl.channel::bytea, bl.type::bytea, bl.blob])
+                from jsonb_each_text(checkpoint -> 'channel_versions')
+                inner join checkpoint_blobs bl
+                    on bl.thread_id = checkpoints.thread_id
+                    and bl.checkpoint_ns = checkpoints.checkpoint_ns
+                    and bl.channel = jsonb_each_text.key
+                    and bl.version = jsonb_each_text.value
+            ) as channel_values,
+            (
+                select
+                array_agg(array[cw.task_id::text::bytea, cw.channel::bytea, cw.type::bytea, cw.blob] order by cw.task_id, cw.idx)
+                from checkpoint_writes cw
+                where cw.thread_id = checkpoints.thread_id
+                    and cw.checkpoint_ns = checkpoints.checkpoint_ns
+                    and cw.checkpoint_id = checkpoints.checkpoint_id
+            ) as pending_writes,
+            (
+                select array_agg(array[cw.type::bytea, cw.blob] order by cw.task_id, cw.idx)
+                from checkpoint_writes cw
+                where cw.thread_id = checkpoints.thread_id
+                    and cw.checkpoint_ns = checkpoints.checkpoint_ns
+                    and cw.checkpoint_id = checkpoints.parent_checkpoint_id
+                    and cw.channel = '{TASKS}'
+            ) as pending_sends
+        from checkpoints """
+
+        query = select + where + " ORDER BY checkpoint_id DESC"
+
+        if limit:
+            query += f" LIMIT {limit}"
+
+        async with self.pool.connect() as conn:
+            result = await conn.stream(text(query), args)
+            async for row_value in result:
+                value = dict(row_value._mapping)
+                yield CheckpointTuple(
+                    {
+                        "configurable": {
+                            "thread_id": value["thread_id"],
+                            "checkpoint_ns": value["checkpoint_ns"],
+                            "checkpoint_id": value["checkpoint_id"],
+                        }
+                    },
+                    {
+                        "id": value["checkpoint"].get("id"),
+                        "ts": value["checkpoint"].get("ts"),
+                        "v": value["checkpoint"].get("v"),
+                        "channel_versions": value["checkpoint"].get("channel_versions"),
+                        "versions_seen": value["checkpoint"].get("versions_seen"),
+                        "pending_sends": [
+                            self.serde.loads_typed((c.decode(), b)) for c, b in value["pending_sends"] or []
+                        ],
+                        "channel_values": if not 
+                        
+                        {
+                            k.decode(): self.serde.loads_typed((t.decode(), v))
+                            for k, t, v in value["pending_sends"]
+                            if t.decode() != "empty"
+                        },
+                    },
+                    self.jsonplus_serde.dumps(value["metadata"]),
+                    (
+                        {
+                            "configurable": {
+                                "thread_id": value["thread_id"],
+                                "checkpoint_ns": value["checkpoint_ns"],
+                                "checkpoint_id": value["checkpoint_id"],
+                            }
+                        }
+                        if value["parent_checkpoint_id"]
+                        else None
+                    ),
+                    [
+                        (
+                            tid.decode()
+                        )
+                        for tid, channel, t, v in value["pending_writes"]
+                    ]
+
+
+                )
+
+
+
     
     async def aget_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
         """Asynchronously fetch a checkpoint tuple using the given configuration.
@@ -176,9 +303,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
 
         Returns:
             Optional[CheckpointTuple]: The requested checkpoint tuple, or None if not found.
-
-        Raises:
-            NotImplementedError: Implement this method in your custom checkpoint saver.
         """
         raise NotImplementedError
     
@@ -216,9 +340,39 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             }
         }
 
-        query = f"""INSERT INTO "{self.schema_name}".checkpoints(thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata, channel, version, type, blob)
-                    VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :parent_checkpoint_id, :checkpoint, :metadata, :channel, :version, :type, :blob);
+        blobs = f"""INSERT INTO "{self.schema_name}".checkpoints(thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata, channel, version)
+                    VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :parent_checkpoint_id, :checkpoint, :metadata, :channel, :version)
+                    ON CONFLICT (thread_id, checkpoint_ns, channel, version) DO NOTHING
                 """
+        
+        params = [
+            {
+                "thread_id": thread_id,
+                "checkpoint_ns": checkpoint_ns,
+                "checkpoint_id": None,
+                "parent_checkpoint_id": None,
+                "checkpoint": None,
+                "metadata": None,
+                "channel": k,
+                "version": cast(str,ver)
+            }
+                for k, ver in new_versions.items()
+        ]
+
+        async with self.pool.connect() as conn:
+            await conn.execute(
+                text(blobs),
+                params,
+            )
+            await conn.commit()
+
+        query = f"""INSERT INTO "{self.schema_name}".checkpoints(thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata, channel, version)
+                    VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :parent_checkpoint_id, :checkpoint, :metadata, :channel, :version)
+                    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id)
+                    DO UPDATE SET
+                        checkpoint = EXCLUDED.checkpoint,
+                        metadata = EXCLUDED.metadata;
+            """
 
         async with self.pool.connect() as conn:
             await conn.execute(
@@ -226,14 +380,12 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 {
                     "thread_id": thread_id,
                     "checkpoint_ns": checkpoint_ns,
-                    "checkpoint_id": checkpoint_id,
-                    "parent_checkpoint_id": config.get("checkpoint_id"),
+                    "checkpoint_id": checkpoint["id"],
+                    "parent_checkpoint_id": checkpoint_id,
                     "checkpoint": json.dumps(copy),
                     "metadata": json.dumps(dict(metadata)),
-                    "channel": copy.pop("channel_values"),
-                    "version": new_versions,
-                    "type": next_config["configurable"]["type"],
-                    "blob": json.dumps(next_config["configurable"]["blob"]),
+                    "channel": None,
+                    "version": None,
                 },
             )
             await conn.commit()
@@ -253,27 +405,41 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             config (RunnableConfig): Configuration of the related checkpoint.
             writes (List[Tuple[str, Any]]): List of writes to store.
             task_id (str): Identifier for the task creating the writes.
-
-        Raises:
-            NotImplementedError: Implement this method in your custom checkpoint saver.
+        
+            Returns:
+                None
         """
-        query = f"""INSERT INTO "{self.schema_name}".checkpoint_writes(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+        upsert = f"""INSERT INTO "{self.schema_name}".checkpoint_writes(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :task_id, :idx, :channel, :type, :blob)
+                    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO UPDATE SET
+                    channel = EXCLUDED.channel,
+                        type = EXCLUDED.type,
+                        blob = EXCLUDED.blob;
                 """
-        upsert = ""
+        insert = f"""INSERT INTO "{self.schema_name}".checkpoint_writes(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+                    VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :task_id, :idx, :channel, :type, :blob)
+                    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO NOTHING
+                """
+        query = upsert if all(w[0] in WRITES_IDX_MAP for w in writes) else insert
+
+        params = [
+            {
+                "thread_id": config["configurable"]["thread_id"],
+                "checkpoint_ns": config["configurable"]["checkpoint_ns"],
+                "checkpoint_id": config["configurable"]["checkpoint_id"],
+                "task_id": task_id,
+                "idx": WRITES_IDX_MAP.get(channel, idx),
+                "channel": channel,
+                "type": self.serde.dumps_typed(value)[0],
+                "blob": self.serde.dumps_typed(value)[1]
+            }
+                for idx, (channel, value) in enumerate(writes)
+        ]
+
         async with self.pool.connect() as conn:
             await conn.execute(
                 text(query),
-                {
-                    "thread_id": config["configurable"]["thread_id"],
-                    "checkpoint_ns": config["configurable"]["checkpoint_ns"],
-                    "checkpoint_id": config["configurable"]["checkpoint_id"],
-                    "task_id": task_id,
-                    "idx": idx,
-                    "channel": write[0],
-                    "type": write[1],
-                    "blob": json.dumps(write[2]),
-                },
+                params,
             )
             await conn.commit()
 
@@ -286,6 +452,20 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         before: Optional[RunnableConfig] = None,
         limit: Optional[int] = None,
     ) -> Iterator[CheckpointTuple]:
+        """list checkpoints that match the given criteria.
+
+        Args:
+            config (Optional[RunnableConfig]): Base configuration for filtering checkpoints.
+            filter (Optional[Dict[str, Any]]): Additional filtering criteria for metadata.
+            before (Optional[RunnableConfig]): List checkpoints created before this configuration.
+            limit (Optional[int]): Maximum number of checkpoints to return.
+
+        Returns:
+            AsyncIterator[CheckpointTuple]: Async iterator of matching checkpoint tuples.
+
+        Raises:
+            NotImplementedError: Method impletented in AsyncAlloyDBSaver.
+        """
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBSaver. Use AlloyDBSaver interface instead."
         )
@@ -300,7 +480,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             Optional[CheckpointTuple]: The requested checkpoint tuple, or None if not found.
 
         Raises:
-            NotImplementedError: Implement this method in your custom checkpoint saver.
+            NotImplementedError: Method impletented in AsyncAlloyDBSaver.
         """
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBSaver. Use AlloyDBSaver interface instead."

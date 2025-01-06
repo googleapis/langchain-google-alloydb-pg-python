@@ -48,6 +48,31 @@ T = TypeVar("T")
 
 USER_AGENT = "langgraph_google_alloydb_pg/" + __version__
 
+CHECKPOINTS_TABLE = "checkpoints"
+CHECKPOINT_WRITES_TABLE = "checkpoint_writes"
+UPSERT_CHECKPOINTS_SQL = """
+    INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id)
+    DO UPDATE SET
+        checkpoint = EXCLUDED.checkpoint,
+        metadata = EXCLUDED.metadata;
+"""
+
+UPSERT_CHECKPOINT_WRITES_SQL = """
+    INSERT INTO checkpoint_writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO UPDATE SET
+        channel = EXCLUDED.channel,
+        type = EXCLUDED.type,
+        blob = EXCLUDED.blob;
+"""
+
+INSERT_CHECKPOINT_WRITES_SQL = """
+    INSERT INTO checkpoint_writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO NOTHING
+"""
 
 async def _get_iam_principal_email(
     credentials: google.auth.credentials.Credentials,
@@ -435,8 +460,6 @@ class AlloyDBEngine:
             metadata JSONB NOT NULL DEFAULT '{{}}',
             channel TEXT NOT NULL,
             version TEXT NOT NULL,
-            type TEXT,
-            blob BYTEA,
             PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
         );"""
             
@@ -454,6 +477,8 @@ class AlloyDBEngine:
         
         async with self._pool.connect() as conn:
             await conn.execute(text(create_checkpoints_table))
+            await conn.commit()
+        async with self._pool.connect() as conn:
             await conn.execute(text(create_checkpoint_writes_table))
             await conn.commit()
     
