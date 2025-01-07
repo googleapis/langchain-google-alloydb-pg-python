@@ -163,4 +163,4 @@ class TestMigrations:
         assert "ChromaDB client fetched all data from collection." in out
         assert "Migration completed, inserted all the batches of data to AlloyDB" in out
         results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
-        assert len(results) == 80
+        assert len(results) == 100
