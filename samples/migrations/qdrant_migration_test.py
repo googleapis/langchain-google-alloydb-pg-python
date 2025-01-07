@@ -18,7 +18,7 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
-from migrate_qdrant_vectorstore_to_alloydb import main
+from migrate_qrant_vectorstore_to_alloydb import main
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
