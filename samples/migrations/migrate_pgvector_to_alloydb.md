@@ -49,7 +49,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
     from langchain_google_alloydb_pg import AlloyDBEngine
 
     # Replace these variable values
-    engine = await AlloyDBEngine.afrom_instance(
+    engine = AlloyDBEngine.from_instance(
         project_id="my-project-id",
         instance="my-instance-name",
         region="us-central1",
@@ -60,16 +60,16 @@ While you can use the AlloyDB interface with your existing PGVector database, we
     )
     ```
 
-    > **_NOTE:_** All async methods have corresponding sync methods.
+    > **_NOTE:_** All sync methods have corresponding async methods.
 
 2. **Create a new table to migrate existing data.**
 
     ```python
-    # Vertex AI embeddings uses a vector size of 768. 
+    # Vertex AI embeddings uses a vector size of 768.
     # Adjust this according to your embeddings service.
     VECTOR_SIZE = 768
 
-    await engine.ainit_vectorstore_table(
+    engine.init_vectorstore_table(
         table_name="destination_table",
         vector_size=VECTOR_SIZE,
     )
@@ -87,7 +87,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
         Column(f"col_0_{collection_name}", "VARCHAR"),
         Column(f"col_1_{collection_name}", "VARCHAR"),
     ]
-    await engine.ainit_vectorstore_table(
+    engine.init_vectorstore_table(
         table_name="destination_table",
         vector_size=VECTOR_SIZE,
         metadata_columns=metadata_columns,
@@ -105,7 +105,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
     from langchain_google_alloydb_pg import AlloyDBVectorStore
     from langchain_core.embeddings import FakeEmbeddings
 
-    destination_vector_store = await AlloyDBVectorStore.create(
+    destination_vector_store = AlloyDBVectorStore.create_sync(
         engine,
         embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
         table_name="destination_table",
@@ -118,7 +118,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
     from langchain_google_alloydb_pg import AlloyDBVectorStore
     from langchain_core.embeddings import FakeEmbeddings
 
-    destination_vector_store = await AlloyDBVectorStore.create(
+    destination_vector_store = AlloyDBVectorStore.create_sync(
         engine,
         embedding_service=FakeEmbeddings(size=VECTOR_SIZE),
         table_name="destination_table",
@@ -132,7 +132,7 @@ While you can use the AlloyDB interface with your existing PGVector database, we
     ```python
     from langchain_google_alloydb_pg.utils.pgvector_migrator import amigrate_pgvector_collection
 
-    await amigrate_pgvector_collection(
+    migrate_pgvector_collection(
         engine,
         # Set collection name here
         collection_name="collection_name",
@@ -148,8 +148,8 @@ While you can use the AlloyDB interface with your existing PGVector database, we
 >
 > ```python
 > from langchain_google_alloydb_pg.utils.pgvector_migrator import alist_pgvector_collection_names
-> 
-> all_collection_names = await alist_pgvector_collection_names(engine)
+>
+> all_collection_names = list_pgvector_collection_names(engine)
 > print(all_collection_names)
 > ```
 
@@ -163,7 +163,7 @@ If you choose not to migrate your data, you can still use the AlloyDB interface 
     from langchain_google_alloydb_pg import AlloyDBEngine
 
     # Replace these variable values
-    engine = await AlloyDBEngine.afrom_instance(
+    engine = AlloyDBEngine.from_instance(
         project_id="my-project-id",
         instance="my-instance-name",
         region="us-central1",
@@ -174,7 +174,7 @@ If you choose not to migrate your data, you can still use the AlloyDB interface 
     )
     ```
 
-    > **_NOTE:_** All async methods have corresponding sync methods.
+    > **_NOTE:_** All sync methods have corresponding async methods.
 
 2. **Create a vector store object to interact with the data.**
 

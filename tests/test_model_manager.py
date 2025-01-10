@@ -64,6 +64,7 @@ class TestAlloyDBModelManager:
         )
         yield engine
         await engine.close()
+        await engine._connector.close()
 
     @pytest_asyncio.fixture(scope="module")
     async def model_manager(self, engine):

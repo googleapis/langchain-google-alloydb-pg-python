@@ -15,8 +15,7 @@
 # TODO: Remove below import when minimum supported Python version is 3.10
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List, Optional, Sequence, Type
+from typing import Any, Optional, Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -24,17 +23,32 @@ from sqlalchemy.engine.row import RowMapping
 from .engine import AlloyDBEngine
 
 
-@dataclass
 class AlloyDBModel:
-    model_id: str
-    model_request_url: Optional[str]
-    model_provider: str
-    model_type: str
-    model_qualified_name: str
-    model_auth_type: Optional[str]
-    model_auth_id: Optional[str]
-    input_transform_fn: Optional[str]
-    output_transform_fn: Optional[str]
+    def __init__(
+        self,
+        model_id: str,
+        model_request_url: Optional[str],
+        model_provider: str,
+        model_type: str,
+        model_qualified_name: str,
+        model_auth_type: Optional[str],
+        model_auth_id: Optional[str],
+        input_transform_fn: Optional[str],
+        output_transform_fn: Optional[str],
+        generate_headers_fn: Optional[str] = None,
+        **kwargs: Any,
+    ):
+        self.model_id = model_id
+        self.model_request_url = model_request_url
+        self.model_provider = model_provider
+        self.model_type = model_type
+        self.model_qualified_name = model_qualified_name
+        self.model_auth_type = model_auth_type
+        self.model_auth_id = model_auth_id
+        self.input_transform_fn = input_transform_fn
+        self.output_transform_fn = output_transform_fn
+        # List models is returning column name "header_gen_fn"
+        self.generate_headers_fn = generate_headers_fn or kwargs.get("header_gen_fn")
 
 
 class AlloyDBModelManager:
@@ -62,7 +76,7 @@ class AlloyDBModelManager:
 
     @classmethod
     async def create(
-        cls: Type[AlloyDBModelManager],
+        cls: type[AlloyDBModelManager],
         engine: AlloyDBEngine,
     ) -> AlloyDBModelManager:
         manager = AlloyDBModelManager(cls.__create_key, engine)
@@ -72,7 +86,7 @@ class AlloyDBModelManager:
 
     @classmethod
     def create_sync(
-        cls: Type[AlloyDBModelManager],
+        cls: type[AlloyDBModelManager],
         engine: AlloyDBEngine,
     ) -> AlloyDBModelManager:
         manager = AlloyDBModelManager(cls.__create_key, engine)
@@ -93,11 +107,11 @@ class AlloyDBModelManager:
         result = await self._engine._run_as_async(self.__aget_model(model_id=model_id))
         return result
 
-    async def alist_models(self) -> List[AlloyDBModel]:
+    async def alist_models(self) -> list[AlloyDBModel]:
         """Lists all the models and its details.
 
         Returns:
-            List[`AlloyDBModel`] of all available model..
+            list[`AlloyDBModel`] of all available model..
         """
         results = await self._engine._run_as_async(self.__alist_models())
         return results
@@ -133,7 +147,11 @@ class AlloyDBModelManager:
         """
         await self._engine._run_as_async(
             self.__acreate_model(
-                model_id, model_provider, model_type, model_qualified_name, **kwargs
+                model_id,
+                model_provider,
+                model_type,
+                model_qualified_name,
+                **kwargs,
             )
         )
 
@@ -157,7 +175,7 @@ class AlloyDBModelManager:
         """
         extension_version = await self.__fetch_google_ml_extension()
         db_flag = await self.__fetch_db_flag()
-        if extension_version < 1.3:
+        if extension_version < "1.3":
             raise Exception(
                 "Please upgrade google_ml_integration EXTENSION to version 1.3 or above."
             )
@@ -196,6 +214,7 @@ class AlloyDBModelManager:
                 model_qualified_name VARCHAR,
                 model_auth_type google_ml.auth_type,
                 model_auth_id VARCHAR,
+                generate_headers_fn VARCHAR,
                 input_transform_fn VARCHAR,
                 output_transform_fn VARCHAR)"""
 
@@ -206,7 +225,7 @@ class AlloyDBModelManager:
         data_class = self.__convert_dict_to_dataclass(result)[0]
         return data_class
 
-    async def __alist_models(self) -> List[AlloyDBModel]:
+    async def __alist_models(self) -> list[AlloyDBModel]:
         """Lists all the models and its details."""
         query = "SELECT * FROM google_ml.model_info_view;"
         result = await self.__query_db(query)
@@ -265,7 +284,7 @@ class AlloyDBModelManager:
             await conn.execute(text(query))
             await conn.commit()
 
-    async def __fetch_google_ml_extension(self) -> float:
+    async def __fetch_google_ml_extension(self) -> str:
         """Creates the Google ML Extension if it does not exist and returns the version number (Default creates version 1.3)."""
         create_extension_query = """
         DO $$
@@ -283,7 +302,7 @@ class AlloyDBModelManager:
         extension_version_query = "SELECT extversion FROM pg_extension WHERE extname = 'google_ml_integration';"
         result = await self.__query_db(extension_version_query)
         version = result[0]["extversion"]
-        return float(version)
+        return version
 
     async def __fetch_db_flag(self) -> str:
         """Fetches the enable_model_support DB flag."""
@@ -294,7 +313,7 @@ class AlloyDBModelManager:
 
     def __convert_dict_to_dataclass(
         self, list_of_rows: Sequence[RowMapping]
-    ) -> List[AlloyDBModel]:
+    ) -> list[AlloyDBModel]:
         """Converts a list of DB rows to list of AlloyDBModel dataclass.
 
         Args:

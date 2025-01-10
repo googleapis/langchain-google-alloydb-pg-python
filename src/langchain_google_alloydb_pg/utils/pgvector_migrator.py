@@ -13,7 +13,7 @@
 # limitations under the License.
 import asyncio
 import warnings
-from typing import Any, AsyncIterator, Iterator, List, Optional, Sequence, TypeVar
+from typing import Any, AsyncIterator, Iterator, Optional, Sequence, TypeVar
 
 from sqlalchemy import RowMapping, text
 from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
@@ -189,7 +189,7 @@ async def __amigrate_pgvector_collection(
 
 async def __alist_pgvector_collection_names(
     engine: AlloyDBEngine,
-) -> List[str]:
+) -> list[str]:
     """Lists all collection names present in PGVector table."""
     try:
         query = f"SELECT name from {COLLECTIONS_TABLE}"
@@ -232,7 +232,7 @@ async def aextract_pgvector_collection(
 
 async def alist_pgvector_collection_names(
     engine: AlloyDBEngine,
-) -> List[str]:
+) -> list[str]:
     """Lists all collection names present in PGVector table."""
     return await engine._run_as_async(__alist_pgvector_collection_names(engine))
 
@@ -296,7 +296,7 @@ def extract_pgvector_collection(
             break
 
 
-def list_pgvector_collection_names(engine: AlloyDBEngine) -> List[str]:
+def list_pgvector_collection_names(engine: AlloyDBEngine) -> list[str]:
     """Lists all collection names present in PGVector table."""
     return engine._run_as_sync(__alist_pgvector_collection_names(engine))
 
