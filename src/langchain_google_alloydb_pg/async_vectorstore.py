@@ -543,9 +543,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
         search_function = self.distance_strategy.search_function
 
         if columns:
-            column_names = ' ,'.join(columns)
+            column_names = " ,".join(columns)
         else:
-            column_names = '*'
+            column_names = "*"
 
         filter = f"WHERE {filter}" if filter else ""
         if (
