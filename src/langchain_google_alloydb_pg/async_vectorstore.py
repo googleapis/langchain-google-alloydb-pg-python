@@ -534,12 +534,18 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: list[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
+        columns: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> Sequence[RowMapping]:
         """Perform similarity search query on database."""
         k = k if k else self.k
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function
+
+        if columns:
+            column_names = ' ,'.join(columns)
+        else:
+            column_names = '*'
 
         filter = f"WHERE {filter}" if filter else ""
         if (
@@ -550,7 +556,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])
         else:
             query_embedding = f"'{embedding}'"
-        stmt = f'SELECT *, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
+        stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
             query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
@@ -673,8 +679,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
+
+        columns = self.metadata_columns + [self.content_column, self.embedding_column]
+        if self.metadata_json_column:
+            columns += [self.metadata_json_column]
+
         results = await self.__query_collection(
-            embedding=embedding, k=k, filter=filter, **kwargs
+            embedding=embedding, k=k, filter=filter, columns=columns, **kwargs
         )
 
         documents_with_scores = []
@@ -752,8 +763,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
+
+        columns = self.metadata_columns + [self.content_column, self.embedding_column]
+        if self.metadata_json_column:
+            columns += [self.metadata_json_column]
+
         results = await self.__query_collection(
-            embedding=embedding, k=fetch_k, filter=filter, **kwargs
+            embedding=embedding, k=k, filter=filter, columns=columns, **kwargs
         )
 
         k = k if k else self.k
