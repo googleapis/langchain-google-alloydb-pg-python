@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -302,6 +302,39 @@ class TestEngineAsync:
         await aexecute(engine, "SELECT 1")
         await engine.close()
 
+    async def test_ainit_checkpoints_table(self, engine):
+        await engine.ainit_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINTS_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "parent_checkpoint_id", "data_type": "text"},
+            {"column_name": "checkpoint", "data_type": "json"},
+            {"column_name": "metadata", "data_type": "json"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "version", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+
+    async def test_ainit_checkpoint_writes_table(self, engine):
+        await engine.ainit_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINT_WRITES_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "task_id", "data_type": "text"},
+            {"column_name": "idx", "data_type": "integer"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+
 
 @pytest.mark.asyncio
 class TestEngineSync:
@@ -459,3 +492,36 @@ class TestEngineSync:
         assert engine
         await aexecute(engine, "SELECT 1")
         await engine.close()
+
+    async def test_init_checkpoints_table(self, engine):
+        engine.init_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINTS_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "parent_checkpoint_id", "data_type": "text"},
+            {"column_name": "checkpoint", "data_type": "json"},
+            {"column_name": "metadata", "data_type": "json"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "version", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+
+    async def test_init_checkpoint_writes_table(self, engine):
+        engine.init_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINT_WRITES_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "task_id", "data_type": "text"},
+            {"column_name": "idx", "data_type": "integer"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
