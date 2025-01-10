@@ -41,7 +41,6 @@ USER_AGENT = "langchain-google-alloydb-pg-python/" + __version__
 CHECKPOINTS_TABLE = "checkpoints"
 CHECKPOINT_WRITES_TABLE = "checkpoint_writes"
 
-
 async def _get_iam_principal_email(
     credentials: google.auth.credentials.Credentials,
 ) -> str:

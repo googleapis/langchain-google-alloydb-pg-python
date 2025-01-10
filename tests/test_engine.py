@@ -29,6 +29,8 @@ from sqlalchemy.pool import NullPool
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 
+from src.langchain_google_alloydb_pg.engine import CHECKPOINTS_TABLE, CHECKPOINT_WRITES_TABLE
+
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
 INT_ID_CUSTOM_TABLE = "test_table_custom_int_id" + str(uuid.uuid4()).replace("-", "_")
@@ -312,7 +314,7 @@ class TestEngineAsync:
 
     async def test_ainit_checkpoints_table(self, engine):
         await engine.ainit_checkpoint_table()
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINTS_TABLE}';"
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINTS_TABLE}';"
         results = await afetch(engine, stmt)
         expected = [
             {"column_name": "thread_id", "data_type": "text"},
@@ -329,7 +331,7 @@ class TestEngineAsync:
 
     async def test_ainit_checkpoint_writes_table(self, engine):
         await engine.ainit_checkpoint_table()
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINT_WRITES_TABLE}';"
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINT_WRITES_TABLE}';"
         results = await afetch(engine, stmt)
         expected = [
             {"column_name": "thread_id", "data_type": "text"},
@@ -503,7 +505,7 @@ class TestEngineSync:
 
     async def test_init_checkpoints_table(self, engine):
         engine.init_checkpoint_table()
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINTS_TABLE}';"
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINTS_TABLE}';"
         results = await afetch(engine, stmt)
         expected = [
             {"column_name": "thread_id", "data_type": "text"},
@@ -520,7 +522,7 @@ class TestEngineSync:
 
     async def test_init_checkpoint_writes_table(self, engine):
         engine.init_checkpoint_table()
-        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{engine.CHECKPOINT_WRITES_TABLE}';"
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINT_WRITES_TABLE}';"
         results = await afetch(engine, stmt)
         expected = [
             {"column_name": "thread_id", "data_type": "text"},
