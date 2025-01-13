@@ -552,9 +552,11 @@ class AsyncAlloyDBVectorStore(VectorStore):
             query_embedding = f"'{embedding}'"
         stmt = f'SELECT *, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
-            query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
-                await conn.execute(text(query_options_stmt))
+                # Set each query option individually
+                for query_option in self.index_query_options.to_string().split(","):
+                    query_options_stmt = f"SET LOCAL {query_option};"
+                    await conn.execute(text(query_options_stmt))
                 result = await conn.execute(text(stmt))
                 result_map = result.mappings()
                 results = result_map.fetchall()
