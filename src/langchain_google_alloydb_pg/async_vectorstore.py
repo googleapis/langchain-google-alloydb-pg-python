@@ -534,13 +534,20 @@ class AsyncAlloyDBVectorStore(VectorStore):
         embedding: list[float],
         k: Optional[int] = None,
         filter: Optional[str] = None,
-        columns: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> Sequence[RowMapping]:
         """Perform similarity search query on database."""
         k = k if k else self.k
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function
+
+        columns = self.metadata_columns + [
+            self.id_column,
+            self.content_column,
+            self.embedding_column,
+        ]
+        if self.metadata_json_column:
+            columns.append(self.metadata_json_column)
 
         if columns:
             column_names = " ,".join(columns)
@@ -680,12 +687,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
 
-        columns = self.metadata_columns + [self.content_column, self.embedding_column]
-        if self.metadata_json_column:
-            columns += [self.metadata_json_column]
-
         results = await self.__query_collection(
-            embedding=embedding, k=k, filter=filter, columns=columns, **kwargs
+            embedding=embedding, k=k, filter=filter, **kwargs
         )
 
         documents_with_scores = []
@@ -764,12 +767,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
 
-        columns = self.metadata_columns + [self.content_column, self.embedding_column]
-        if self.metadata_json_column:
-            columns += [self.metadata_json_column]
-
         results = await self.__query_collection(
-            embedding=embedding, k=k, filter=filter, columns=columns, **kwargs
+            embedding=embedding, k=fetch_k, filter=filter, **kwargs
         )
 
         k = k if k else self.k
