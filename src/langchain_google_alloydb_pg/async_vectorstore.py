@@ -686,7 +686,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
-
         results = await self.__query_collection(
             embedding=embedding, k=k, filter=filter, **kwargs
         )
@@ -766,7 +765,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
-
         results = await self.__query_collection(
             embedding=embedding, k=fetch_k, filter=filter, **kwargs
         )
