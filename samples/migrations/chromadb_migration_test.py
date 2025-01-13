@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+from langchain_core.embeddings import FakeEmbeddings
 from migrate_chromadb_vectorstore_to_alloydb import main
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -25,6 +28,9 @@ from sqlalchemy.engine.row import RowMapping
 from langchain_google_alloydb_pg import AlloyDBEngine
 
 DEFAULT_TABLE = "test_chromadb_migration" + str(uuid.uuid4())
+
+EMBEDDING_SERVICE = FakeEmbeddings(size=768)
+PERSISTENT_DB_PATH = "./chromadb_data"
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -55,6 +61,23 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
         return result_fetch
 
     return await engine._run_as_async(run(engine, query))
+
+
+def create_chroma_collection(collection_name):
+    vector_store = Chroma(
+        collection_name=collection_name,
+        embedding_function=EMBEDDING_SERVICE,
+        persist_directory=PERSISTENT_DB_PATH,
+        create_collection_if_not_exists=True,
+    )
+
+    uuids = [f"{str(uuid.uuid4())}" for i in range(100)]
+    documents = [
+        Document(page_content=f"content#{i}", metadata={"idv": f"{i}"})
+        for i in range(100)
+    ]
+
+    vector_store.add_documents(documents=documents, ids=uuids)
 
 
 @pytest.mark.asyncio(loop_scope="class")
@@ -93,10 +116,6 @@ class TestMigrations:
             "CHROMADB_COLLECTION_NAME", "collection name for chromadb instance"
         )
 
-    @pytest.fixture(scope="module")
-    def chromadb_path(self) -> str:
-        return get_env_var("CHROMADB_PATH", "persisted path for chromadb instance")
-
     @pytest_asyncio.fixture(scope="class")
     async def engine(
         self,
@@ -127,7 +146,6 @@ class TestMigrations:
         engine,
         capsys,
         chromadb_collection_name,
-        chromadb_path,
         db_project,
         db_region,
         db_cluster,
@@ -136,9 +154,11 @@ class TestMigrations:
         db_user,
         db_password,
     ):
+        create_chroma_collection(collection_name=chromadb_collection_name)
+
         await main(
             chromadb_collection_name=chromadb_collection_name,
-            chromadb_path=chromadb_path,
+            chromadb_path=PERSISTENT_DB_PATH,
             chromadb_vector_size=768,
             chromadb_batch_size=50,
             project_id=db_project,
@@ -157,7 +177,7 @@ class TestMigrations:
         assert "Error" not in err  # Check for errors
         assert "ChromaDB vectorstore reference initiated." in out
         assert "Langchain AlloyDB client initiated" in out
-        assert "Langchain Vertex AI Embeddings service initiated" in out
+        assert "Langchain Fake Embeddings service initiated." in out
         assert "ChromaDB migration AlloyDBVectorStore table created" in out
         assert "Langchain AlloyDB vector store instantiated" in out
         assert "ChromaDB client fetched all data from collection." in out

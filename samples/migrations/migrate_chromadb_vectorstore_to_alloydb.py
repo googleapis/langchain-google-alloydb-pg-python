@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 import asyncio
 from typing import Any, Iterator
 
-"""Migrate ChromaDBVectorStore to Langchain AlloyDBVectorStore.
-Given a chromadb collection, the following code fetches the data from chromadb
+"""Migrate Chroma to LangChain AlloyDBVectorStore.
+Given a Chroma collection, the following code fetches the data from Chroma
 in batches and uploads to an AlloyDBVectorStore.
 """
 
@@ -31,25 +31,25 @@ DB_NAME = "YOUR_DATABASE_ID"
 DB_USER = "YOUR_DATABASE_USERNAME"
 DB_PWD = "YOUR_DATABASE_PASSWORD"
 
-# TODO(developer): Optional, change the values below.
-CHROMADB_COLLECTION_NAME = ""
-CHROMADB_PATH = ""
+# TODO(developer): change the values below.
+CHROMADB_COLLECTION_NAME = "test_chroma"
+CHROMADB_PATH = "./chromadb_data"
 CHROMADB_VECTOR_SIZE = 768
 CHROMADB_BATCH_SIZE = 10
-ALLOYDB_TABLE_NAME = "alloydb_table"
+ALLOYDB_TABLE_NAME = "chroma_data"
 EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
 
 from langchain_chroma import Chroma  # type: ignore
 
 
 def get_data_batch(
-    chromadb_vectorstore: Chroma, chromadb_batch_size: int = CHROMADB_BATCH_SIZE
+    chromadb_client: Chroma, chromadb_batch_size: int = CHROMADB_BATCH_SIZE
 ) -> Iterator[tuple[list[str], list[Any], list[list[float]], list[Any]]]:
     # [START chromadb_get_data_batch]
     # Iterate through the IDs and download their contents
     offset = 0
     while True:
-        docs = chromadb_vectorstore.get(
+        docs = chromadb_client.get(
             include=["metadatas", "documents", "embeddings"],
             limit=chromadb_batch_size,
             offset=offset,
@@ -82,21 +82,19 @@ async def main(
     db_user: str = DB_USER,
     db_pwd: str = DB_PWD,
 ) -> None:
-    from alloydb_snippets import get_embeddings_service
+    from alloydb_snippets import get_fake_embeddings_service
 
-    embeddings_service = get_embeddings_service(
-        project_id, model_name=EMBEDDING_MODEL_NAME
-    )
-    # [START chromadb_get_vectorstore]
+    embeddings_service = get_fake_embeddings_service(vector_size=768)
+    # [START chromadb_get_client]
     from langchain_chroma import Chroma
 
-    chromadb_vector_store = Chroma(
+    chromadb_client = Chroma(
         collection_name=chromadb_collection_name,
         embedding_function=embeddings_service,
         persist_directory=chromadb_path,
     )
 
-    # [END chromadb_get_vectorstore]
+    # [END chromadb_get_client]
 
     print("ChromaDB vectorstore reference initiated.")
 
@@ -112,7 +110,7 @@ async def main(
         db_pwd=db_pwd,
     )
 
-    # [START chromadb_alloydb_migration_get_alloydb_vectorstore]
+    # [START chromadb_migration_alloydb_vectorstore]
     from alloydb_snippets import aget_vector_store
 
     await alloydb_engine.ainit_vectorstore_table(
@@ -126,23 +124,24 @@ async def main(
         embeddings_service=embeddings_service,
         table_name=alloydb_table,
     )
-    # [END chromadb_alloydb_migration_get_alloydb_vectorstore]
+    # [END chromadb_migration_alloydb_vectorstore]
     print("ChromaDB migration AlloyDBVectorStore table created.")
 
     data_iterator = get_data_batch(
-        chromadb_vectorstore=chromadb_vector_store,
+        chromadb_client=chromadb_client,
         chromadb_batch_size=chromadb_batch_size,
     )
 
+    # [START chromadb_alloydb_migration_insert_data_batch]
+
     for ids, contents, embeddings, metadatas in data_iterator:
-        # [START chromadb_alloydb_migration_insert_data_batch]
         inserted_ids = await vs.aadd_embeddings(
             texts=contents,
             embeddings=embeddings,
             metadatas=metadatas,
             ids=ids,
         )
-        # [END chromadb_alloydb_migration_insert_data_batch]
+    # [END chromadb_alloydb_migration_insert_data_batch]
 
     print("Migration completed, inserted all the batches of data to AlloyDB.")
 
