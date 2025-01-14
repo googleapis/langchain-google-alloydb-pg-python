@@ -41,6 +41,7 @@ USER_AGENT = "langchain-google-alloydb-pg-python/" + __version__
 CHECKPOINTS_TABLE = "checkpoints"
 CHECKPOINT_WRITES_TABLE = "checkpoint_writes"
 
+
 async def _get_iam_principal_email(
     credentials: google.auth.credentials.Credentials,
 ) -> str:
@@ -766,9 +767,7 @@ class AlloyDBEngine:
             )
         )
 
-    async def _ainit_checkpoint_table(
-        self, schema_name: str = "public"
-    ) -> None:
+    async def _ainit_checkpoint_table(self, schema_name: str = "public") -> None:
         """
         Create AlloyDB tables to save checkpoints.
 
@@ -789,7 +788,7 @@ class AlloyDBEngine:
             metadata JSONB NOT NULL DEFAULT '{{}}',
             PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
         );"""
-            
+
         create_checkpoint_writes_table = f"""CREATE TABLE IF NOT EXISTS "{schema_name}".{CHECKPOINT_WRITES_TABLE} (
             thread_id TEXT NOT NULL,
             checkpoint_ns TEXT NOT NULL DEFAULT '',
@@ -801,15 +800,13 @@ class AlloyDBEngine:
             blob BYTEA NOT NULL,
             PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
         );"""
-        
+
         async with self._pool.connect() as conn:
             await conn.execute(text(create_checkpoints_table))
             await conn.execute(text(create_checkpoint_writes_table))
             await conn.commit()
-    
-    async def ainit_checkpoint_table(
-        self, schema_name: str = "public"
-    ) -> None:
+
+    async def ainit_checkpoint_table(self, schema_name: str = "public") -> None:
         """Create an AlloyDB table to save checkpoint messages.
 
         Args:
@@ -824,10 +821,8 @@ class AlloyDBEngine:
                 schema_name,
             )
         )
-    
-    def init_checkpoint_table(
-        self, schema_name: str = "public"
-    ) -> None:
+
+    def init_checkpoint_table(self, schema_name: str = "public") -> None:
         """Create Cloud SQL tables to store checkpoints.
 
         Args:
