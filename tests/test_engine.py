@@ -512,10 +512,9 @@ class TestEngineSync:
             {"column_name": "checkpoint_ns", "data_type": "text"},
             {"column_name": "checkpoint_id", "data_type": "text"},
             {"column_name": "parent_checkpoint_id", "data_type": "text"},
-            {"column_name": "checkpoint", "data_type": "json"},
-            {"column_name": "metadata", "data_type": "json"},
-            {"column_name": "channel", "data_type": "text"},
-            {"column_name": "version", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+            {"column_name": "checkpoint", "data_type": "jsonb"},
+            {"column_name": "metadata", "data_type": "jsonb"},
         ]
         for row in results:
             assert row in expected
@@ -532,6 +531,7 @@ class TestEngineSync:
             {"column_name": "idx", "data_type": "integer"},
             {"column_name": "channel", "data_type": "text"},
             {"column_name": "type", "data_type": "text"},
+            {"column_name": "blob", "data_type": "bytea"},
         ]
         for row in results:
             assert row in expected
