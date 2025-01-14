@@ -268,7 +268,6 @@ class TestEngineAsync:
         )
         await aexecute(engine, "SELECT 1")
         await engine.close()
-        await engine._connector.close()
 
     async def test_from_engine_args_url_error(
         self,
@@ -318,6 +317,7 @@ class TestEngineAsync:
         await engine._connector.close()
 
     async def test_ainit_checkpoints_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINTS_TABLE}"')
         await engine.ainit_checkpoint_table()
         stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINTS_TABLE}';"
         results = await afetch(engine, stmt)
@@ -334,6 +334,7 @@ class TestEngineAsync:
             assert row in expected
 
     async def test_ainit_checkpoint_writes_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINT_WRITES_TABLE}"')
         await engine.ainit_checkpoint_table()
         stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINT_WRITES_TABLE}';"
         results = await afetch(engine, stmt)
@@ -511,6 +512,7 @@ class TestEngineSync:
         await engine._connector.close()
 
     async def test_init_checkpoints_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINTS_TABLE}"')
         engine.init_checkpoint_table()
         stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINTS_TABLE}';"
         results = await afetch(engine, stmt)
@@ -527,6 +529,7 @@ class TestEngineSync:
             assert row in expected
 
     async def test_init_checkpoint_writes_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINT_WRITES_TABLE}"')
         engine.init_checkpoint_table()
         stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINT_WRITES_TABLE}';"
         results = await afetch(engine, stmt)
