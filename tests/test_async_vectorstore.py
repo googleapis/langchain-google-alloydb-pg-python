@@ -25,9 +25,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
-from langchain_google_alloydb_pg.async_vectorstore import (
-    AsyncAlloyDBVectorStore,
-)
+from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
