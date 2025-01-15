@@ -38,6 +38,7 @@ CHROMADB_VECTOR_SIZE = 768
 CHROMADB_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "chroma_data"
 EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
+MAX_CONCURRENCY = 100
 
 from langchain_chroma import Chroma  # type: ignore
 
@@ -82,9 +83,13 @@ async def main(
     db_user: str = DB_USER,
     db_pwd: str = DB_PWD,
 ) -> None:
-    from alloydb_snippets import get_fake_embeddings_service
+    # [START langchain_alloydb_migration_fake_embedding_service]
+    from langchain_core.embeddings import FakeEmbeddings
 
-    embeddings_service = get_fake_embeddings_service(vector_size=768)
+    embeddings_service = FakeEmbeddings(size=chromadb_vector_size)
+    # [END langchain_alloydb_migration_fake_embedding_service]
+    print("Langchain Fake Embeddings service initiated.")
+
     # [START chromadb_get_client]
     from langchain_chroma import Chroma
 
@@ -93,37 +98,46 @@ async def main(
         embedding_function=embeddings_service,
         persist_directory=chromadb_path,
     )
-
     # [END chromadb_get_client]
-
     print("ChromaDB vectorstore reference initiated.")
 
-    from alloydb_snippets import acreate_alloydb_client
+    # [START langchain_alloydb_migration_get_client]
+    from langchain_google_alloydb_pg import AlloyDBEngine
 
-    alloydb_engine = await acreate_alloydb_client(
+    alloydb_engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
         region=region,
         cluster=cluster,
         instance=instance,
-        db_name=db_name,
-        db_user=db_user,
-        db_pwd=db_pwd,
+        database=db_name,
+        user=db_user,
+        password=db_pwd,
     )
+    # [END langchain_alloydb_migration_get_client]
+    print("Langchain AlloyDB client initiated.")
 
     # [START chromadb_migration_alloydb_vectorstore]
-    from alloydb_snippets import aget_vector_store
 
+    # [START langchain_create_alloydb_migration_vector_store_table]
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=chromadb_vector_size,
         overwrite_existing=True,
     )
+    # [END langchain_create_alloydb_migration_vector_store_table]
+    print("Langchain AlloyDB vector store table initialized.")
 
-    vs = await aget_vector_store(
+    # [START langchain_get_alloydb_migration_vector_store]
+    from langchain_google_alloydb_pg import AlloyDBVectorStore
+
+    vs = await AlloyDBVectorStore.create(
         engine=alloydb_engine,
-        embeddings_service=embeddings_service,
+        embedding_service=embeddings_service,
         table_name=alloydb_table,
     )
+    # [END langchain_get_alloydb_migration_vector_store]
+    print("Langchain AlloyDB vector store instantiated.")
+
     # [END chromadb_migration_alloydb_vectorstore]
     print("ChromaDB migration AlloyDBVectorStore table created.")
 
@@ -134,13 +148,27 @@ async def main(
 
     # [START chromadb_alloydb_migration_insert_data_batch]
 
+    # [START langchain_alloydb_migration_vector_store_insert_data]
+    pending: set[Any] = set()
     for ids, contents, embeddings, metadatas in data_iterator:
-        inserted_ids = await vs.aadd_embeddings(
-            texts=contents,
-            embeddings=embeddings,
-            metadatas=metadatas,
-            ids=ids,
+        pending.add(
+            asyncio.ensure_future(
+                vs.aadd_embeddings(
+                    texts=contents,
+                    embeddings=embeddings,
+                    metadatas=metadatas,
+                    ids=ids,
+                )
+            )
         )
+        if len(pending) >= MAX_CONCURRENCY:
+            _, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
+            )
+    if pending:
+        await asyncio.wait(pending)
+    # [END langchain_alloydb_migration_vector_store_insert_data]
+
     # [END chromadb_alloydb_migration_insert_data_batch]
 
     print("Migration completed, inserted all the batches of data to AlloyDB.")
