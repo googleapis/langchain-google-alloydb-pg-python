@@ -63,9 +63,9 @@ class ExactNearestNeighbor(BaseIndex):
 @dataclass
 class QueryOptions(ABC):
     @abstractmethod
-    def to_string(self) -> str:
-        """Convert index attributes to string."""
-        raise NotImplementedError("to_string method must be implemented by subclass")
+    def to_parameter(self) -> list[str]:
+        """Convert index attributes to map."""
+        raise NotImplementedError("to_parameter method must be implemented by subclass")
 
 
 @dataclass
@@ -83,9 +83,9 @@ class HNSWIndex(BaseIndex):
 class HNSWQueryOptions(QueryOptions):
     ef_search: int = 40
 
-    def to_string(self) -> str:
+    def to_parameter(self) -> list[str]:
         """Convert index attributes to string."""
-        return f"hnsw.ef_search = {self.ef_search}"
+        return [f"hnsw.ef_search = {self.ef_search}"]
 
 
 @dataclass
@@ -102,9 +102,9 @@ class IVFFlatIndex(BaseIndex):
 class IVFFlatQueryOptions(QueryOptions):
     probes: int = 1
 
-    def to_string(self) -> str:
+    def to_parameter(self) -> list[str]:
         """Convert index attributes to string."""
-        return f"ivfflat.probes = {self.probes}"
+        return [f"ivfflat.probes = {self.probes}"]
 
 
 @dataclass
@@ -124,9 +124,9 @@ class IVFIndex(BaseIndex):
 class IVFQueryOptions(QueryOptions):
     probes: int = 1
 
-    def to_string(self) -> str:
+    def to_parameter(self) -> list[str]:
         """Convert index attributes to string."""
-        return f"ivf.probes = {self.probes}"
+        return [f"ivf.probes = {self.probes}"]
 
 
 @dataclass
@@ -147,6 +147,9 @@ class ScaNNQueryOptions(QueryOptions):
     num_leaves_to_search: int = 1
     pre_reordering_num_neighbors: int = -1
 
-    def to_string(self) -> str:
+    def to_parameter(self) -> list[str]:
         """Convert index attributes to string."""
-        return f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
+        return [
+            f"scann.num_leaves_to_search = {self.num_leaves_to_search}",
+            f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
+        ]
