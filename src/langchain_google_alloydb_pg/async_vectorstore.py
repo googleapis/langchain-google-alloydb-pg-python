@@ -549,10 +549,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if self.metadata_json_column:
             columns.append(self.metadata_json_column)
 
-        if columns:
-            column_names = " ,".join(columns)
-        else:
-            column_names = "*"
+        column_names = ", ".join(f'"{col}"' for col in columns)
 
         filter = f"WHERE {filter}" if filter else ""
         if (
