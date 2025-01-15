@@ -108,6 +108,13 @@ async def main(
     # [END weaviate_get_collection]
     print("Weaviate collection reference initiated.")
 
+    # [START langchain_alloydb_migration_fake_embedding_service]
+    from langchain_core.embeddings import FakeEmbeddings
+
+    embeddings_service = FakeEmbeddings(size=weaviate_vector_size)
+    # [END langchain_alloydb_migration_fake_embedding_service]
+    print("Langchain Fake Embeddings service initiated.")
+
     # [START langchain_alloydb_migration_get_client]
     from langchain_google_alloydb_pg import AlloyDBEngine
 
@@ -123,7 +130,9 @@ async def main(
     print("Langchain AlloyDB client initiated.")
     # [END langchain_alloydb_migration_get_client]
 
-    # [START weaviate_alloydb_migration_get_alloydb_vectorstore]
+    # [START weaviate_migration_alloydb_vectorstore]
+
+    # [START langchain_create_alloydb_migration_vector_store_table]
 
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
@@ -131,12 +140,8 @@ async def main(
         overwrite_existing=True,
     )
 
-    # [START langchain_alloydb_migration_fake_embedding_service]
-    from langchain_core.embeddings import FakeEmbeddings
-
-    embeddings_service = FakeEmbeddings(size=weaviate_vector_size)
-    # [END langchain_alloydb_migration_fake_embedding_service]
-    print("Langchain Fake Embeddings service initiated.")
+    # [END langchain_create_alloydb_migration_vector_store_table]
+    print("Langchain AlloyDB vector store table initialized.")
 
     # [START langchain_get_alloydb_migration_vector_store]
     from langchain_google_alloydb_pg import AlloyDBVectorStore
@@ -149,7 +154,7 @@ async def main(
     # [END langchain_get_alloydb_migration_vector_store]
     print("Langchain AlloyDB vector store instantiated.")
 
-    # [END weaviate_alloydb_migration_get_alloydb_vectorstore]
+    # [END weaviate_migration_alloydb_vectorstore]
     print("Weaviate migration AlloyDBVectorStore table created.")
 
     data_iterator = get_data_batch(
