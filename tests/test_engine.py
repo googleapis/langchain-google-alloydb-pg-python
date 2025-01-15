@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
+from langchain_google_alloydb_pg.engine import (
+    CHECKPOINT_WRITES_TABLE,
+    CHECKPOINTS_TABLE,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
@@ -126,6 +130,7 @@ class TestEngineAsync:
         await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE}"')
         await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE}"')
         await engine.close()
+        await engine._connector.close()
 
     async def test_init_table(self, engine):
         await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
@@ -309,6 +314,42 @@ class TestEngineAsync:
         assert engine
         await aexecute(engine, "SELECT 1")
         await engine.close()
+        await engine._connector.close()
+
+    async def test_ainit_checkpoints_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINTS_TABLE}"')
+        await engine.ainit_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINTS_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "parent_checkpoint_id", "data_type": "text"},
+            {"column_name": "checkpoint", "data_type": "jsonb"},
+            {"column_name": "metadata", "data_type": "jsonb"},
+            {"column_name": "type", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+
+    async def test_ainit_checkpoint_writes_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINT_WRITES_TABLE}"')
+        await engine.ainit_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINT_WRITES_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "task_id", "data_type": "text"},
+            {"column_name": "idx", "data_type": "integer"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+            {"column_name": "blob", "data_type": "bytea"},
+        ]
+        for row in results:
+            assert row in expected
 
 
 @pytest.mark.asyncio
@@ -359,6 +400,7 @@ class TestEngineSync:
         await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE_SYNC}"')
         await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE_SYNC}"')
         await engine.close()
+        await engine._connector.close()
 
     async def test_init_table(self, engine):
         engine.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
@@ -467,3 +509,39 @@ class TestEngineSync:
         assert engine
         await aexecute(engine, "SELECT 1")
         await engine.close()
+        await engine._connector.close()
+
+    async def test_init_checkpoints_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINTS_TABLE}"')
+        engine.init_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINTS_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "parent_checkpoint_id", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+            {"column_name": "checkpoint", "data_type": "jsonb"},
+            {"column_name": "metadata", "data_type": "jsonb"},
+        ]
+        for row in results:
+            assert row in expected
+
+    async def test_init_checkpoint_writes_table(self, engine):
+        await aexecute(engine, f'DROP TABLE "{CHECKPOINT_WRITES_TABLE}"')
+        engine.init_checkpoint_table()
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{CHECKPOINT_WRITES_TABLE}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "task_id", "data_type": "text"},
+            {"column_name": "idx", "data_type": "integer"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+            {"column_name": "blob", "data_type": "bytea"},
+        ]
+        for row in results:
+            assert row in expected
