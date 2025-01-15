@@ -84,7 +84,7 @@ class HNSWQueryOptions(QueryOptions):
     ef_search: int = 40
 
     def to_parameter(self) -> list[str]:
-        """Convert index attributes to string."""
+        """Convert index attributes to list of configurations."""
         return [f"hnsw.ef_search = {self.ef_search}"]
 
 
@@ -103,7 +103,7 @@ class IVFFlatQueryOptions(QueryOptions):
     probes: int = 1
 
     def to_parameter(self) -> list[str]:
-        """Convert index attributes to string."""
+        """Convert index attributes to list of configurations."""
         return [f"ivfflat.probes = {self.probes}"]
 
 
@@ -125,7 +125,7 @@ class IVFQueryOptions(QueryOptions):
     probes: int = 1
 
     def to_parameter(self) -> list[str]:
-        """Convert index attributes to string."""
+        """Convert index attributes to list of configurations."""
         return [f"ivf.probes = {self.probes}"]
 
 
@@ -148,7 +148,7 @@ class ScaNNQueryOptions(QueryOptions):
     pre_reordering_num_neighbors: int = -1
 
     def to_parameter(self) -> list[str]:
-        """Convert index attributes to string."""
+        """Convert index attributes to list of configurations."""
         return [
             f"scann.num_leaves_to_search = {self.num_leaves_to_search}",
             f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
