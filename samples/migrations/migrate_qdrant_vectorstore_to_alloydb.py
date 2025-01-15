@@ -32,12 +32,13 @@ DB_USER = "YOUR_DATABASE_USERNAME"
 DB_PWD = "YOUR_DATABASE_PASSWORD"
 
 # TODO(developer): Optional, change the values below.
-QDRANT_COLLECTION_NAME = ""
-QDRANT_PATH = ""
+QDRANT_COLLECTION_NAME = "test_qdrant"
+QDRANT_PATH = "./qdrant_data"
 QDRANT_VECTOR_SIZE = 768
 QDRANT_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
 EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
+MAX_CONCURRENCY = 100
 
 from qdrant_client import QdrantClient  # type: ignore
 
@@ -102,24 +103,29 @@ async def main(
     # [END qdrant_get_client]
     print("Qdrant client initiated.")
 
-    from alloydb_snippets import acreate_alloydb_client, get_embeddings_service
+    # [START langchain_alloydb_migration_get_client]
+    from langchain_google_alloydb_pg import AlloyDBEngine
 
-    alloydb_engine = await acreate_alloydb_client(
+    alloydb_engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
         region=region,
         cluster=cluster,
         instance=instance,
-        db_name=db_name,
-        db_user=db_user,
-        db_pwd=db_pwd,
+        database=db_name,
+        user=db_user,
+        password=db_pwd,
     )
+    # [END langchain_alloydb_migration_get_client]
+    print("Langchain AlloyDB client initiated.")
 
-    embeddings_service = get_embeddings_service(
-        project_id, model_name=EMBEDDING_MODEL_NAME
-    )
+    # [START langchain_alloydb_migration_fake_embedding_service]
+    from langchain_core.embeddings import FakeEmbeddings
+
+    embeddings_service = FakeEmbeddings(size=qdrant_vector_size)
+    # [END langchain_alloydb_migration_fake_embedding_service]
+    print("Langchain Fake Embeddings service initiated.")
 
     # [START qdrant_alloydb_migration_get_alloydb_vectorstore]
-    from alloydb_snippets import aget_vector_store
 
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
@@ -127,11 +133,17 @@ async def main(
         overwrite_existing=True,
     )
 
-    vs = await aget_vector_store(
+    # [START langchain_get_alloydb_migration_vector_store]
+    from langchain_google_alloydb_pg import AlloyDBVectorStore
+
+    vs = await AlloyDBVectorStore.create(
         engine=alloydb_engine,
-        embeddings_service=embeddings_service,
+        embedding_service=embeddings_service,
         table_name=alloydb_table,
     )
+    # [END langchain_get_alloydb_migration_vector_store]
+    print("Langchain AlloyDB vector store instantiated.")
+
     # [END qdrant_alloydb_migration_get_alloydb_vectorstore]
     print("Qdrant migration AlloyDBVectorStore table created.")
 
@@ -141,15 +153,30 @@ async def main(
         qdrant_collection_name=qdrant_collection_name,
     )
 
+    # [START qdrant_alloydb_migration_insert_data_batch]
+
+    # [START langchain_alloydb_migration_vector_store_insert_data]
+    pending: set[Any] = set()
     for ids, contents, embeddings, metadatas in data_iterator:
-        # [START qdrant_alloydb_migration_insert_data_batch]
-        inserted_ids = await vs.aadd_embeddings(
-            texts=contents,
-            embeddings=embeddings,
-            metadatas=metadatas,
-            ids=ids,
+        pending.add(
+            asyncio.ensure_future(
+                vs.aadd_embeddings(
+                    texts=contents,
+                    embeddings=embeddings,
+                    metadatas=metadatas,
+                    ids=ids,
+                )
+            )
         )
-        # [END qdrant_alloydb_migration_insert_data_batch]
+        if len(pending) >= MAX_CONCURRENCY:
+            _, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
+            )
+    if pending:
+        await asyncio.wait(pending)
+    # [END langchain_alloydb_migration_vector_store_insert_data]
+
+    # [END qdrant_alloydb_migration_insert_data_batch]
 
     print("Migration completed, inserted all the batches of data to AlloyDB.")
 
