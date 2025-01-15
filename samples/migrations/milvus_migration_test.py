@@ -18,6 +18,9 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
+from langchain_core.documents import Document
+from langchain_core.embeddings import FakeEmbeddings
+from langchain_milvus import Milvus
 from migrate_milvus_vectorstore_to_alloydb import main
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -25,6 +28,8 @@ from sqlalchemy.engine.row import RowMapping
 from langchain_google_alloydb_pg import AlloyDBEngine
 
 DEFAULT_TABLE = "test_milvus_migration" + str(uuid.uuid4())
+PERSISTENT_DB_PATH = "./milvus_data.db"
+EMBEDDING_SERVICE = FakeEmbeddings(size=768)
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -55,6 +60,22 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
         return result_fetch
 
     return await engine._run_as_async(run(engine, query))
+
+
+def create_milvus_collection(collection):
+    vector_store = Milvus(
+        embedding_function=EMBEDDING_SERVICE,
+        connection_args={"uri": PERSISTENT_DB_PATH},
+        collection_name=collection,
+    )
+
+    uuids = [str(uuid.uuid4()) for i in range(100)]
+    documents = [
+        Document(page_content=f"content#{i}", metadata={"idv": f"{i}"})
+        for i in range(100)
+    ]
+
+    vector_store.add_documents(documents=documents, ids=uuids)
 
 
 @pytest.mark.asyncio(loop_scope="class")
@@ -93,10 +114,6 @@ class TestMigrations:
             "MILVUS_COLLECTION_NAME", "collection name for milvus instance"
         )
 
-    @pytest.fixture(scope="module")
-    def milvus_uri(self) -> str:
-        return "./milvus_example_collections.db"
-
     @pytest_asyncio.fixture(scope="class")
     async def engine(
         self,
@@ -127,7 +144,6 @@ class TestMigrations:
         engine,
         capsys,
         milvus_collection_name,
-        milvus_uri,
         db_project,
         db_region,
         db_cluster,
@@ -136,9 +152,11 @@ class TestMigrations:
         db_user,
         db_password,
     ):
+        create_milvus_collection(milvus_collection_name)
+
         await main(
             milvus_collection_name=milvus_collection_name,
-            milvus_uri=milvus_uri,
+            milvus_uri=PERSISTENT_DB_PATH,
             milvus_vector_size=768,
             milvus_batch_size=50,
             project_id=db_project,
@@ -157,7 +175,7 @@ class TestMigrations:
         assert "Error" not in err  # Check for errors
         assert "Milvus client initiated." in out
         assert "Langchain AlloyDB client initiated" in out
-        assert "Langchain Vertex AI Embeddings service initiated" in out
+        assert "Langchain Fake Embeddings service initiated." in out
         assert "Milvus migration AlloyDBVectorStore table created" in out
         assert "Langchain AlloyDB vector store instantiated" in out
         assert "Milvus client fetched all data from collection." in out
