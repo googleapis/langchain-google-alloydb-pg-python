@@ -25,7 +25,9 @@ from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
-from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
+from langchain_google_alloydb_pg.async_vectorstore import (
+    AsyncAlloyDBVectorStore,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -149,7 +151,10 @@ class TestVectorStore:
         await engine._ainit_vectorstore_table(
             IMAGE_TABLE,
             VECTOR_SIZE,
-            metadata_columns=[Column("image_id", "TEXT"), Column("source", "TEXT")],
+            metadata_columns=[
+                Column("image_id", "TEXT"),
+                Column("source", "TEXT"),
+            ],
         )
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
@@ -246,7 +251,7 @@ class TestVectorStore:
         ]
         await image_vs.aadd_images(image_uris, metadatas, ids)
         results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
-        assert len(results) == 4
+        assert len(results) == len(image_uris)
         assert results[0]["image_id"] == "0"
         assert results[0]["source"] == "google.com"
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))

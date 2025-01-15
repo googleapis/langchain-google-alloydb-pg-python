@@ -355,7 +355,7 @@ class TestVectorStore:
         ]
         await vs.aadd_images(image_uris, metadatas, ids)
         results = await afetch(engine_sync, f'SELECT * FROM "{IMAGE_TABLE}"')
-        assert len(results) == 4
+        assert len(results) == len(image_uris)
         assert results[0]["image_id"] == "0"
         assert results[0]["source"] == "google.com"
         await aexecute(engine_sync, f'TRUNCATE TABLE "{IMAGE_TABLE}"')
@@ -402,7 +402,7 @@ class TestVectorStore:
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         vs.add_images(image_uris, ids=ids)
         results = await afetch(engine_sync, (f'SELECT * FROM "{IMAGE_TABLE_SYNC}"'))
-        assert len(results) == 3
+        assert len(results) == len(image_uris)
         await vs.adelete(ids)
         await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE_SYNC}"')
 
