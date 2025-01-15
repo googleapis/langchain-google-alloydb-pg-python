@@ -126,13 +126,19 @@ async def main(
 
     # [START milvus_migration_alloydb_vectorstore]
 
+    # [START langchain_create_alloydb_migration_vector_store_table]
+
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=milvus_vector_size,
         overwrite_existing=True,
     )
 
-    # [START milvus_migration_alloydb_vectorstore]
+    # [END langchain_create_alloydb_migration_vector_store_table]
+    print("Langchain AlloyDB vector store table initialized.")
+
+    # [START langchain_get_alloydb_migration_vector_store]
+
     from langchain_google_alloydb_pg import AlloyDBVectorStore
 
     vs = await AlloyDBVectorStore.create(
@@ -143,7 +149,7 @@ async def main(
     # [END langchain_get_alloydb_migration_vector_store]
     print("Langchain AlloyDB vector store instantiated.")
 
-    # [END milvus_alloydb_migration_get_alloydb_vectorstore]
+    # [END milvus_migration_alloydb_vectorstore]
     print("Milvus migration AlloyDBVectorStore table created.")
 
     data_iterator = get_data_batch(
