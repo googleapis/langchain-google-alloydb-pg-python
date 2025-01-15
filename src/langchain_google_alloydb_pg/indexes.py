@@ -64,7 +64,7 @@ class ExactNearestNeighbor(BaseIndex):
 class QueryOptions(ABC):
     @abstractmethod
     def to_parameter(self) -> list[str]:
-        """Convert index attributes to map."""
+        """Convert index attributes to list of configurations."""
         raise NotImplementedError("to_parameter method must be implemented by subclass")
 
 
