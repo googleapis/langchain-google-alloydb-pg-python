@@ -4,3 +4,4 @@ langchain-community==0.3.7
 langchain-google-alloydb-pg==0.7.0
 langchain-google-vertexai==2.0.7
 langchain-qdrant==0.2.0
+qdrant-client==1.12.2
