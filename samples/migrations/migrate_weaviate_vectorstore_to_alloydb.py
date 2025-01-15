@@ -34,7 +34,7 @@ DB_NAME = "YOUR_DATABASE_ID"
 DB_USER = "YOUR_DATABASE_USERNAME"
 DB_PWD = "YOUR_DATABASE_PASSWORD"
 
-# TODO(developer): Optional, change the values below.
+# TODO(developer): Change the values below.
 WEAVIATE_COLLECTION_NAME = "test_weaviate_collection"
 WEAVIATE_VECTOR_SIZE = 768
 WEAVIATE_BATCH_SIZE = 10
