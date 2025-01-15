@@ -168,7 +168,7 @@ class TestMigrations:
         assert "Weaviate client initiated" in out
         assert "Weaviate collection reference initiated" in out
         assert "Langchain AlloyDB client initiated" in out
-        assert "Langchain Vertex AI Embeddings service initiated" in out
+        assert "Langchain Fake Embeddings service initiated." in out
         assert "Weaviate migration AlloyDBVectorStore table created" in out
         assert "Langchain AlloyDB vector store instantiated" in out
         assert "Weaviate client fetched all data from collection." in out
