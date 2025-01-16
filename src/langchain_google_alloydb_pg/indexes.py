@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import enum
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
@@ -92,9 +93,12 @@ class HNSWQueryOptions(QueryOptions):
         """Convert index attributes to list of configurations."""
         return [f"hnsw.ef_search = {self.ef_search}"]
 
-    @abstractmethod
     def to_string(self) -> str:
         """Convert index attributes to string."""
+        warnings.warn(
+            "to_string is deprecated, use to_parameter instead.",
+            DeprecationWarning,
+        )
         return f"hnsw.ef_search = {self.ef_search}"
 
 
@@ -116,9 +120,12 @@ class IVFFlatQueryOptions(QueryOptions):
         """Convert index attributes to list of configurations."""
         return [f"ivfflat.probes = {self.probes}"]
 
-    @abstractmethod
     def to_string(self) -> str:
         """Convert index attributes to string."""
+        warnings.warn(
+            "to_string is deprecated, use to_parameter instead.",
+            DeprecationWarning,
+        )
         return f"ivfflat.probes = {self.probes}"
 
 
@@ -143,10 +150,13 @@ class IVFQueryOptions(QueryOptions):
         """Convert index attributes to list of configurations."""
         return [f"ivf.probes = {self.probes}"]
 
-    @abstractmethod
     def to_string(self) -> str:
         """Convert index attributes to string."""
-        return "ivf.probes = {self.probes}"
+        warnings.warn(
+            "to_string is deprecated, use to_parameter instead.",
+            DeprecationWarning,
+        )
+        return f"ivf.probes = {self.probes}"
 
 
 @dataclass
@@ -174,7 +184,10 @@ class ScaNNQueryOptions(QueryOptions):
             f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
         ]
 
-    @abstractmethod
     def to_string(self) -> str:
         """Convert index attributes to string."""
+        warnings.warn(
+            "to_string is deprecated, use to_parameter instead.",
+            DeprecationWarning,
+        )
         return f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
