@@ -67,6 +67,11 @@ class QueryOptions(ABC):
         """Convert index attributes to list of configurations."""
         raise NotImplementedError("to_parameter method must be implemented by subclass")
 
+    @abstractmethod
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        raise NotImplementedError("to_string method must be implemented by subclass")
+
 
 @dataclass
 class HNSWIndex(BaseIndex):
@@ -87,6 +92,11 @@ class HNSWQueryOptions(QueryOptions):
         """Convert index attributes to list of configurations."""
         return [f"hnsw.ef_search = {self.ef_search}"]
 
+    @abstractmethod
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        return f"hnsw.ef_search = {self.ef_search}"
+
 
 @dataclass
 class IVFFlatIndex(BaseIndex):
@@ -105,6 +115,11 @@ class IVFFlatQueryOptions(QueryOptions):
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
         return [f"ivfflat.probes = {self.probes}"]
+
+    @abstractmethod
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        return f"ivfflat.probes = {self.probes}"
 
 
 @dataclass
@@ -127,6 +142,11 @@ class IVFQueryOptions(QueryOptions):
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
         return [f"ivf.probes = {self.probes}"]
+
+    @abstractmethod
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        return "ivf.probes = {self.probes}"
 
 
 @dataclass
@@ -153,3 +173,8 @@ class ScaNNQueryOptions(QueryOptions):
             f"scann.num_leaves_to_search = {self.num_leaves_to_search}",
             f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
         ]
+
+    @abstractmethod
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        return f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
