@@ -25,22 +25,22 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
-PINECONE_API_KEY = "YOUR_API_KEY"
-PINECONE_INDEX_NAME = "YOUR_INDEX_NAME"
-PROJECT_ID = "YOUR_PROJECT_ID"
-REGION = "YOUR_REGION"
-CLUSTER = "YOUR_CLUSTER_ID"
-INSTANCE = "YOUR_INSTANCE_ID"
-DB_NAME = "YOUR_DATABASE_ID"
-DB_USER = "YOUR_DATABASE_USERNAME"
-DB_PWD = "YOUR_DATABASE_PASSWORD"
+PINECONE_API_KEY = "my-api-key"
+PINECONE_INDEX_NAME = "pc-index-name"
+PROJECT_ID = "my-project-id"
+REGION = "us-central1"
+CLUSTER = "my-cluster"
+INSTANCE = "my-instance"
+DB_NAME = "my-db"
+DB_USER = "postgres"
+DB_PWD = "secret-password"
 
 # TODO(developer): Optional, change the values below.
 PINECONE_NAMESPACE = ""
-PINECONE_VECTOR_SIZE = 768
+VECTOR_SIZE = 768
 PINECONE_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
-EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
+MAX_CONCURRENCY = 100
 
 from pinecone import Index  # type: ignore
 
@@ -50,6 +50,7 @@ def get_ids_batch(
     pinecone_namespace: str = PINECONE_NAMESPACE,
     pinecone_batch_size: int = PINECONE_BATCH_SIZE,
 ) -> Iterator[list[str]]:
+    # [START pinecone_get_ids_batch]
     results = pinecone_index.list_paginated(
         prefix="", namespace=pinecone_namespace, limit=pinecone_batch_size
     )
@@ -100,7 +101,7 @@ async def main(
     pinecone_api_key: str = PINECONE_API_KEY,
     pinecone_index_name: str = PINECONE_INDEX_NAME,
     pinecone_namespace: str = PINECONE_NAMESPACE,
-    pinecone_vector_size: int = PINECONE_VECTOR_SIZE,
+    vector_size: int = VECTOR_SIZE,
     pinecone_batch_size: int = PINECONE_BATCH_SIZE,
     project_id: str = PROJECT_ID,
     region: str = REGION,
@@ -110,6 +111,7 @@ async def main(
     db_name: str = DB_NAME,
     db_user: str = DB_USER,
     db_pwd: str = DB_PWD,
+    max_concurrency: int = MAX_CONCURRENCY,
 ) -> None:
     # [START pinecone_get_client]
     from pinecone import Pinecone, ServerlessSpec  # type: ignore
@@ -118,59 +120,77 @@ async def main(
         api_key=pinecone_api_key,
         spec=ServerlessSpec(cloud="aws", region="us-east-1"),
     )
-    # [END pinecone_get_client]
-    print("Pinecone client initiated.")
-
-    # [START pinecone_get_index]
     pinecone_index = pinecone_client.Index(pinecone_index_name)
-    # [END pinecone_get_index]
     print("Pinecone index reference initiated.")
+    # [END pinecone_get_client]
 
-    from alloydb_snippets import acreate_alloydb_client
+    # [START pinecone_vectorstore_alloydb_migration_get_client]
+    from langchain_google_alloydb_pg import AlloyDBEngine
 
-    alloydb_engine = await acreate_alloydb_client(
+    alloydb_engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
         region=region,
         cluster=cluster,
         instance=instance,
-        db_name=db_name,
-        db_user=db_user,
-        db_pwd=db_pwd,
+        database=db_name,
+        user=db_user,
+        password=db_pwd,
     )
+    # [END pinecone_vectorstore_alloydb_migration_get_client]
+    print("Langchain AlloyDB client initiated.")
 
-    # [START pinecone_alloydb_migration_get_alloydb_vectorstore]
-    from alloydb_snippets import aget_vector_store, get_embeddings_service
-
+    # [START pinecone_vectorstore_alloydb_migration_create_table]
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
-        vector_size=pinecone_vector_size,
-        overwrite_existing=True,
+        vector_size=vector_size,
     )
+    # [END pinecone_vectorstore_alloydb_migration_create_table]
+    print("Langchain AlloyDB vectorstore table initialized.")
 
-    embeddings_service = get_embeddings_service(
-        project_id, model_name=EMBEDDING_MODEL_NAME
-    )
-    vs = await aget_vector_store(
+    # [START pinecone_vectorstore_alloydb_migration_embedding_service]
+    # The VectorStore interface requires an embedding service. This workflow does not
+    # generate new embeddings, therefore FakeEmbeddings class is used to avoid any costs.
+    from langchain_core.embeddings import FakeEmbeddings
+
+    embedding_service = FakeEmbeddings(size=vector_size)
+    # [END pinecone_vectorstore_alloydb_migration_embedding_service]
+    print("Langchain Fake Embeddings service initiated.")
+
+    # [START pinecone_vectorstore_alloydb_migration_vector_store]
+    from langchain_google_alloydb_pg import AlloyDBVectorStore
+
+    vector_store = await AlloyDBVectorStore.create(
         engine=alloydb_engine,
-        embeddings_service=embeddings_service,
+        embedding_service=embedding_service,
         table_name=alloydb_table,
     )
-    # [END pinecone_alloydb_migration_get_alloydb_vectorstore]
+    # [END pinecone_vectorstore_alloydb_migration_vector_store]
     print("Pinecone migration AlloyDBVectorStore table created.")
 
-    id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
-    for ids, embeddings, contents, metadatas in get_data_batch(
-        pinecone_index=pinecone_index,
-        id_iterator=id_iterator,
-    ):
-        # [START pinecone_alloydb_migration_insert_data_batch]
-        inserted_ids = await vs.aadd_embeddings(
-            texts=contents,
-            embeddings=embeddings,
-            metadatas=metadatas,
-            ids=ids,
+    data_iterator = get_ids_batch(
+        pinecone_index, pinecone_namespace, pinecone_batch_size
+    )
+
+    # [START pinecone_vectorstore_alloydb_migration_insert_data_batch]
+    pending: set[Any] = set()
+    for ids, contents, embeddings, metadatas in data_iterator:
+        pending.add(
+            asyncio.ensure_future(
+                vector_store.aadd_embeddings(
+                    texts=contents,
+                    embeddings=embeddings,
+                    metadatas=metadatas,
+                    ids=ids,
+                )
+            )
         )
-        # [END pinecone_alloydb_migration_insert_data_batch]
+        if len(pending) >= max_concurrency:
+            _, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
+            )
+    if pending:
+        await asyncio.wait(pending)
+    # [END pinecone_vectorstore_alloydb_migration_insert_data_batch]
     print("Migration completed, inserted all the batches of data to AlloyDB.")
 
 
