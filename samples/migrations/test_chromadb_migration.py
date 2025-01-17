@@ -71,10 +71,10 @@ def create_chroma_collection(collection_name):
         create_collection_if_not_exists=True,
     )
 
-    uuids = [f"{str(uuid.uuid4())}" for i in range(100)]
+    uuids = [f"{str(uuid.uuid4())}" for i in range(1000)]
     documents = [
         Document(page_content=f"content#{i}", metadata={"idv": f"{i}"})
-        for i in range(100)
+        for i in range(1000)
     ]
 
     vector_store.add_documents(documents=documents, ids=uuids)
@@ -159,7 +159,7 @@ class TestMigrations:
         await main(
             chromadb_collection_name=chromadb_collection_name,
             chromadb_path=PERSISTENT_DB_PATH,
-            chromadb_vector_size=768,
+            vector_size=768,
             chromadb_batch_size=50,
             project_id=db_project,
             region=db_region,
@@ -178,9 +178,9 @@ class TestMigrations:
         assert "ChromaDB vectorstore reference initiated." in out
         assert "Langchain AlloyDB client initiated" in out
         assert "Langchain Fake Embeddings service initiated." in out
-        assert "ChromaDB migration AlloyDBVectorStore table created" in out
-        assert "Langchain AlloyDB vector store instantiated" in out
+        assert "Langchain AlloyDB vectorstore table created" in out
+        assert "Langchain AlloyDBVectorStore initialized" in out
         assert "ChromaDB client fetched all data from collection." in out
         assert "Migration completed, inserted all the batches of data to AlloyDB" in out
         results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
-        assert len(results) == 100
+        assert len(results) == 1000
