@@ -541,6 +541,16 @@ class AsyncAlloyDBVectorStore(VectorStore):
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function
 
+        columns = self.metadata_columns + [
+            self.id_column,
+            self.content_column,
+            self.embedding_column,
+        ]
+        if self.metadata_json_column:
+            columns.append(self.metadata_json_column)
+
+        column_names = ", ".join(f'"{col}"' for col in columns)
+
         filter = f"WHERE {filter}" if filter else ""
         if (
             not embedding
@@ -550,11 +560,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
             query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])
         else:
             query_embedding = f"'{embedding}'"
-        stmt = f'SELECT *, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
+        stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
-            query_options_stmt = f"SET LOCAL {self.index_query_options.to_string()};"
             async with self.engine.connect() as conn:
-                await conn.execute(text(query_options_stmt))
+                # Set each query option individually
+                for query_option in self.index_query_options.to_parameter():
+                    query_options_stmt = f"SET LOCAL {query_option};"
+                    await conn.execute(text(query_options_stmt))
                 result = await conn.execute(text(stmt))
                 result_map = result.mappings()
                 results = result_map.fetchall()

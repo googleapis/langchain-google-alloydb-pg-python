@@ -24,7 +24,11 @@ from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
-from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
+from langchain_google_alloydb_pg.indexes import (
+    DistanceStrategy,
+    HNSWQueryOptions,
+    ScaNNQueryOptions,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
@@ -150,6 +154,21 @@ class TestVectorStoreSearch:
         yield vs_custom
 
     @pytest_asyncio.fixture(scope="class")
+    async def vs_custom_scann_query_option(self, engine, vs_custom):
+        vs_custom_scann_query_option = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=CUSTOM_TABLE,
+            id_column="myid",
+            content_column="mycontent",
+            embedding_column="myembedding",
+            index_query_options=ScaNNQueryOptions(
+                num_leaves_to_search=1, pre_reordering_num_neighbors=2
+            ),
+        )
+        yield vs_custom_scann_query_option
+
+    @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
         red_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_red.jpg"
         green_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_green.jpg"
@@ -187,6 +206,15 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results == [Document(page_content="foo")]
         results = await vs.asimilarity_search("foo", k=1, filter="content = 'bar'")
+        assert results == [Document(page_content="bar")]
+
+    async def test_asimilarity_search_scann(self, vs_custom_scann_query_option):
+        results = await vs_custom_scann_query_option.asimilarity_search("foo", k=1)
+        assert len(results) == 1
+        assert results == [Document(page_content="foo")]
+        results = await vs_custom_scann_query_option.asimilarity_search(
+            "foo", k=1, filter="mycontent = 'bar'"
+        )
         assert results == [Document(page_content="bar")]
 
     async def test_asimilarity_search_image(self, image_vs, image_uris):
