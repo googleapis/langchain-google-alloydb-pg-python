@@ -72,7 +72,7 @@ def get_ids_batch(
 
 def get_data_batch(
     pinecone_index: Index, pinecone_namespace: str, pinecone_batch_size: int
-) -> Iterator[tuple[list[str], list[Any], list[str], list[Any]]]:
+) -> Iterator[tuple[list[str], list[str], list[Any], list[Any]]]:
     id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
     # Iterate through the IDs and download their contents

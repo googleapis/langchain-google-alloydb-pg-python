@@ -21,7 +21,7 @@ import pytest
 import pytest_asyncio
 from langchain_pinecone import PineconeVectorStore  # type: ignore
 from migrate_pinecone_vectorstore_to_alloydb import main
-from pinecone import Pinecone, ServerlessSpec  # type : ignore
+from pinecone import Pinecone, ServerlessSpec  # type: ignore
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
@@ -62,7 +62,7 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
 
 def create_pinecone_index(
     pinecone_index_name: str, pinecone_api_key: str, project_id: str
-):
+) -> None:
     client = Pinecone(
         api_key=pinecone_api_key,
         spec=ServerlessSpec(cloud="aws", region="us-east-1"),
