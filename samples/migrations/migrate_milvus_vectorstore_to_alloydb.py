@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import asyncio
-from typing import Any, Iterator, List
+from typing import Any, Iterator
 
 """Migrate Milvus to Langchain AlloyDBVectorStore.
 Given a Milvus collection, the following code fetches the data from Milvus
@@ -23,21 +23,20 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
-PROJECT_ID = "YOUR_PROJECT_ID"
-REGION = "YOUR_REGION"
-CLUSTER = "YOUR_CLUSTER_ID"
-INSTANCE = "YOUR_INSTANCE_ID"
-DB_NAME = "YOUR_DATABASE_ID"
-DB_USER = "YOUR_DATABASE_USERNAME"
-DB_PWD = "YOUR_DATABASE_PASSWORD"
+PROJECT_ID = "my-project-id"
+REGION = "us-central1"
+CLUSTER = "my-cluster"
+INSTANCE = "my-instance"
+DB_NAME = "my-db"
+DB_USER = "postgres"
+DB_PWD = "secret-password"
 
-# TODO(developer): Change the values below.
+# TODO(developer): Optional, change the values below.
 MILVUS_URI = "./milvus_data"
 MILVUS_COLLECTION_NAME = "test_milvus"
-MILVUS_VECTOR_SIZE = 768
+VECTOR_SIZE = 768
 MILVUS_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
-EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
 MAX_CONCURRENCY = 100
 
 from pymilvus import MilvusClient  # type: ignore
@@ -75,16 +74,14 @@ def get_data_batch(
             del doc["text"]
             del doc["vector"]
             metadatas.append(doc)
-
         yield ids, content, embeddings, metadatas
-
     # [END milvus_get_data_batch]
     print("Milvus client fetched all data from collection.")
 
 
 async def main(
     milvus_collection_name: str = MILVUS_COLLECTION_NAME,
-    milvus_vector_size: int = MILVUS_VECTOR_SIZE,
+    vector_size: int = VECTOR_SIZE,
     milvus_batch_size: int = MILVUS_BATCH_SIZE,
     milvus_uri: str = MILVUS_URI,
     project_id: str = PROJECT_ID,
@@ -95,14 +92,14 @@ async def main(
     db_name: str = DB_NAME,
     db_user: str = DB_USER,
     db_pwd: str = DB_PWD,
+    max_concurrency: int = MAX_CONCURRENCY,
 ) -> None:
     # [START milvus_get_client]
     milvus_client = MilvusClient(uri=milvus_uri)
-
     # [END milvus_get_client]
     print("Milvus client initiated.")
 
-    # [START langchain_alloydb_migration_get_client]
+    # [START milvus_vectorstore_alloydb_migration_get_client]
     from langchain_google_alloydb_pg import AlloyDBEngine
 
     alloydb_engine = await AlloyDBEngine.afrom_instance(
@@ -114,31 +111,27 @@ async def main(
         user=db_user,
         password=db_pwd,
     )
-    # [END langchain_alloydb_migration_get_client]
+    # [END milvus_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
 
-    # [START langchain_alloydb_migration_fake_embedding_service]
+    # [START milvus_vectorstore_alloydb_migration_embedding_service]
+    # The VectorStore interface requires an embedding service. This workflow does not
+    # generate new embeddings, therefore FakeEmbeddings class is used to avoid any costs.
     from langchain_core.embeddings import FakeEmbeddings
 
-    embeddings_service = FakeEmbeddings(size=milvus_vector_size)
-    # [END langchain_alloydb_migration_fake_embedding_service]
+    embeddings_service = FakeEmbeddings(size=vector_size)
+    # [END milvus_vectorstore_alloydb_migration_embedding_service]
     print("Langchain Fake Embeddings service initiated.")
 
-    # [START milvus_migration_alloydb_vectorstore]
-
-    # [START langchain_create_alloydb_migration_vector_store_table]
-
+    # [START milvus_vectorstore_alloydb_migration_create_table]
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
-        vector_size=milvus_vector_size,
-        overwrite_existing=True,
+        vector_size=vector_size,
     )
+    # [END milvus_vectorstore_alloydb_migration_create_table]
+    print("Langchain AlloyDB vectorstore table created.")
 
-    # [END langchain_create_alloydb_migration_vector_store_table]
-    print("Langchain AlloyDB vector store table initialized.")
-
-    # [START langchain_get_alloydb_migration_vector_store]
-
+    # [START milvus_vectorstore_alloydb_migration_vector_store]
     from langchain_google_alloydb_pg import AlloyDBVectorStore
 
     vs = await AlloyDBVectorStore.create(
@@ -146,11 +139,8 @@ async def main(
         embedding_service=embeddings_service,
         table_name=alloydb_table,
     )
-    # [END langchain_get_alloydb_migration_vector_store]
-    print("Langchain AlloyDB vector store instantiated.")
-
-    # [END milvus_migration_alloydb_vectorstore]
-    print("Milvus migration AlloyDBVectorStore table created.")
+    # [END milvus_vectorstore_alloydb_migration_vector_store]
+    print("Langchain AlloyDBVectorStore initialized.")
 
     data_iterator = get_data_batch(
         milvus_client=milvus_client,
@@ -158,9 +148,7 @@ async def main(
         milvus_collection_name=milvus_collection_name,
     )
 
-    # [START milvus_alloydb_migration_insert_data_batch]
-
-    # [START langchain_alloydb_migration_vector_store_insert_data]
+    # [START milvus_vectorstore_alloydb_migration_insert_data_batch]
     pending: set[Any] = set()
     for ids, contents, embeddings, metadatas in data_iterator:
         pending.add(
@@ -173,16 +161,13 @@ async def main(
                 )
             )
         )
-        if len(pending) >= MAX_CONCURRENCY:
+        if len(pending) >= max_concurrency:
             _, pending = await asyncio.wait(
                 pending, return_when=asyncio.FIRST_COMPLETED
             )
     if pending:
         await asyncio.wait(pending)
-    # [END langchain_alloydb_migration_vector_store_insert_data]
-
-    # [END milvus_alloydb_migration_insert_data_batch]
-
+    # [END milvus_vectorstore_alloydb_migration_insert_data_batch]
     print("Migration completed, inserted all the batches of data to AlloyDB.")
 
 
