@@ -55,6 +55,7 @@ async def aexecute(
 
 def create_qdrant_collection(collection_name):
     client = QdrantClient(path=PERSISTENT_DB_PATH)
+    # delete pre-existing collection names to avoid conflict
     client.delete_collection(
         collection_name=collection_name,
     )
