@@ -3,6 +3,7 @@ langchain-core==0.3.26
 pinecone-client==5.0.1
 weaviate-client==4.10.2
 langchain-chroma==0.1.4
+langchain-pinecone==0.2.0
 qdrant-client==1.12.1
 pymilvus==2.5.0
 protobuf==5.29.1

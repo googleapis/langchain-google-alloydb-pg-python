@@ -25,8 +25,8 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
-PINECONE_API_KEY = "my-api-key"
-PINECONE_INDEX_NAME = "pc-index-name"
+PINECONE_API_KEY = "my-pc-api-key"
+PINECONE_INDEX_NAME = "my-pc-index-name"
 PROJECT_ID = "my-project-id"
 REGION = "us-central1"
 CLUSTER = "my-cluster"
@@ -71,12 +71,12 @@ def get_ids_batch(
 
 
 def get_data_batch(
-    pinecone_index: Index, id_iterator: Iterator[list[str]]
+    pinecone_index: Index, pinecone_namespace: str, pinecone_batch_size: int
 ) -> Iterator[tuple[list[str], list[Any], list[str], list[Any]]]:
+    id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
     # Iterate through the IDs and download their contents
     for ids in id_iterator:
-        # Fetch vectors for the current batch of IDs
         all_data = pinecone_index.fetch(ids=ids)
         ids = []
         embeddings = []
@@ -87,12 +87,13 @@ def get_data_batch(
         for doc in all_data["vectors"].values():
             ids.append(doc["id"])
             embeddings.append(doc["values"])
-            contents.append(str(doc["metadata"]))
+            contents.append(str(doc["metadata"]["text"]))
+            del doc["metadata"]["text"]
             metadata = doc["metadata"]
             metadatas.append(metadata)
 
         # Yield the current batch of results
-        yield ids, embeddings, contents, metadatas
+        yield ids, contents, embeddings, metadatas
     # [END pinecone_get_data_batch]
     print("Pinecone client fetched all data from index.")
 
@@ -145,7 +146,7 @@ async def main(
         vector_size=vector_size,
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
-    print("Langchain AlloyDB vectorstore table initialized.")
+    print("Langchain AlloyDB vectorstore table created.")
 
     # [START pinecone_vectorstore_alloydb_migration_embedding_service]
     # The VectorStore interface requires an embedding service. This workflow does not
@@ -165,9 +166,9 @@ async def main(
         table_name=alloydb_table,
     )
     # [END pinecone_vectorstore_alloydb_migration_vector_store]
-    print("Pinecone migration AlloyDBVectorStore table created.")
+    print("Langchain AlloyDBVectorStore initialized.")
 
-    data_iterator = get_ids_batch(
+    data_iterator = get_data_batch(
         pinecone_index, pinecone_namespace, pinecone_batch_size
     )
 
