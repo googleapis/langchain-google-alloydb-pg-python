@@ -68,15 +68,18 @@ def create_pinecone_index(
         spec=ServerlessSpec(cloud="aws", region="us-east-1"),
     )
     existing_indexes = [index_info["name"] for index_info in client.list_indexes()]
-    if pinecone_index_name not in existing_indexes:
-        client.create_index(
-            name=pinecone_index_name,
-            dimension=768,
-            metric="cosine",
-            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-        )
-        while not client.describe_index(pinecone_index_name).status["ready"]:
-            time.sleep(1)
+    if pinecone_index_name in existing_indexes:
+        # Assume documents already added if index exists
+        return
+    # Create the index and add test documents
+    client.create_index(
+        name=pinecone_index_name,
+        dimension=768,
+        metric="cosine",
+        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+    )
+    while not client.describe_index(pinecone_index_name).status["ready"]:
+        time.sleep(1)
 
     index = client.Index(pinecone_index_name)
     from langchain_core.documents import Document
