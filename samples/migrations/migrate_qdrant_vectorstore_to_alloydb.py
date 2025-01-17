@@ -23,21 +23,20 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
-PROJECT_ID = "YOUR_PROJECT_ID"
-REGION = "YOUR_REGION"
-CLUSTER = "YOUR_CLUSTER_ID"
-INSTANCE = "YOUR_INSTANCE_ID"
-DB_NAME = "YOUR_DATABASE_ID"
-DB_USER = "YOUR_DATABASE_USERNAME"
-DB_PWD = "YOUR_DATABASE_PASSWORD"
+PROJECT_ID = "my-project-id"
+REGION = "us-central1"
+CLUSTER = "my-cluster"
+INSTANCE = "my-instance"
+DB_NAME = "my-db"
+DB_USER = "postgres"
+DB_PWD = "secret-password"
 
 # TODO(developer): Change the values below.
 QDRANT_COLLECTION_NAME = "test_qdrant"
 QDRANT_PATH = "./qdrant_data"
-QDRANT_VECTOR_SIZE = 768
+VECTOR_SIZE = 768
 QDRANT_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
-EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
 MAX_CONCURRENCY = 100
 
 from qdrant_client import QdrantClient  # type: ignore
@@ -83,7 +82,7 @@ def get_data_batch(
 
 async def main(
     qdrant_collection_name: str = QDRANT_COLLECTION_NAME,
-    qdrant_vector_size: int = QDRANT_VECTOR_SIZE,
+    vector_size: int = VECTOR_SIZE,
     qdrant_batch_size: int = QDRANT_BATCH_SIZE,
     qdrant_path: str = QDRANT_PATH,
     project_id: str = PROJECT_ID,
@@ -94,6 +93,7 @@ async def main(
     db_name: str = DB_NAME,
     db_user: str = DB_USER,
     db_pwd: str = DB_PWD,
+    max_concurrency: int = MAX_CONCURRENCY,
 ) -> None:
     # [START qdrant_get_client]
     from qdrant_client import QdrantClient
@@ -103,7 +103,7 @@ async def main(
     # [END qdrant_get_client]
     print("Qdrant client initiated.")
 
-    # [START langchain_alloydb_migration_get_client]
+    # [START qdrant_vectorstore_alloydb_migration_get_client]
     from langchain_google_alloydb_pg import AlloyDBEngine
 
     alloydb_engine = await AlloyDBEngine.afrom_instance(
@@ -115,28 +115,27 @@ async def main(
         user=db_user,
         password=db_pwd,
     )
-    # [END langchain_alloydb_migration_get_client]
+    # [END qdrant_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
 
-    # [START langchain_alloydb_migration_fake_embedding_service]
+    # [START qdrant_vectorstore_alloydb_migration_embedding_service]
+    # The VectorStore interface requires an embedding service. This workflow does not
+    # generate new embeddings, therefore FakeEmbeddings class is used to avoid any costs.
     from langchain_core.embeddings import FakeEmbeddings
 
-    embeddings_service = FakeEmbeddings(size=qdrant_vector_size)
-    # [END langchain_alloydb_migration_fake_embedding_service]
+    embeddings_service = FakeEmbeddings(size=vector_size)
+    # [END qdrant_vectorstore_alloydb_migration_embedding_service]
     print("Langchain Fake Embeddings service initiated.")
 
-    # [START qdrant_migration_alloydb_vectorstore]
-
-    # [START langchain_create_alloydb_migration_vector_store_table]
+    # [START qdrant_vectorstore_alloydb_migration_create_table]
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
-        vector_size=qdrant_vector_size,
-        overwrite_existing=True,
+        vector_size=vector_size,
     )
-    # [END langchain_create_alloydb_migration_vector_store_table]
-    print("Langchain AlloyDB vector store table initialized.")
+    # [END qdrant_vectorstore_alloydb_migration_create_table]
+    print("Langchain AlloyDB vectorstore table created.")
 
-    # [START langchain_get_alloydb_migration_vector_store]
+    # [START qdrant_vectorstore_alloydb_migration_vector_store]
     from langchain_google_alloydb_pg import AlloyDBVectorStore
 
     vs = await AlloyDBVectorStore.create(
@@ -144,11 +143,8 @@ async def main(
         embedding_service=embeddings_service,
         table_name=alloydb_table,
     )
-    # [END langchain_get_alloydb_migration_vector_store]
-    print("Langchain AlloyDB vector store instantiated.")
-
-    # [END qdrant_migration_alloydb_vectorstore]
-    print("Qdrant migration AlloyDBVectorStore table created.")
+    # [END qdrant_vectorstore_alloydb_migration_vector_store]
+    print("Langchain AlloyDBVectorStore initialized.")
 
     data_iterator = get_data_batch(
         qdrant_client=qdrant_client,
@@ -156,9 +152,7 @@ async def main(
         qdrant_collection_name=qdrant_collection_name,
     )
 
-    # [START qdrant_alloydb_migration_insert_data_batch]
-
-    # [START langchain_alloydb_migration_vector_store_insert_data]
+    # [START qdrant_vectorstore_alloydb_migration_insert_data_batch]
     pending: set[Any] = set()
     for ids, contents, embeddings, metadatas in data_iterator:
         pending.add(
@@ -171,16 +165,13 @@ async def main(
                 )
             )
         )
-        if len(pending) >= MAX_CONCURRENCY:
+        if len(pending) >= max_concurrency:
             _, pending = await asyncio.wait(
                 pending, return_when=asyncio.FIRST_COMPLETED
             )
     if pending:
         await asyncio.wait(pending)
-    # [END langchain_alloydb_migration_vector_store_insert_data]
-
-    # [END qdrant_alloydb_migration_insert_data_batch]
-
+    # [END qdrant_vectorstore_alloydb_migration_insert_data_batch]
     print("Migration completed, inserted all the batches of data to AlloyDB.")
 
 

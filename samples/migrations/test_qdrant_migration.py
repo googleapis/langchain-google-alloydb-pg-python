@@ -69,10 +69,10 @@ def create_qdrant_collection(collection_name):
         embedding=EMBEDDING_SERVICE,
     )
 
-    uuids = [f"{str(uuid.uuid4())}" for i in range(100)]
+    uuids = [f"{str(uuid.uuid4())}" for i in range(1000)]
     documents = [
         Document(page_content=f"content#{i}", metadata={"idv": f"{i}"})
-        for i in range(100)
+        for i in range(1000)
     ]
 
     vector_store.add_documents(documents=documents, ids=uuids)
@@ -168,7 +168,7 @@ class TestMigrations:
         await main(
             qdrant_collection_name=qdrant_collection_name,
             qdrant_path=PERSISTENT_DB_PATH,
-            qdrant_vector_size=768,
+            vector_size=768,
             qdrant_batch_size=50,
             project_id=db_project,
             region=db_region,
@@ -187,9 +187,9 @@ class TestMigrations:
         assert "Qdrant client initiated." in out
         assert "Langchain AlloyDB client initiated" in out
         assert "Langchain Fake Embeddings service initiated." in out
-        assert "Qdrant migration AlloyDBVectorStore table created" in out
-        assert "Langchain AlloyDB vector store instantiated" in out
+        assert "Langchain AlloyDB vectorstore table created" in out
+        assert "Langchain AlloyDBVectorStore initialized" in out
         assert "Qdrant client fetched all data from collection." in out
         assert "Migration completed, inserted all the batches of data to AlloyDB" in out
         results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
-        assert len(results) == 100
+        assert len(results) == 1000
