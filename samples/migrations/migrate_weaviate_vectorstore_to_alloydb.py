@@ -23,23 +23,22 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
-WEAVIATE_API_KEY = "YOUR_API_KEY"
-WEAVIATE_CLUSTER_URL = "YOUR_CLUSTER_URL"
-EMBEDDING_API_KEY = "YOUR_EMBEDDING_API_KEY"
-PROJECT_ID = "YOUR_PROJECT_ID"
-REGION = "YOUR_REGION"
-CLUSTER = "YOUR_CLUSTER_ID"
-INSTANCE = "YOUR_INSTANCE_ID"
-DB_NAME = "YOUR_DATABASE_ID"
-DB_USER = "YOUR_DATABASE_USERNAME"
-DB_PWD = "YOUR_DATABASE_PASSWORD"
+WEAVIATE_API_KEY = "my-wv-api-key"
+WEAVIATE_CLUSTER_URL = "my-wv-cluster-url"
+EMBEDDING_API_KEY = "my-wv-embedding-api-key"
+PROJECT_ID = "my-project-id"
+REGION = "us-central1"
+CLUSTER = "my-cluster"
+INSTANCE = "my-instance"
+DB_NAME = "my-db"
+DB_USER = "postgres"
+DB_PWD = "secret-password"
 
-# TODO(developer): Change the values below.
+# TODO(developer): Optional, change the values below.
 WEAVIATE_COLLECTION_NAME = "test_weaviate_collection"
-WEAVIATE_VECTOR_SIZE = 768
+VECTOR_SIZE = 768
 WEAVIATE_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
-EMBEDDING_MODEL_NAME = "textembedding-gecko@001"
 MAX_CONCURRENCY = 100
 
 from weaviate.collections import Collection  # type: ignore
@@ -50,7 +49,6 @@ def get_data_batch(
 ) -> Iterator[tuple[list[str], list[Any], list[list[float]], list[Any]]]:
     # [START weaviate_get_data_batch]
     # Iterate through the IDs and download their contents
-
     ids = []
     content = []
     embeddings = []
@@ -70,7 +68,6 @@ def get_data_batch(
             content = []
             embeddings = []
             metadatas = []
-
     # [END weaviate_get_data_batch]
     print("Weaviate client fetched all data from collection.")
 
@@ -79,7 +76,7 @@ async def main(
     weaviate_api_key: str = WEAVIATE_API_KEY,
     weaviate_collection_name: str = WEAVIATE_COLLECTION_NAME,
     weaviate_cluster_url: str = WEAVIATE_CLUSTER_URL,
-    weaviate_vector_size: int = WEAVIATE_VECTOR_SIZE,
+    vector_size: int = VECTOR_SIZE,
     weaviate_batch_size: int = WEAVIATE_BATCH_SIZE,
     embedding_api_key: str = EMBEDDING_API_KEY,
     project_id: str = PROJECT_ID,
@@ -90,6 +87,7 @@ async def main(
     db_name: str = DB_NAME,
     db_user: str = DB_USER,
     db_pwd: str = DB_PWD,
+    max_concurrency: int = MAX_CONCURRENCY,
 ) -> None:
     # [START weaviate_get_client]
     import weaviate
@@ -99,23 +97,20 @@ async def main(
         auth_credentials=weaviate.auth.AuthApiKey(weaviate_api_key),
         headers={"X-Cohere-Api-Key": embedding_api_key},
     )
-
-    # [END weaviate_get_client]
-    print("Weaviate client initiated.")
-
-    # [START weaviate_get_collection]
     weaviate_collection = weaviate_client.collections.get(weaviate_collection_name)
-    # [END weaviate_get_collection]
+    # [END weaviate_get_client]
     print("Weaviate collection reference initiated.")
 
-    # [START langchain_alloydb_migration_fake_embedding_service]
+    # [START weaviate_vectorstore_alloydb_migration_embedding_service]
+    # The VectorStore interface requires an embedding service. This workflow does not
+    # generate new embeddings, therefore FakeEmbeddings class is used to avoid any costs.
     from langchain_core.embeddings import FakeEmbeddings
 
-    embeddings_service = FakeEmbeddings(size=weaviate_vector_size)
-    # [END langchain_alloydb_migration_fake_embedding_service]
+    embeddings_service = FakeEmbeddings(size=vector_size)
+    # [END weaviate_vectorstore_alloydb_migration_embedding_service]
     print("Langchain Fake Embeddings service initiated.")
 
-    # [START langchain_alloydb_migration_get_client]
+    # [START weaviate_vectorstore_alloydb_migration_get_client]
     from langchain_google_alloydb_pg import AlloyDBEngine
 
     alloydb_engine = await AlloyDBEngine.afrom_instance(
@@ -128,22 +123,18 @@ async def main(
         password=db_pwd,
     )
     print("Langchain AlloyDB client initiated.")
-    # [END langchain_alloydb_migration_get_client]
+    # [END weaviate_vectorstore_alloydb_migration_get_client]
 
-    # [START weaviate_migration_alloydb_vectorstore]
-
-    # [START langchain_create_alloydb_migration_vector_store_table]
-
+    # [START weaviate_vectorstore_alloydb_migration_create_table]
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
-        vector_size=weaviate_vector_size,
-        overwrite_existing=True,
+        vector_size=vector_size,
     )
 
-    # [END langchain_create_alloydb_migration_vector_store_table]
-    print("Langchain AlloyDB vector store table initialized.")
+    # [END weaviate_vectorstore_alloydb_migration_create_table]
+    print("Langchain AlloyDB vectorstore table created.")
 
-    # [START langchain_get_alloydb_migration_vector_store]
+    # [START weaviate_vectorstore_alloydb_migration_vector_store]
     from langchain_google_alloydb_pg import AlloyDBVectorStore
 
     vs = await AlloyDBVectorStore.create(
@@ -151,19 +142,13 @@ async def main(
         embedding_service=embeddings_service,
         table_name=alloydb_table,
     )
-    # [END langchain_get_alloydb_migration_vector_store]
-    print("Langchain AlloyDB vector store instantiated.")
-
-    # [END weaviate_migration_alloydb_vectorstore]
-    print("Weaviate migration AlloyDBVectorStore table created.")
+    # [END weaviate_vectorstore_alloydb_migration_vector_store]
+    print("Langchain AlloyDBVectorStore initialized.")
 
     data_iterator = get_data_batch(
         weaviate_collection=weaviate_collection, weaviate_batch_size=weaviate_batch_size
     )
-
-    # [START weaviate_alloydb_migration_insert_data_batch]
-
-    # [START langchain_alloydb_migration_vector_store_insert_data]
+    # [START weaviate_vectorstore_alloydb_migration_insert_data_batch]
     pending: set[Any] = set()
     for ids, contents, embeddings, metadatas in data_iterator:
         pending.add(
@@ -176,19 +161,15 @@ async def main(
                 )
             )
         )
-        if len(pending) >= MAX_CONCURRENCY:
+        if len(pending) >= max_concurrency:
             _, pending = await asyncio.wait(
                 pending, return_when=asyncio.FIRST_COMPLETED
             )
     if pending:
         await asyncio.wait(pending)
-
-    # [END langchain_alloydb_migration_vector_store_insert_data]
-
-    # [END weaviate_alloydb_migration_insert_data_batch]
-
-    weaviate_client.close()
+    # [END weaviate_vectorstore_alloydb_migration_insert_data_batch]
     print("Migration completed, inserted all the batches of data to AlloyDB.")
+    weaviate_client.close()
 
 
 if __name__ == "__main__":

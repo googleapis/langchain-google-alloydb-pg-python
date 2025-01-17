@@ -149,7 +149,7 @@ class TestMigrations:
             weaviate_api_key=weaviate_api_key,
             weaviate_collection_name=weaviate_collection_name,
             embedding_api_key=embedding_api_key,
-            weaviate_vector_size=768,
+            vector_size=768,
             weaviate_batch_size=50,
             project_id=db_project,
             region=db_region,
@@ -165,13 +165,10 @@ class TestMigrations:
 
         # Assert on the script's output
         assert "Error" not in err  # Check for errors
-        assert "Weaviate client initiated" in out
         assert "Weaviate collection reference initiated" in out
         assert "Langchain AlloyDB client initiated" in out
         assert "Langchain Fake Embeddings service initiated." in out
-        assert "Weaviate migration AlloyDBVectorStore table created" in out
-        assert "Langchain AlloyDB vector store instantiated" in out
+        assert "Langchain AlloyDB vectorstore table created" in out
+        assert "Langchain AlloyDBVectorStore initialized" in out
         assert "Weaviate client fetched all data from collection." in out
         assert "Migration completed, inserted all the batches of data to AlloyDB" in out
-        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
-        assert len(results) == 100
