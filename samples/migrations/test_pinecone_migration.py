@@ -63,10 +63,7 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
 def create_pinecone_index(
     pinecone_index_name: str, pinecone_api_key: str, project_id: str
 ) -> None:
-    client = Pinecone(
-        api_key=pinecone_api_key,
-        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-    )
+    client = Pinecone(api_key=pinecone_api_key)
     existing_indexes = [index_info["name"] for index_info in client.list_indexes()]
     if pinecone_index_name in existing_indexes:
         # Assume documents already added if index exists

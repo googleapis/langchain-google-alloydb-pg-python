@@ -115,12 +115,9 @@ async def main(
     max_concurrency: int = MAX_CONCURRENCY,
 ) -> None:
     # [START pinecone_get_client]
-    from pinecone import Pinecone, ServerlessSpec  # type: ignore
+    from pinecone import Pinecone  # type: ignore
 
-    pinecone_client = Pinecone(
-        api_key=pinecone_api_key,
-        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-    )
+    pinecone_client = Pinecone(api_key=pinecone_api_key)
     pinecone_index = pinecone_client.Index(pinecone_index_name)
     print("Pinecone index reference initiated.")
     # [END pinecone_get_client]
