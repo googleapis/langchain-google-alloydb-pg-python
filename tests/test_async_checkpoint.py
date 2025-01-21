@@ -13,10 +13,21 @@
 # limitations under the License.
 
 import os
+from typing import Sequence
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
+from sqlalchemy.engine.row import RowMapping
+
+from langchain_core.runnables import RunnableConfig
+
+from langgraph.checkpoint.base import (
+    BaseCheckpointSaver,
+    ChannelVersions,
+    Checkpoint,
+    CheckpointMetadata
+)
 
 from langchain_google_alloydb_pg.engine import (
     CHECKPOINT_WRITES_TABLE,
@@ -27,8 +38,8 @@ from langchain_google_alloydb_pg.async_checkpoint import (
     AsyncAlloyDBSaver,
 )
 
-write_config = {"configurable": {"thread_id": "1", "checkpoint_ns": ""}}
-read_config = {"configurable": {"thread_id": "1"}}
+write_config:RunnableConfig = {"configurable": {"thread_id": "1", "checkpoint_ns": ""}}
+read_config:RunnableConfig = {"configurable": {"thread_id": "1"}}
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
@@ -36,7 +47,7 @@ cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
 
-checkpoint = {
+checkpoint:Checkpoint = {
     "v": 1,
     "ts": "2024-07-31T20:14:19.804150+00:00",
     "id": "1ef4f797-8335-6428-8001-8a1503f9b875",
@@ -59,6 +70,13 @@ async def aexecute(engine: AlloyDBEngine, query: str) -> None:
     async with engine._pool.connect() as conn:
         await conn.execute(text(query))
         await conn.commit()
+
+async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
+    async with engine._pool.connect() as conn:
+        result = await conn.execute(text(query))
+        result_map = result.mappings()
+        result_fetch = result_map.fetchall()
+    return result_fetch
 
 @pytest_asyncio.fixture
 async def async_engine():
@@ -91,3 +109,10 @@ async def test_checkpoint_async(
     # Verify if updated configuration after storing the checkpoint is correct
     next_config = await checkpointer.aput(write_config, checkpoint, {}, {})
     assert dict(next_config) == test_config
+
+    # Verify if the checkpoint is stored correctly in the database
+    results = await afetch(async_engine, f"SELECT * FROM {CHECKPOINTS_TABLE}")
+    assert len(results) == 1
+    for row in results:
+        assert isinstance(row["thread_id"], str)
+    await aexecute(async_engine, f"TRUNCATE TABLE {CHECKPOINTS_TABLE}")
