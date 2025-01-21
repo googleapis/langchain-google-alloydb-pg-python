@@ -149,7 +149,10 @@ class TestVectorStore:
         await engine._ainit_vectorstore_table(
             IMAGE_TABLE,
             VECTOR_SIZE,
-            metadata_columns=[Column("image_id", "TEXT"), Column("source", "TEXT")],
+            metadata_columns=[
+                Column("image_id", "TEXT"),
+                Column("source", "TEXT"),
+            ],
         )
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
@@ -246,7 +249,7 @@ class TestVectorStore:
         ]
         await image_vs.aadd_images(image_uris, metadatas, ids)
         results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
-        assert len(results) == 4
+        assert len(results) == len(image_uris)
         assert results[0]["image_id"] == "0"
         assert results[0]["source"] == "google.com"
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
