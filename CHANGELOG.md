@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.0...v0.9.1) (2025-01-16)
+
+
+### Bug Fixes
+
+* Programming error while setting multiple query option ([#312](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/312)) ([99f48bc](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/99f48bc395511dfba50f5a222fb3a648041a0235))
+* Query and return only selected metadata columns ([#310](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/310)) ([b5ff9f2](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/b5ff9f24a7f5f45f6ea56d6d04af43dda3513daa))
+
 ## [0.9.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.8.0...v0.9.0) (2024-12-19)
 
 
