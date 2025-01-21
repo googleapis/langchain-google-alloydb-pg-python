@@ -5,4 +5,4 @@ google-cloud-resource-manager==1.14.0
 langchain-community==0.3.15
 # Required to fix: "PydanticUndefinedAnnotation: name 'SafetySetting' is not defined"
 # Todo: remove after upstream issue is fixed: https://github.com/langchain-ai/langchain/issues/28271
-pydantic==2.10.5
+pydantic==2.9.0
