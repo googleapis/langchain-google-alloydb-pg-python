@@ -19,6 +19,8 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
+from langchain_core.documents import Document
+from langchain_google_vertexai import VertexAIEmbeddings
 from langchain_pinecone import PineconeVectorStore  # type: ignore
 from migrate_pinecone_vectorstore_to_alloydb import main
 from pinecone import Pinecone, ServerlessSpec  # type: ignore
@@ -79,9 +81,6 @@ def create_pinecone_index(
         time.sleep(1)
 
     index = client.Index(pinecone_index_name)
-    from langchain_core.documents import Document
-    from langchain_google_vertexai import VertexAIEmbeddings
-
     vector_store = PineconeVectorStore(
         index=index,
         embedding=VertexAIEmbeddings(
