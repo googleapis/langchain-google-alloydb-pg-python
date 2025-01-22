@@ -44,6 +44,9 @@ jobs:
       - name: Install Sample requirements
         run: pip install -r samples/requirements.txt
 
+      - name: Install Migration snippets requirements
+        run: pip install -r samples/migrations/requirements.txt
+
       - name: Install module (and test requirements)
         run: pip install -e .[test]
 
