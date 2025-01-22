@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Sequence
+from typing import Any, Sequence, Tuple
 
 import pytest
 import pytest_asyncio
@@ -116,3 +116,12 @@ async def test_checkpoint_async(
     for row in results:
         assert isinstance(row["thread_id"], str)
     await aexecute(async_engine, f"TRUNCATE TABLE {CHECKPOINTS_TABLE}")
+    
+    # Verify if the checkpoint writes are stored correctly in the database
+    writes: Sequence[Tuple[str,Any]] = [("test_channel1", {}), ("test_channel2", {})]
+    await checkpointer.aput_writes(write_config, writes, task_id="1")
+    results = await afetch(async_engine, f"SELECT * FROM {CHECKPOINT_WRITES_TABLE}")
+    assert len(results) == 2
+    for row in results:
+        assert isinstance(row["task_id"], str)
+    await aexecute(async_engine, f"TRUNCATE TABLE {CHECKPOINT_WRITES_TABLE}")
