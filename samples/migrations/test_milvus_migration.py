@@ -67,6 +67,9 @@ def create_milvus_collection(collection):
         embedding_function=EMBEDDING_SERVICE,
         connection_args={"uri": PERSISTENT_DB_PATH},
         collection_name=collection,
+        index_params={
+            "index_type": "IVF_FLAT",  # defaults to HNSW but local mode supports IVF_FLAT
+        },
     )
 
     uuids = [str(uuid.uuid4()) for i in range(1000)]
