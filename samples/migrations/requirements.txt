@@ -1,8 +1,8 @@
 grpcio-tools==1.67.1
 langchain-chroma==0.2.0
-langchain-core==0.3.26
-langchain-google-alloydb-pg==0.8.0
-langchain-google-vertexai==2.0.9
+langchain-core==0.3.31
+langchain-google-alloydb-pg==0.9.1
+langchain-google-vertexai==2.0.11
 langchain-milvus==0.1.8
 langchain-pinecone==0.2.0
 langchain-qdrant==0.2.0
