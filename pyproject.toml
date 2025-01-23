@@ -12,7 +12,7 @@ dependencies = [
     "google-cloud-alloydb-connector[asyncpg]>=1.2.0, <2.0.0",
     "google-cloud-storage>=3.0.0, <3.1.0",
     "langchain-core>=0.2.36, <1.0.0",
-    "numpy>=1.24.4, <2.0.0",
+    "numpy>=2.2.2, <2.3.0",
     "pgvector>=0.2.5, <1.0.0",
     "SQLAlchemy[asyncio]>=2.0.25, <3.0.0"
 ]
