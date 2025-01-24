@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from contextlib import asynccontextmanager
+import json
+
 from typing import Any, Optional, cast
 
 from langchain_core.runnables import RunnableConfig
@@ -141,10 +143,11 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "\n);"
             )
         return cls(cls.__create_key, engine._pool, schema_name, serde)
-
-    def _dump_checkpoint(self, checkpoint: Checkpoint) -> dict[str, Any]:
-        return {**checkpoint, "pending_sends": []}
-
+    
+    def _dump_checkpoint(self, checkpoint: Checkpoint) -> str:
+        checkpoint["pending_sends"] = []
+        return json.dumps(checkpoint)
+    
     def _dump_metadata(self, metadata: CheckpointMetadata) -> str:
         serialized_metadata = self.jsonplus_serde.dumps(metadata)
         # NOTE: we're using JSON serializer (not msgpack), so we need to remove null characters before writing
@@ -155,7 +158,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         config: RunnableConfig,
         checkpoint: Checkpoint,
         metadata: CheckpointMetadata,
-        # How can we handle this variable if we aren't using a Blobs table?
         new_versions: ChannelVersions,
     ) -> RunnableConfig:
         """Asynchronously store a checkpoint with its configuration and metadata.
@@ -184,17 +186,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "checkpoint_id": checkpoint["id"],
             }
         }
-
-        # Blobs variable
-        blobs = [
-            (
-                thread_id,
-                checkpoint_ns,
-                channel,
-                cast(str, ver),
-            )
-            for channel, ver in new_versions.items()
-        ]
 
         query = f"""INSERT INTO "{self.schema_name}".{CHECKPOINTS_TABLE}(thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :parent_checkpoint_id, :checkpoint, :metadata)
