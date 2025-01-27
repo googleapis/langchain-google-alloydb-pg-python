@@ -60,7 +60,7 @@ def get_data_batch(
         ids.append(str(item.uuid))
         content.append(item.properties["text"])
         embeddings.append(item.vector["default"])
-        del item.properties["text"]
+        del item.properties["text"]  # type: ignore
         metadatas.append(item.properties)
 
         if len(ids) >= weaviate_batch_size:
