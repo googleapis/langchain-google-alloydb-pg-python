@@ -25,7 +25,7 @@ in batches and uploads to an AlloyDBVectorStore.
 # TODO(dev): Replace the values below
 WEAVIATE_API_KEY = "my-wv-api-key"
 WEAVIATE_CLUSTER_URL = "my-wv-cluster-url"
-WEAVIATE_COLLECTION_NAME = "test_weaviate_collection"
+WEAVIATE_COLLECTION_NAME = "example_collection"
 PROJECT_ID = "my-project-id"
 REGION = "us-central1"
 CLUSTER = "my-cluster"

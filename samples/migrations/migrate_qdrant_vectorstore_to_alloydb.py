@@ -23,6 +23,8 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
+QDRANT_PATH = "/tmp/langchain_qdrant"
+QDRANT_COLLECTION_NAME = "demo_collection"
 PROJECT_ID = "my-project-id"
 REGION = "us-central1"
 CLUSTER = "my-cluster"
@@ -31,9 +33,7 @@ DB_NAME = "my-db"
 DB_USER = "postgres"
 DB_PWD = "secret-password"
 
-# TODO(developer): Change the values below.
-QDRANT_COLLECTION_NAME = "test_qdrant"
-QDRANT_PATH = "./qdrant_data"
+# TODO(developer): Optional, change the values below.
 VECTOR_SIZE = 768
 QDRANT_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"

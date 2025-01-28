@@ -23,6 +23,7 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
+CHROMADB_PATH = "./chroma_langchain_db"
 CHROMADB_COLLECTION_NAME = "example_collection"
 PROJECT_ID = "my-project-id"
 REGION = "us-central1"
@@ -33,7 +34,6 @@ DB_USER = "postgres"
 DB_PWD = "secret-password"
 
 # TODO(developer): Optional, change the values below.
-CHROMADB_PATH = "./chromadb_data"
 VECTOR_SIZE = 768
 CHROMADB_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
