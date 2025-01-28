@@ -25,6 +25,7 @@ in batches and uploads to an AlloyDBVectorStore.
 # TODO(dev): Replace the values below
 WEAVIATE_API_KEY = "my-wv-api-key"
 WEAVIATE_CLUSTER_URL = "my-wv-cluster-url"
+WEAVIATE_COLLECTION_NAME = "test_weaviate_collection"
 PROJECT_ID = "my-project-id"
 REGION = "us-central1"
 CLUSTER = "my-cluster"
@@ -34,7 +35,6 @@ DB_USER = "postgres"
 DB_PWD = "secret-password"
 
 # TODO(developer): Optional, change the values below.
-WEAVIATE_COLLECTION_NAME = "test_weaviate_collection"
 WEAVIATE_TEXT_KEY = "text"
 VECTOR_SIZE = 768
 WEAVIATE_BATCH_SIZE = 10
