@@ -70,6 +70,7 @@ async def create_weaviate_index(
         Document(page_content=f"content#{i}", metadata={"idv": f"{i}"})
         for i in range(1000)
     ]
+    # For a locally running weaviate instance, use `weaviate.connect_to_local()`
     with weaviate.connect_to_weaviate_cloud(
         cluster_url=weaviate_cluster_url,
         auth_credentials=Auth.api_key(weaviate_api_key),

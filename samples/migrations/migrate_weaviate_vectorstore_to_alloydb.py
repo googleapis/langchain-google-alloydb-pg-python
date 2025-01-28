@@ -97,6 +97,7 @@ async def main(
     # [START weaviate_get_client]
     import weaviate
 
+    # For a locally running weaviate instance, use `weaviate.connect_to_local()`
     weaviate_client = weaviate.connect_to_weaviate_cloud(
         cluster_url=weaviate_cluster_url,
         auth_credentials=weaviate.auth.AuthApiKey(weaviate_api_key),
