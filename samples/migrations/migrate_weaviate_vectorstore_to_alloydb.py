@@ -25,7 +25,7 @@ in batches and uploads to an AlloyDBVectorStore.
 # TODO(dev): Replace the values below
 WEAVIATE_API_KEY = "my-wv-api-key"
 WEAVIATE_CLUSTER_URL = "my-wv-cluster-url"
-EMBEDDING_API_KEY = "my-wv-embedding-api-key"
+WEAVIATE_COLLECTION_NAME = "example_collection"
 PROJECT_ID = "my-project-id"
 REGION = "us-central1"
 CLUSTER = "my-cluster"
@@ -35,20 +35,24 @@ DB_USER = "postgres"
 DB_PWD = "secret-password"
 
 # TODO(developer): Optional, change the values below.
-WEAVIATE_COLLECTION_NAME = "test_weaviate_collection"
+WEAVIATE_TEXT_KEY = "text"
 VECTOR_SIZE = 768
 WEAVIATE_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
 MAX_CONCURRENCY = 100
 
-from weaviate.collections import Collection  # type: ignore
+from weaviate import WeaviateClient
 
 
 def get_data_batch(
-    weaviate_collection: Collection, weaviate_batch_size: int = WEAVIATE_BATCH_SIZE
+    weaviate_client: WeaviateClient,
+    weaviate_collection_name: str = WEAVIATE_COLLECTION_NAME,
+    weaviate_text_key: str = WEAVIATE_TEXT_KEY,
+    weaviate_batch_size: int = WEAVIATE_BATCH_SIZE,
 ) -> Iterator[tuple[list[str], list[Any], list[list[float]], list[Any]]]:
     # [START weaviate_get_data_batch]
     # Iterate through the IDs and download their contents
+    weaviate_collection = weaviate_client.collections.get(weaviate_collection_name)
     ids = []
     content = []
     embeddings = []
@@ -56,9 +60,10 @@ def get_data_batch(
 
     for item in weaviate_collection.iterator(include_vector=True):
         ids.append(str(item.uuid))
-        content.append(item.properties["page_content"])
+        content.append(item.properties[weaviate_text_key])
         embeddings.append(item.vector["default"])
-        metadatas.append(item.properties["metadata"])
+        del item.properties[weaviate_text_key]  # type: ignore
+        metadatas.append(item.properties)
 
         if len(ids) >= weaviate_batch_size:
             # Yield the current batch of results
@@ -75,10 +80,10 @@ def get_data_batch(
 async def main(
     weaviate_api_key: str = WEAVIATE_API_KEY,
     weaviate_collection_name: str = WEAVIATE_COLLECTION_NAME,
+    weaviate_text_key: str = WEAVIATE_TEXT_KEY,
     weaviate_cluster_url: str = WEAVIATE_CLUSTER_URL,
     vector_size: int = VECTOR_SIZE,
     weaviate_batch_size: int = WEAVIATE_BATCH_SIZE,
-    embedding_api_key: str = EMBEDDING_API_KEY,
     project_id: str = PROJECT_ID,
     region: str = REGION,
     cluster: str = CLUSTER,
@@ -92,14 +97,13 @@ async def main(
     # [START weaviate_get_client]
     import weaviate
 
+    # For a locally running weaviate instance, use `weaviate.connect_to_local()`
     weaviate_client = weaviate.connect_to_weaviate_cloud(
         cluster_url=weaviate_cluster_url,
         auth_credentials=weaviate.auth.AuthApiKey(weaviate_api_key),
-        headers={"X-Cohere-Api-Key": embedding_api_key},
     )
-    weaviate_collection = weaviate_client.collections.get(weaviate_collection_name)
     # [END weaviate_get_client]
-    print("Weaviate collection reference initiated.")
+    print("Weaviate client initiated.")
 
     # [START weaviate_vectorstore_alloydb_migration_embedding_service]
     # The VectorStore interface requires an embedding service. This workflow does not
@@ -146,7 +150,10 @@ async def main(
     print("Langchain AlloyDBVectorStore initialized.")
 
     data_iterator = get_data_batch(
-        weaviate_collection=weaviate_collection, weaviate_batch_size=weaviate_batch_size
+        weaviate_client=weaviate_client,
+        weaviate_collection_name=weaviate_collection_name,
+        weaviate_text_key=weaviate_text_key,
+        weaviate_batch_size=weaviate_batch_size,
     )
     # [START weaviate_vectorstore_alloydb_migration_insert_data_batch]
     pending: set[Any] = set()

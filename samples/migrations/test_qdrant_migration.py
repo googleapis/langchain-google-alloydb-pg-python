@@ -20,7 +20,7 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import FakeEmbeddings
-from langchain_qdrant import QdrantVectorStore
+from langchain_qdrant import QdrantVectorStore  # type: ignore
 from migrate_qdrant_vectorstore_to_alloydb import main
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams

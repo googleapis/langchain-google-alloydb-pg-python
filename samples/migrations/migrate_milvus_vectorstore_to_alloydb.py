@@ -23,6 +23,8 @@ in batches and uploads to an AlloyDBVectorStore.
 """
 
 # TODO(dev): Replace the values below
+MILVUS_URI = "./milvus_example.db"
+MILVUS_COLLECTION_NAME = "langchain_example"
 PROJECT_ID = "my-project-id"
 REGION = "us-central1"
 CLUSTER = "my-cluster"
@@ -32,8 +34,6 @@ DB_USER = "postgres"
 DB_PWD = "secret-password"
 
 # TODO(developer): Optional, change the values below.
-MILVUS_URI = "./milvus_data"
-MILVUS_COLLECTION_NAME = "test_milvus"
 VECTOR_SIZE = 768
 MILVUS_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
