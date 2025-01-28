@@ -73,7 +73,6 @@ async def create_weaviate_index(
     with weaviate.connect_to_weaviate_cloud(
         cluster_url=weaviate_cluster_url,
         auth_credentials=Auth.api_key(weaviate_api_key),
-        skip_init_checks=True,
     ) as weaviate_client:
         # delete collection if exists
         try:
@@ -181,6 +180,7 @@ class TestMigrations:
         await main(
             weaviate_api_key=weaviate_api_key,
             weaviate_collection_name=weaviate_collection_name,
+            weaviate_text_key="text",
             weaviate_cluster_url=weaviate_cluster_url,
             vector_size=768,
             weaviate_batch_size=50,
