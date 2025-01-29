@@ -4,3 +4,4 @@ langchain-core==0.3.0
 numpy==1.26.4
 pgvector==0.3.3
 SQLAlchemy[asyncio]==2.0.34
+langgraph-checkpoint==2.0.10
