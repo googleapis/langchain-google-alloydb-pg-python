@@ -20,7 +20,7 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import FakeEmbeddings
-from langchain_milvus import Milvus
+from langchain_milvus import Milvus  # type: ignore
 from migrate_milvus_vectorstore_to_alloydb import main
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping

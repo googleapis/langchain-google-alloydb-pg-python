@@ -20,7 +20,7 @@ from typing import Sequence
 import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
-from langchain_google_vertexai import VertexAIEmbeddings
+from langchain_core.embeddings import FakeEmbeddings
 from langchain_pinecone import PineconeVectorStore  # type: ignore
 from migrate_pinecone_vectorstore_to_alloydb import main
 from pinecone import Pinecone, ServerlessSpec  # type: ignore
@@ -83,9 +83,7 @@ def create_pinecone_index(
     index = client.Index(pinecone_index_name)
     vector_store = PineconeVectorStore(
         index=index,
-        embedding=VertexAIEmbeddings(
-            model_name="textembedding-gecko@003", project=project_id
-        ),
+        embedding=FakeEmbeddings(size=768),
     )
 
     ids = ids = [f"{str(uuid.uuid4())}" for i in range(1000)]
