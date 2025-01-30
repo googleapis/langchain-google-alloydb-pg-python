@@ -42,7 +42,7 @@ test = [
     "black[jupyter]==24.10.0",
     "isort==6.0.0",
     "mypy==1.14.1",
-    "pytest-asyncio==0.25.2",
+    "pytest-asyncio==0.25.3",
     "pytest==8.3.4",
     "pytest-cov==6.0.0",
     "pytest-depends==1.0.1",
