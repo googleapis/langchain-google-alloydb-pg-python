@@ -119,8 +119,8 @@ async def main(
 
     pinecone_client = Pinecone(api_key=pinecone_api_key)
     pinecone_index = pinecone_client.Index(pinecone_index_name)
-    print("Pinecone index reference initiated.")
     # [END pinecone_get_client]
+    print("Pinecone index reference initiated.")
 
     # [START pinecone_vectorstore_alloydb_migration_get_client]
     from langchain_google_alloydb_pg import AlloyDBEngine
@@ -150,16 +150,16 @@ async def main(
     # generate new embeddings, therefore FakeEmbeddings class is used to avoid any costs.
     from langchain_core.embeddings import FakeEmbeddings
 
-    embedding_service = FakeEmbeddings(size=vector_size)
+    embeddings_service = FakeEmbeddings(size=vector_size)
     # [END pinecone_vectorstore_alloydb_migration_embedding_service]
     print("Langchain Fake Embeddings service initiated.")
 
     # [START pinecone_vectorstore_alloydb_migration_vector_store]
     from langchain_google_alloydb_pg import AlloyDBVectorStore
 
-    vector_store = await AlloyDBVectorStore.create(
+    vs = await AlloyDBVectorStore.create(
         engine=alloydb_engine,
-        embedding_service=embedding_service,
+        embedding_service=embeddings_service,
         table_name=alloydb_table,
     )
     # [END pinecone_vectorstore_alloydb_migration_vector_store]
@@ -174,7 +174,7 @@ async def main(
     for ids, contents, embeddings, metadatas in data_iterator:
         pending.add(
             asyncio.ensure_future(
-                vector_store.aadd_embeddings(
+                vs.aadd_embeddings(
                     texts=contents,
                     embeddings=embeddings,
                     metadatas=metadatas,
