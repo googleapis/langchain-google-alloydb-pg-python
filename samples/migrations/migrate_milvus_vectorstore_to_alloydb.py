@@ -88,7 +88,7 @@ async def main(
     region: str = REGION,
     cluster: str = CLUSTER,
     instance: str = INSTANCE,
-    alloydb_table: str = ALLOYDB_TABLE_NAME,
+    alloydb_table_name: str = ALLOYDB_TABLE_NAME,
     db_name: str = DB_NAME,
     db_user: str = DB_USER,
     db_pwd: str = DB_PWD,
@@ -125,7 +125,7 @@ async def main(
 
     # [START milvus_vectorstore_alloydb_migration_create_table]
     await alloydb_engine.ainit_vectorstore_table(
-        table_name=alloydb_table,
+        table_name=alloydb_table_name,
         vector_size=vector_size,
     )
     # [END milvus_vectorstore_alloydb_migration_create_table]
@@ -137,7 +137,7 @@ async def main(
     vs = await AlloyDBVectorStore.create(
         engine=alloydb_engine,
         embedding_service=embeddings_service,
-        table_name=alloydb_table,
+        table_name=alloydb_table_name,
     )
     # [END milvus_vectorstore_alloydb_migration_vector_store]
     print("Langchain AlloyDBVectorStore initialized.")

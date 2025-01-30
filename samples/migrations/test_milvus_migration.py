@@ -166,7 +166,7 @@ class TestMigrations:
             region=db_region,
             cluster=db_cluster,
             instance=db_instance,
-            alloydb_table=DEFAULT_TABLE,
+            alloydb_table_name=DEFAULT_TABLE,
             db_name=db_name,
             db_user=db_user,
             db_pwd=db_password,
