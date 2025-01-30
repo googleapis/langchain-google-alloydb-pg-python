@@ -126,8 +126,8 @@ async def main(
         user=db_user,
         password=db_pwd,
     )
-    print("Langchain AlloyDB client initiated.")
     # [END weaviate_vectorstore_alloydb_migration_get_client]
+    print("Langchain AlloyDB client initiated.")
 
     # [START weaviate_vectorstore_alloydb_migration_create_table]
     await alloydb_engine.ainit_vectorstore_table(
