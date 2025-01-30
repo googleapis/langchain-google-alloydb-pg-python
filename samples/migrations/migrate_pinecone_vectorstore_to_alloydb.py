@@ -119,8 +119,8 @@ async def main(
 
     pinecone_client = Pinecone(api_key=pinecone_api_key)
     pinecone_index = pinecone_client.Index(pinecone_index_name)
-    print("Pinecone index reference initiated.")
     # [END pinecone_get_client]
+    print("Pinecone index reference initiated.")
 
     # [START pinecone_vectorstore_alloydb_migration_get_client]
     from langchain_google_alloydb_pg import AlloyDBEngine
