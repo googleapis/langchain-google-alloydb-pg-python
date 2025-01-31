@@ -22,7 +22,7 @@ from langgraph.checkpoint.base import (
     BaseCheckpointSaver,
     ChannelVersions,
     Checkpoint,
-    CheckpointMetadata
+    CheckpointMetadata,
 )
 from langgraph.checkpoint.serde.base import SerializerProtocol
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
@@ -152,7 +152,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         serialized_metadata = self.jsonplus_serde.dumps(metadata)
         # NOTE: we're using JSON serializer (not msgpack), so we need to remove null characters before writing
         return serialized_metadata.decode().replace("\\u0000", "")
-    
+
     def _dump_writes(
         self,
         thread_id: str,
@@ -172,9 +172,9 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "idx": WRITES_IDX_MAP.get(channel, idx),
                 "channel": channel,
                 "type": self.serde.dumps_typed(value)[0],
-                "blob": self.serde.dumps_typed(value)[1]
+                "blob": self.serde.dumps_typed(value)[1],
             }
-                for idx, (channel, value) in enumerate(writes)
+            for idx, (channel, value) in enumerate(writes)
         ]
 
     async def aput(
@@ -234,13 +234,13 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             await conn.commit()
 
         return next_config
-    
+
     async def aput_writes(
         self,
         config: RunnableConfig,
         writes: Sequence[Tuple[str, Any]],
         task_id: str,
-        task_path: str = ""
+        task_path: str = "",
     ) -> None:
         """Asynchronously store intermediate writes linked to a checkpoint.
         Args:
@@ -248,7 +248,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             writes (List[Tuple[str, Any]]): List of writes to store.
             task_id (str): Identifier for the task creating the writes.
             task_path (str): Path of the task creating the writes.
-        
+
             Returns:
                 None
         """

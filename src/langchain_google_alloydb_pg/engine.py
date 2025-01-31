@@ -767,7 +767,9 @@ class AlloyDBEngine:
             )
         )
 
-    async def _ainit_checkpoint_table(self, schema_name: str = "public") -> None:
+    async def _ainit_checkpoint_table(
+        self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
+    ) -> None:
         """
         Create AlloyDB tables to save checkpoints.
 
@@ -778,7 +780,7 @@ class AlloyDBEngine:
         Returns:
             None
         """
-        create_checkpoints_table = f"""CREATE TABLE IF NOT EXISTS "{schema_name}".{CHECKPOINTS_TABLE}(
+        create_checkpoints_table = f"""CREATE TABLE IF NOT EXISTS "{schema_name}".{table_name}(
             thread_id TEXT NOT NULL,
             checkpoint_ns TEXT NOT NULL DEFAULT '',
             checkpoint_id TEXT NOT NULL,
@@ -806,7 +808,9 @@ class AlloyDBEngine:
             await conn.execute(text(create_checkpoint_writes_table))
             await conn.commit()
 
-    async def ainit_checkpoint_table(self, schema_name: str = "public") -> None:
+    async def ainit_checkpoint_table(
+        self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
+    ) -> None:
         """Create an AlloyDB table to save checkpoint messages.
 
         Args:
@@ -818,11 +822,14 @@ class AlloyDBEngine:
         """
         await self._run_as_async(
             self._ainit_checkpoint_table(
+                table_name,
                 schema_name,
             )
         )
 
-    def init_checkpoint_table(self, schema_name: str = "public") -> None:
+    def init_checkpoint_table(
+        self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
+    ) -> None:
         """Create Cloud SQL tables to store checkpoints.
 
         Args:
@@ -832,7 +839,7 @@ class AlloyDBEngine:
         Returns:
             None
         """
-        self._run_as_sync(self._ainit_checkpoint_table(schema_name))
+        self._run_as_sync(self._ainit_checkpoint_table(table_name, schema_name))
 
     async def _aload_table_schema(
         self, table_name: str, schema_name: str = "public"

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import uuid
 from typing import Any, Sequence, Tuple
 
 import pytest
@@ -42,6 +43,7 @@ region = os.environ["REGION"]
 cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
+table_name_async = CHECKPOINTS_TABLE
 
 checkpoint: Checkpoint = {
     "v": 1,
@@ -81,7 +83,7 @@ async def async_engine():
         instance=instance_id,
         database=db_name,
     )
-    await async_engine._ainit_checkpoint_table()
+    await async_engine._ainit_checkpoint_table(table_name=table_name_async)
     yield async_engine
     # use default table for AsyncAlloyDBSaver
     await aexecute(async_engine, f'DROP TABLE IF EXISTS "{CHECKPOINTS_TABLE}"')
@@ -112,17 +114,24 @@ async def test_checkpoint_async(
         assert isinstance(row["thread_id"], str)
     await aexecute(async_engine, f"TRUNCATE TABLE {CHECKPOINTS_TABLE}")
 
+
 async def test_checkpoint_aput_writes(
     async_engine: AlloyDBEngine,
 ) -> None:
     checkpointer = await AsyncAlloyDBSaver.create(async_engine)
 
-    config: RunnableConfig = {"configurable": {"thread_id": "1", "checkpoint_ns": "", "checkpoint_id": "1ef4f797-8335-6428-8001-8a1503f9b875"}}
+    config: RunnableConfig = {
+        "configurable": {
+            "thread_id": "1",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1ef4f797-8335-6428-8001-8a1503f9b875",
+        }
+    }
 
     # Verify if the checkpoint writes are stored correctly in the database
-    writes: Sequence[Tuple[str,Any]] = [("test_channel1", {}), ("test_channel2", {})]
+    writes: Sequence[Tuple[str, Any]] = [("test_channel1", {}), ("test_channel2", {})]
     await checkpointer.aput_writes(config, writes, task_id="1")
-    
+
     results = await afetch(async_engine, f"SELECT * FROM {CHECKPOINT_WRITES_TABLE}")
     assert len(results) == 2
     for row in results:
