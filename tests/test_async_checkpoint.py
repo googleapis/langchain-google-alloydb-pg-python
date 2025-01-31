@@ -90,7 +90,7 @@ async def async_engine():
 
 
 @pytest.mark.asyncio
-async def test_checkpoint_aput(
+async def test_checkpoint_async(
     async_engine: AlloyDBEngine,
 ) -> None:
     checkpointer = await AsyncAlloyDBSaver.create(async_engine)
