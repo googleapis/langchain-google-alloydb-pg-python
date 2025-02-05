@@ -780,7 +780,7 @@ class AlloyDBEngine:
         Returns:
             None
         """
-        create_checkpoints_table = f"""CREATE TABLE IF NOT EXISTS "{schema_name}".{table_name}(
+        create_checkpoints_table = f"""CREATE TABLE "{schema_name}"."{table_name}"(
             thread_id TEXT NOT NULL,
             checkpoint_ns TEXT NOT NULL DEFAULT '',
             checkpoint_id TEXT NOT NULL,
@@ -791,7 +791,7 @@ class AlloyDBEngine:
             PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
         );"""
 
-        create_checkpoint_writes_table = f"""CREATE TABLE IF NOT EXISTS "{schema_name}".{CHECKPOINT_WRITES_TABLE} (
+        create_checkpoint_writes_table = f"""CREATE TABLE "{schema_name}"."{table_name + "_writes"}"(
             thread_id TEXT NOT NULL,
             checkpoint_ns TEXT NOT NULL DEFAULT '',
             checkpoint_id TEXT NOT NULL,

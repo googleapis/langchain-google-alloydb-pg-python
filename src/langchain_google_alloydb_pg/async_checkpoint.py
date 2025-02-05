@@ -43,6 +43,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         self,
         key: object,
         pool: AsyncEngine,
+        table_name: str = CHECKPOINTS_TABLE,
         schema_name: str = "public",
         serde: Optional[SerializerProtocol] = None,
     ) -> None:
@@ -52,12 +53,15 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "only create class through 'create' or 'create_sync' methods"
             )
         self.pool = pool
+        self.table_name = table_name
+        self.table_name_writes = f"{table_name}_writes"
         self.schema_name = schema_name
 
     @classmethod
     async def create(
         cls,
         engine: AlloyDBEngine,
+        table_name: str = CHECKPOINTS_TABLE,
         schema_name: str = "public",
         serde: Optional[SerializerProtocol] = None,
     ) -> "AsyncAlloyDBSaver":
@@ -76,7 +80,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         """
 
         checkpoints_table_schema = await engine._aload_table_schema(
-            CHECKPOINTS_TABLE, schema_name
+            table_name, schema_name
         )
         checkpoints_column_names = checkpoints_table_schema.columns.keys()
 
@@ -109,7 +113,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             )
 
         checkpoint_writes_table_schema = await engine._aload_table_schema(
-            CHECKPOINT_WRITES_TABLE, schema_name
+            f"{table_name}_writes", schema_name
         )
         checkpoint_writes_column_names = checkpoint_writes_table_schema.columns.keys()
 
@@ -142,7 +146,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "\n    blob JSONB NOT NULL"
                 "\n);"
             )
-        return cls(cls.__create_key, engine._pool, schema_name, serde)
+        return cls(cls.__create_key, engine._pool, table_name, schema_name, serde)
 
     def _dump_checkpoint(self, checkpoint: Checkpoint) -> str:
         checkpoint["pending_sends"] = []
@@ -211,7 +215,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             }
         }
 
-        query = f"""INSERT INTO "{self.schema_name}".{CHECKPOINTS_TABLE}(thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata)
+        query = f"""INSERT INTO "{self.schema_name}"."{self.table_name}" (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :parent_checkpoint_id, :checkpoint, :metadata)
                     ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id)
                     DO UPDATE SET
@@ -252,14 +256,14 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             Returns:
                 None
         """
-        upsert = f"""INSERT INTO "{self.schema_name}".{CHECKPOINT_WRITES_TABLE}(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+        upsert = f"""INSERT INTO "{self.schema_name}"."{self.table_name_writes}"(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :task_id, :idx, :channel, :type, :blob)
                     ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO UPDATE SET
                     channel = EXCLUDED.channel,
                         type = EXCLUDED.type,
                         blob = EXCLUDED.blob;
                 """
-        insert = f"""INSERT INTO "{self.schema_name}".{CHECKPOINT_WRITES_TABLE}(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+        insert = f"""INSERT INTO "{self.schema_name}"."{self.table_name_writes}"(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :task_id, :idx, :channel, :type, :blob)
                     ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO NOTHING
                 """
