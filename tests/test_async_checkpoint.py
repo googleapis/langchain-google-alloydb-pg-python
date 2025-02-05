@@ -98,8 +98,8 @@ async def checkpointer(async_engine):
 
 @pytest.mark.asyncio
 async def test_checkpoint_async(
-    async_engine,
-    checkpointer,
+    async_engine: AlloyDBEngine,
+    checkpointer: AsyncAlloyDBSaver,
 ) -> None:
 
     test_config = {
@@ -123,8 +123,8 @@ async def test_checkpoint_async(
 
 @pytest.mark.asyncio
 async def test_checkpoint_aput_writes(
-    async_engine,
-    checkpointer,
+    async_engine: AlloyDBEngine,
+    checkpointer: AsyncAlloyDBSaver,
 ) -> None:
 
     config: RunnableConfig = {
