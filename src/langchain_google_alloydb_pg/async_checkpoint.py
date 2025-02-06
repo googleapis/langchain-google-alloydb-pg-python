@@ -14,7 +14,7 @@
 
 import json
 from contextlib import asynccontextmanager
-from typing import Any, Optional, Sequence, Tuple, cast, AsyncIterator
+from typing import Any, AsyncIterator, Optional, Sequence, Tuple, cast
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
@@ -28,17 +28,11 @@ from langgraph.checkpoint.base import (
 )
 from langgraph.checkpoint.serde.base import SerializerProtocol
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from langgraph.checkpoint.serde.types import TASKS
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from langgraph.checkpoint.serde.base import SerializerProtocol
-from langgraph.checkpoint.serde.types import TASKS
-
-from .engine import (
-    CHECKPOINTS_TABLE,
-    CHECKPOINT_WRITES_TABLE,
-    AlloyDBEngine
-)
+from .engine import CHECKPOINT_WRITES_TABLE, CHECKPOINTS_TABLE, AlloyDBEngine
 
 MetadataInput = Optional[dict[str, Any]]
 
@@ -223,7 +217,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             }
             for idx, (channel, value) in enumerate(writes)
         ]
-    
+
     def _load_blobs(
         self, blob_values: list[tuple[bytes, bytes, bytes]]
     ) -> dict[str, Any]:
@@ -242,20 +236,20 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         pending_sends: list[tuple[bytes, bytes]],
     ) -> Checkpoint:
         return Checkpoint(
-            v = checkpoint["v"],
-            ts = checkpoint["ts"],
-            id = checkpoint["id"],
-            channel_values = self._load_blobs(channel_values),
-            channel_versions = checkpoint["channel_versions"].copy(),
-            versions_seen = {k: v.copy() for k, v in checkpoint["versions_seen"].items()},
-            pending_sends = [
+            v=checkpoint["v"],
+            ts=checkpoint["ts"],
+            id=checkpoint["id"],
+            channel_values=self._load_blobs(channel_values),
+            channel_versions=checkpoint["channel_versions"].copy(),
+            versions_seen={k: v.copy() for k, v in checkpoint["versions_seen"].items()},
+            pending_sends=[
                 self.serde.loads_typed((c.decode(), b)) for c, b in pending_sends or []
-            ]
+            ],
         )
-    
+
     def _load_metadata(self, metadata: str) -> CheckpointMetadata:
         return self.jsonplus_serde.loads(self.jsonplus_serde.dumps(metadata))
-    
+
     def _load_writes(
         self, writes: list[tuple[bytes, bytes, bytes, bytes]]
     ) -> list[tuple[str, str, Any]]:
@@ -271,7 +265,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             if writes
             else []
         )
-    
+
     def _search_where(
         self,
         config: Optional[RunnableConfig],
@@ -444,26 +438,26 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         query = SELECT + where + " ORDER BY checkpoint_id DESC"
         if limit:
             query += f" LIMIT {limit}"
-        
+
         async with self.pool.connect() as conn:
             result = await conn.stream(text(query), args)
             async for row in result:
                 value = dict(row._mapping)
                 yield CheckpointTuple(
-                    config = {
+                    config={
                         "configurable": {
                             "thread_id": value["thread_id"],
                             "checkpoint_ns": value["checkpoint_ns"],
                             "checkpoint_id": value["checkpoint_id"],
                         }
                     },
-                    checkpoint = self._load_checkpoint(
+                    checkpoint=self._load_checkpoint(
                         value["checkpoint"],
                         value["channel_values"],
                         value["pending_sends"],
                     ),
-                    metadata = self._load_metadata(value["metadata"]),
-                    parent_config = (
+                    metadata=self._load_metadata(value["metadata"]),
+                    parent_config=(
                         {
                             "configurable": {
                                 "thread_id": value["thread_id"],
@@ -474,5 +468,5 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                         if value["parent_checkpoint_id"]
                         else None
                     ),
-                    pending_writes = self._load_writes(value["pending_writes"]),
+                    pending_writes=self._load_writes(value["pending_writes"]),
                 )

@@ -125,15 +125,11 @@ async def test_checkpoint_async(
         assert isinstance(row["thread_id"], str)
     await aexecute(async_engine, f'TRUNCATE TABLE "{table_name}"')
 
+
 @pytest.fixture
 def test_data():
     """Fixture providing test data for checkpoint tests."""
-    config_0: RunnableConfig = {
-        "configurable": {
-            "thread_id": "1", 
-            "checkpoint_ns": ""
-        }
-    }
+    config_0: RunnableConfig = {"configurable": {"thread_id": "1", "checkpoint_ns": ""}}
     config_1: RunnableConfig = {
         "configurable": {
             "thread_id": "thread-1",
@@ -157,23 +153,18 @@ def test_data():
         }
     }
     chkpnt_0: Checkpoint = {
-    "v": 1,
-    "ts": "2024-07-31T20:14:19.804150+00:00",
-    "id": "1ef4f797-8335-6428-8001-8a1503f9b875",
-    "channel_values": {"my_key": "meow", "node": "node"},
-    "channel_versions": {
-        "__start__": 2,
-        "my_key": 3,
-        "start:node": 3,
-        "node": 3
-    },
-    "versions_seen": {
-        "__input__": {},
-        "__start__": {"__start__": 1},
-        "node": {"start:node": 2},
-    },
-    "pending_sends": [],
-}
+        "v": 1,
+        "ts": "2024-07-31T20:14:19.804150+00:00",
+        "id": "1ef4f797-8335-6428-8001-8a1503f9b875",
+        "channel_values": {"my_key": "meow", "node": "node"},
+        "channel_versions": {"__start__": 2, "my_key": 3, "start:node": 3, "node": 3},
+        "versions_seen": {
+            "__input__": {},
+            "__start__": {"__start__": 1},
+            "node": {"start:node": 2},
+        },
+        "pending_sends": [],
+    }
     chkpnt_1: Checkpoint = empty_checkpoint()
     chkpnt_2: Checkpoint = create_checkpoint(chkpnt_1, {}, 1)
     chkpnt_3: Checkpoint = empty_checkpoint()
@@ -226,6 +217,7 @@ async def test_checkpoint_aput_writes(
         assert isinstance(row["task_id"], str)
     await aexecute(async_engine, f'TRUNCATE TABLE "{table_name_writes}"')
 
+
 @pytest.mark.asyncio
 async def test_checkpoint_alist(
     async_engine: AlloyDBEngine,
@@ -241,7 +233,10 @@ async def test_checkpoint_alist(
 
     # call method / assertions
     query_1 = {"source": "input"}  # search by 1 key
-    query_2 = {"step": 1, "writes": {"foo": "bar"},}  # search by multiple keys
+    query_2 = {
+        "step": 1,
+        "writes": {"foo": "bar"},
+    }  # search by multiple keys
     query_3: dict[str, Any] = {}  # search by no keys, return all checkpoints
     query_4 = {"source": "update", "step": 1}  # no match
 
@@ -269,19 +264,22 @@ async def test_checkpoint_alist(
         search_results_5[1].config["configurable"]["checkpoint_ns"],
     } == {"", "inner"}
 
+
 @pytest.mark.asyncio
 async def test_null_chars(
     async_engine: AlloyDBEngine,
     test_data: dict[str, Any],
 ) -> None:
-        checkpointer = await AsyncAlloyDBSaver.create(async_engine)
-        config = await checkpointer.aput(
-            test_data["configs"][0],
-            test_data["checkpoints"][0],
-            {"my_key": "\x00abc"}, # type: ignore
-            {},
-        )
-        # assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
-        assert [c async for c in checkpointer.alist(None, filter={"my_key": "abc"})][
-            0
-        ].metadata["my_key"] == "abc" # type: ignore
+    checkpointer = await AsyncAlloyDBSaver.create(async_engine)
+    config = await checkpointer.aput(
+        test_data["configs"][0],
+        test_data["checkpoints"][0],
+        {"my_key": "\x00abc"},  # type: ignore
+        {},
+    )
+    # assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
+    assert [c async for c in checkpointer.alist(None, filter={"my_key": "abc"})][
+        0
+    ].metadata[
+        "my_key"
+    ] == "abc"  # type: ignore
