@@ -1,5 +1,5 @@
 langchain-chroma==0.2.1
-langchain-core==0.3.33
+langchain-core==0.3.34
 langchain-google-alloydb-pg==0.9.1
 langchain-milvus==0.1.8
 langchain-pinecone==0.2.2
