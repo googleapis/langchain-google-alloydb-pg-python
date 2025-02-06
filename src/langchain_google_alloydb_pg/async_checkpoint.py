@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import asynccontextmanager
 import json
-
-from typing import Any, Optional, cast, Sequence, Tuple, AsyncIterator
-
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
+from contextlib import asynccontextmanager
+from typing import Any, Optional, Sequence, Tuple, cast, AsyncIterator
 
 from langchain_core.runnables import RunnableConfig
-
 from langgraph.checkpoint.base import (
     WRITES_IDX_MAP,
     BaseCheckpointSaver,
@@ -31,7 +26,10 @@ from langgraph.checkpoint.base import (
     CheckpointTuple,
     get_checkpoint_id,
 )
+from langgraph.checkpoint.serde.base import SerializerProtocol
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from langgraph.checkpoint.serde.base import SerializerProtocol
 from langgraph.checkpoint.serde.types import TASKS
@@ -79,7 +77,7 @@ from checkpoints
 
 class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
     """Checkpoint stored in an AlloyDB for PostgreSQL database."""
-    
+
     __create_key = object()
 
     jsonplus_serde = JsonPlusSerializer()
@@ -88,8 +86,9 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         self,
         key: object,
         pool: AsyncEngine,
+        table_name: str = CHECKPOINTS_TABLE,
         schema_name: str = "public",
-        serde: Optional[SerializerProtocol] = None
+        serde: Optional[SerializerProtocol] = None,
     ) -> None:
         super().__init__(serde=serde)
         if key != AsyncAlloyDBSaver.__create_key:
@@ -97,14 +96,17 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "only create class through 'create' or 'create_sync' methods"
             )
         self.pool = pool
+        self.table_name = table_name
+        self.table_name_writes = f"{table_name}_writes"
         self.schema_name = schema_name
-        
+
     @classmethod
     async def create(
         cls,
         engine: AlloyDBEngine,
+        table_name: str = CHECKPOINTS_TABLE,
         schema_name: str = "public",
-        serde: Optional[SerializerProtocol] = None
+        serde: Optional[SerializerProtocol] = None,
     ) -> "AsyncAlloyDBSaver":
         """Create a new AsyncAlloyDBSaver instance.
 
@@ -119,10 +121,12 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             AsyncAlloyDBSaver: A newly created instance of AsyncAlloyDBSaver.
         """
-        
-        checkpoints_table_schema = await engine._aload_table_schema(CHECKPOINTS_TABLE, schema_name)
+
+        checkpoints_table_schema = await engine._aload_table_schema(
+            table_name, schema_name
+        )
         checkpoints_column_names = checkpoints_table_schema.columns.keys()
-        
+
         checkpoints_required_columns = [
             "thread_id",
             "checkpoint_ns",
@@ -130,10 +134,12 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             "parent_checkpoint_id",
             "type",
             "checkpoint",
-            "metadata"
-            ]
-        
-        if not (all(x in checkpoints_column_names for x in checkpoints_required_columns)):
+            "metadata",
+        ]
+
+        if not (
+            all(x in checkpoints_column_names for x in checkpoints_required_columns)
+        ):
             raise IndexError(
                 f"Table checkpoints.'{schema_name}' has incorrect schema. Got "
                 f"column names '{checkpoints_column_names}' but required column names "
@@ -148,10 +154,12 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "\n    metadata JSONB NOT NULL"
                 "\n);"
             )
-            
-        checkpoint_writes_table_schema = await engine._aload_table_schema(CHECKPOINT_WRITES_TABLE, schema_name)
+
+        checkpoint_writes_table_schema = await engine._aload_table_schema(
+            f"{table_name}_writes", schema_name
+        )
         checkpoint_writes_column_names = checkpoint_writes_table_schema.columns.keys()
-        
+
         checkpoint_writes_columns = [
             "thread_id",
             "checkpoint_ns",
@@ -160,10 +168,12 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             "idx",
             "channel",
             "type",
-            "blob"
-            ]
-        
-        if not (all(x in checkpoint_writes_column_names for x in checkpoint_writes_columns)):
+            "blob",
+        ]
+
+        if not (
+            all(x in checkpoint_writes_column_names for x in checkpoint_writes_columns)
+        ):
             raise IndexError(
                 f"Table checkpoint_writes.'{schema_name}' has incorrect schema. Got "
                 f"column names '{checkpoint_writes_column_names}' but required column names "
@@ -179,16 +189,17 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "\n    blob JSONB NOT NULL"
                 "\n);"
             )
-        return cls(cls.__create_key, engine._pool, schema_name, serde)
-    
-    def _dump_checkpoint(self, checkpoint: Checkpoint) -> dict[str, Any]:
-        return {**checkpoint, "pending_sends": []}
-    
+        return cls(cls.__create_key, engine._pool, table_name, schema_name, serde)
+
+    def _dump_checkpoint(self, checkpoint: Checkpoint) -> str:
+        checkpoint["pending_sends"] = []
+        return json.dumps(checkpoint)
+
     def _dump_metadata(self, metadata: CheckpointMetadata) -> str:
         serialized_metadata = self.jsonplus_serde.dumps(metadata)
         # NOTE: we're using JSON serializer (not msgpack), so we need to remove null characters before writing
         return serialized_metadata.decode().replace("\\u0000", "")
-    
+
     def _dump_writes(
         self,
         thread_id: str,
@@ -208,9 +219,9 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "idx": WRITES_IDX_MAP.get(channel, idx),
                 "channel": channel,
                 "type": self.serde.dumps_typed(value)[0],
-                "blob": self.serde.dumps_typed(value)[1]
+                "blob": self.serde.dumps_typed(value)[1],
             }
-                for idx, (channel, value) in enumerate(writes)
+            for idx, (channel, value) in enumerate(writes)
         ]
     
     def _load_blobs(
@@ -304,13 +315,12 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             "WHERE " + " AND ".join(wheres) if wheres else "",
             param_values,
         )
-    
+
     async def aput(
         self,
         config: RunnableConfig,
         checkpoint: Checkpoint,
         metadata: CheckpointMetadata,
-        # How can we handle this variable if we aren't using a Blobs table?
         new_versions: ChannelVersions,
     ) -> RunnableConfig:
         """Asynchronously store a checkpoint with its configuration and metadata.
@@ -340,18 +350,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             }
         }
 
-        # Blobs variable
-        blobs = [
-            (
-                thread_id,
-                checkpoint_ns,
-                channel,
-                cast(str, ver),
-            )
-            for channel, ver in new_versions.items()
-        ]
-
-        query = f"""INSERT INTO "{self.schema_name}".{CHECKPOINTS_TABLE}(thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata)
+        query = f"""INSERT INTO "{self.schema_name}"."{self.table_name}" (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :parent_checkpoint_id, :checkpoint, :metadata)
                     ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id)
                     DO UPDATE SET
@@ -374,33 +373,32 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             await conn.commit()
 
         return next_config
-    
+
     async def aput_writes(
         self,
         config: RunnableConfig,
         writes: Sequence[Tuple[str, Any]],
         task_id: str,
-        task_path: str = ""
+        task_path: str = "",
     ) -> None:
         """Asynchronously store intermediate writes linked to a checkpoint.
-
         Args:
             config (RunnableConfig): Configuration of the related checkpoint.
             writes (List[Tuple[str, Any]]): List of writes to store.
             task_id (str): Identifier for the task creating the writes.
             task_path (str): Path of the task creating the writes.
-        
+
             Returns:
                 None
         """
-        upsert = f"""INSERT INTO "{self.schema_name}".{CHECKPOINT_WRITES_TABLE}(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+        upsert = f"""INSERT INTO "{self.schema_name}"."{self.table_name_writes}"(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :task_id, :idx, :channel, :type, :blob)
                     ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO UPDATE SET
                     channel = EXCLUDED.channel,
                         type = EXCLUDED.type,
                         blob = EXCLUDED.blob;
                 """
-        insert = f"""INSERT INTO "{self.schema_name}".{CHECKPOINT_WRITES_TABLE}(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
+        insert = f"""INSERT INTO "{self.schema_name}"."{self.table_name_writes}"(thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob)
                     VALUES (:thread_id, :checkpoint_ns, :checkpoint_id, :task_id, :idx, :channel, :type, :blob)
                     ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id, task_id, idx) DO NOTHING
                 """
@@ -421,7 +419,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 params,
             )
             await conn.commit()
-    
+
     async def alist(
         self,
         config: Optional[RunnableConfig],
