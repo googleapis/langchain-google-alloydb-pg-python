@@ -1,6 +1,6 @@
 google-cloud-aiplatform[reasoningengine,langchain]==1.79.0
 langchain-google-alloydb-pg==0.9.1
-langchain-google-vertexai==2.0.12
+langchain-google-vertexai==2.0.13
 google-cloud-resource-manager==1.14.0
 langchain-community==0.3.16
 # Required to fix: "PydanticUndefinedAnnotation: name 'SafetySetting' is not defined"
