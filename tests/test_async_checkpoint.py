@@ -222,6 +222,7 @@ async def test_checkpoint_aput_writes(
 async def test_checkpoint_alist(
     async_engine: AlloyDBEngine,
     checkpointer: AsyncAlloyDBSaver,
+    test_data: dict[str, Any],
 ) -> None:
     configs = test_data["configs"]
     checkpoints = test_data["checkpoints"]
@@ -267,10 +268,9 @@ async def test_checkpoint_alist(
 
 @pytest.mark.asyncio
 async def test_null_chars(
-    async_engine: AlloyDBEngine,
+    checkpointer: AsyncAlloyDBSaver,
     test_data: dict[str, Any],
 ) -> None:
-    checkpointer = await AsyncAlloyDBSaver.create(async_engine)
     config = await checkpointer.aput(
         test_data["configs"][0],
         test_data["checkpoints"][0],
@@ -281,5 +281,5 @@ async def test_null_chars(
     assert [c async for c in checkpointer.alist(None, filter={"my_key": "abc"})][
         0
     ].metadata[
-        "my_key"
+        "my_key"  # type: ignore
     ] == "abc"  # type: ignore
