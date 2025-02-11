@@ -250,7 +250,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             values = {
                 "id": id,
                 "content": content,
-                "embedding": str([float(dim) for dim in embedding]),
+                "embedding": str([float(dimension) for dimension in embedding]),
             }
             values_stmt = "VALUES (:id, :content, :embedding"
             if not embedding and isinstance(self.embedding_service, AlloyDBEmbeddings):
@@ -565,7 +565,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         ):
             query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])
         else:
-            query_embedding = f"'{[float(x) for x in embedding]}'"
+            query_embedding = f"'{[float(dimension) for dimension in embedding]}'"
         stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
             async with self.engine.connect() as conn:
