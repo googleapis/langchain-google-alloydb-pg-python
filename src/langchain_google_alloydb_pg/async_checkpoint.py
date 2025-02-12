@@ -15,7 +15,6 @@
 import json
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Optional, Sequence, Tuple, cast
-from typing import Any, AsyncIterator, Optional, Sequence, Tuple, cast
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
@@ -26,12 +25,9 @@ from langgraph.checkpoint.base import (
     CheckpointMetadata,
     CheckpointTuple,
     get_checkpoint_id,
-    CheckpointTuple,
-    get_checkpoint_id,
 )
 from langgraph.checkpoint.serde.base import SerializerProtocol
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
-from langgraph.checkpoint.serde.types import TASKS
 from langgraph.checkpoint.serde.types import TASKS
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
