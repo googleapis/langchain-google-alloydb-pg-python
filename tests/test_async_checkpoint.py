@@ -267,6 +267,25 @@ async def test_checkpoint_alist(
 
 
 @pytest.mark.asyncio
+async def test_checkpoint_aget_tuple(
+    checkpointer: AsyncAlloyDBSaver,
+    test_data: dict[str, Any],
+) -> None:
+    configs = test_data["configs"]
+    checkpoints = test_data["checkpoints"]
+    metadata = test_data["metadata"]
+
+    await checkpointer.aput(configs[1], checkpoints[1], metadata[0], {})
+
+    # Matching checkpoint
+    search_results_1 = await checkpointer.aget_tuple(configs[1])
+    assert search_results_1.metadata == metadata[0]  # type: ignore
+
+    # No matching checkpoint
+    assert await checkpointer.aget_tuple(configs[0]) is None
+
+
+@pytest.mark.asyncio
 async def test_null_chars(
     checkpointer: AsyncAlloyDBSaver,
     test_data: dict[str, Any],
@@ -277,7 +296,7 @@ async def test_null_chars(
         {"my_key": "\x00abc"},  # type: ignore
         {},
     )
-    # assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
+    assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
     assert [c async for c in checkpointer.alist(None, filter={"my_key": "abc"})][
         0
     ].metadata[
