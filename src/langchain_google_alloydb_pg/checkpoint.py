@@ -16,18 +16,17 @@ from typing import Any, AsyncIterator, Iterator, Optional, Sequence, Tuple
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
-    CheckpointTuple,
     BaseCheckpointSaver,
+    ChannelVersions,
     Checkpoint,
     CheckpointMetadata,
-    ChannelVersions
-    )
-
+    CheckpointTuple,
+)
 from langgraph.checkpoint.serde.base import SerializerProtocol
 
+from .async_checkpoint import AsyncAlloyDBSaver
 from .engine import CHECKPOINTS_TABLE, AlloyDBEngine
 
-from .async_checkpoint import AsyncAlloyDBSaver
 
 class AlloyDBSaver(BaseCheckpointSaver[str]):
     """Checkpoint stored in an AlloyDB for PostgreSQL database."""
@@ -73,12 +72,10 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             AlloyDBSaver: A newly created instance of AlloyDBSaver.
         """
-        coro = AsyncAlloyDBSaver.create(
-            engine, table_name, schema_name, serde
-        )
+        coro = AsyncAlloyDBSaver.create(engine, table_name, schema_name, serde)
         checkpoint = await engine._run_as_async(coro)
-        return cls(cls.__create_key, engine, checkpoint)  
-    
+        return cls(cls.__create_key, engine, checkpoint)
+
     @classmethod
     def create_sync(
         cls,
@@ -98,18 +95,16 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             AlloyDBSaver: A newly created instance of AlloyDBSaver.
         """
-        coro = AsyncAlloyDBSaver.create(
-            engine, table_name, schema_name, serde
-        )
+        coro = AsyncAlloyDBSaver.create(engine, table_name, schema_name, serde)
         checkpoint = engine._run_as_sync(coro)
-        return cls(cls.__create_key, engine, checkpoint) 
-    
+        return cls(cls.__create_key, engine, checkpoint)
+
     async def alist(
         self,
         config: Optional[RunnableConfig],
         filter: Optional[dict[str, Any]] = None,
         before: Optional[RunnableConfig] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> AsyncIterator[CheckpointTuple]:
         """Asynchronously list checkpoints that match the given criteria
         Args:
@@ -120,7 +115,9 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             AsyncIterator[CheckpointTuple]: Async iterator of matching checkpoint tuples.
         """
-        async for checkpoint in self.__checkpoint.alist(config=config, filter=filter, before=before, limit=limit):
+        async for checkpoint in self.__checkpoint.alist(
+            config=config, filter=filter, before=before, limit=limit
+        ):
             yield checkpoint
 
     def list(
@@ -128,7 +125,7 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         config: Optional[RunnableConfig],
         filter: Optional[dict[str, Any]] = None,
         before: Optional[RunnableConfig] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> Iterator[CheckpointTuple]:
         """List checkpoints from AlloyDB
         Args:
@@ -139,16 +136,16 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Yields:
             Iterator[CheckpointTuple]: An iterator of checkpoint tuples.
         """
+
         async def async_gen():
-            async for checkpoint in self.__checkpoint.alist(config, filter, before, limit):
+            async for checkpoint in self.__checkpoint.alist(
+                config, filter, before, limit
+            ):
                 yield checkpoint
 
         return self._engine._run_as_sync(async_gen())
-    
-    async def aget_tuple(
-        self,
-        config: RunnableConfig
-    ) -> Optional[CheckpointTuple]:
+
+    async def aget_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
         """Asynchronously fetch a checkpoint tuple using the given configuration.
         Args:
             config (RunnableConfig): The config to use for retrieving the checkpoint.
@@ -156,11 +153,8 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             Optional[CheckpointTuple]: The retrieved checkpoint tuple, or None if no matching checkpoint was found.
         """
         return await self._engine._run_as_async(self.__checkpoint.aget_tuple(config))
-    
-    def get_tuple(
-        self,
-        config: RunnableConfig
-    ) -> Optional[CheckpointTuple]:
+
+    def get_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
         """Get a checkpoint tuple from AlloyDB.
         Args:
             config (RunnableConfig): The config to use for retrieving the checkpoint.
@@ -168,13 +162,13 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             Optional[CheckpointTuple]: The retrieved checkpoint tuple, or None if no matching checkpoint was found.
         """
         return self._engine._run_as_sync(self.__checkpoint.aget_tuple(config))
-    
+
     async def aput(
         self,
         config: RunnableConfig,
         checkpoint: Checkpoint,
         metadata: CheckpointMetadata,
-        new_versions: ChannelVersions
+        new_versions: ChannelVersions,
     ) -> RunnableConfig:
         """Asynchronously store a checkpoint with its configuration and metadata.
         Args:
@@ -185,14 +179,16 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             RunnableConfig: Updated configuration after storing the checkpoint.
         """
-        return await self._engine._run_as_async(self.__checkpoint.aput(config, checkpoint, metadata, new_versions))
-    
+        return await self._engine._run_as_async(
+            self.__checkpoint.aput(config, checkpoint, metadata, new_versions)
+        )
+
     def put(
         self,
         config: RunnableConfig,
         checkpoint: Checkpoint,
         metadata: CheckpointMetadata,
-        new_versions: ChannelVersions
+        new_versions: ChannelVersions,
     ) -> RunnableConfig:
         """Save a checkpoint to the database.
         Args:
@@ -203,8 +199,10 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             RunnableConfig: Updated configuration after storing the checkpoint.
         """
-        return self._engine._run_as_sync(self.__checkpoint.aput(config, checkpoint, metadata, new_versions))
-    
+        return self._engine._run_as_sync(
+            self.__checkpoint.aput(config, checkpoint, metadata, new_versions)
+        )
+
     async def aput_writes(
         self,
         config: RunnableConfig,
@@ -221,7 +219,9 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
                 None
         """
-        await self._engine._run_as_async(self.__checkpoint.aput_writes(config, writes, task_id, task_path))
+        await self._engine._run_as_async(
+            self.__checkpoint.aput_writes(config, writes, task_id, task_path)
+        )
 
     def put_writes(
         self,
@@ -239,4 +239,6 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             None
         """
-        self._engine._run_as_sync(self.__checkpoint.aput_writes(config, writes, task_id, task_path))
+        self._engine._run_as_sync(
+            self.__checkpoint.aput_writes(config, writes, task_id, task_path)
+        )
