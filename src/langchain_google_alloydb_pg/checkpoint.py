@@ -49,9 +49,6 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             )
         self._engine = engine
         self.__checkpoint = checkpoint
-        self.table_name = table_name
-        self.table_name_writes = f"{table_name}_writes"
-        self.schema_name = schema_name
 
     @classmethod
     async def create(
@@ -115,10 +112,15 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             AsyncIterator[CheckpointTuple]: Async iterator of matching checkpoint tuples.
         """
-        async for checkpoint in self.__checkpoint.alist(
+        iterator = self.__checkpoint.alist(
             config=config, filter=filter, before=before, limit=limit
-        ):
-            yield checkpoint
+        )
+        while True:
+            try:
+                result = await self._engine._run_as_async(iterator.__anext__())
+                yield result
+            except StopAsyncIteration:
+                break
 
     def list(
         self,
@@ -137,13 +139,15 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
             Iterator[CheckpointTuple]: An iterator of checkpoint tuples.
         """
 
-        async def async_gen():
-            async for checkpoint in self.__checkpoint.alist(
-                config, filter, before, limit
-            ):
-                yield checkpoint
-
-        return self._engine._run_as_sync(async_gen())
+        iterator: AsyncIterator[CheckpointTuple] = self.__checkpoint.alist(
+            config=config, filter=filter, before=before, limit=limit
+        )
+        while True:
+            try:
+                result = self._engine._run_as_sync(iterator.__anext__())
+                yield result
+            except StopAsyncIteration:
+                break
 
     async def aget_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
         """Asynchronously fetch a checkpoint tuple using the given configuration.

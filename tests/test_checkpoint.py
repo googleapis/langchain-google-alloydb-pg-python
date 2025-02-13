@@ -41,6 +41,8 @@ instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
 table_name = "checkpoint" + str(uuid.uuid4())
 table_name_writes = table_name + "_writes"
+table_name_async = "checkpoint" + str(uuid.uuid4())
+table_name_writes_async = table_name_async + "_writes"
 
 checkpoint: Checkpoint = {
     "v": 1,
@@ -83,7 +85,7 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
     return result_fetch
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 async def engine():
     engine = AlloyDBEngine.from_instance(
         project_id=project_id,
@@ -111,12 +113,12 @@ async def async_engine():
         database=db_name,
     )
 
-    await async_engine.ainit_checkpoint_table(table_name=table_name)
+    await async_engine.ainit_checkpoint_table(table_name=table_name_async)
 
     yield async_engine
 
-    await aexecute(async_engine, f'DROP TABLE IF EXISTS "{table_name}"')
-    await aexecute(async_engine, f'DROP TABLE IF EXISTS "{table_name_writes}"')
+    await aexecute(async_engine, f'DROP TABLE IF EXISTS "{table_name_async}"')
+    await aexecute(async_engine, f'DROP TABLE IF EXISTS "{table_name_writes_async}"')
     await async_engine.close()
     await async_engine._connector.close()
 
@@ -127,7 +129,8 @@ def checkpointer(engine):
     yield checkpointer
 
 
-def test_checkpoint(
+async def test_checkpoint(
+    engine: AlloyDBEngine,
     checkpointer: AlloyDBSaver,
 ) -> None:
     test_config = {
@@ -140,6 +143,12 @@ def test_checkpoint(
     # Verify if updated configuration after storing the checkpoint is correct
     next_config = checkpointer.put(write_config, checkpoint, {}, {})
     assert dict(next_config) == test_config
+
+    results = await afetch(engine, f'SELECT * FROM "{table_name}"')
+    assert len(results) == 1
+    for row in results:
+        assert isinstance(row["thread_id"], str)
+    await aexecute(engine, f'TRUNCATE TABLE "{table_name}"')
 
 
 def test_checkpoint_table(engine: Any) -> None:

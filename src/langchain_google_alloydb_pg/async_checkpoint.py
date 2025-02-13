@@ -550,7 +550,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                     pending_writes=self._load_writes(value["pending_writes"]),
                 )
         return None
-    
+
     def put(
         self,
         config: RunnableConfig,
