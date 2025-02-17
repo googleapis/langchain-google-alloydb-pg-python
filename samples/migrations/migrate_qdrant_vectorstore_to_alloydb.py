@@ -17,6 +17,8 @@
 import asyncio
 from typing import Any, Iterator, List
 
+from google.cloud.alloydb.connector import IPTypes
+
 """Migrate QdrantVectorStore to Langchain AlloyDBVectorStore.
 Given a qdrant collection, the following code fetches the data from qdrant
 in batches and uploads to an AlloyDBVectorStore.
@@ -114,6 +116,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
+        ip_type=IPTypes.PUBLIC,
     )
     # [END qdrant_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")

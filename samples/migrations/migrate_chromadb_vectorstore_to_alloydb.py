@@ -17,6 +17,8 @@
 import asyncio
 from typing import Any, Iterator
 
+from google.cloud.alloydb.connector import IPTypes
+
 """Migrate Chroma to LangChain AlloyDBVectorStore.
 Given a Chroma collection, the following code fetches the data from Chroma
 in batches and uploads to an AlloyDBVectorStore.
@@ -114,6 +116,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
+        ip_type=IPTypes.PUBLIC,
     )
     # [END chromadb_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")

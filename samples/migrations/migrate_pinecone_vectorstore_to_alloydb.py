@@ -18,6 +18,8 @@
 import asyncio
 from typing import Any, Iterator
 
+from google.cloud.alloydb.connector import IPTypes
+
 """Migrate PineconeVectorStore to Langchain AlloyDBVectorStore.
 
 Given a pinecone index, the following code fetches the data from pinecone
@@ -133,6 +135,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
+        ip_type=IPTypes.PUBLIC,
     )
     # [END pinecone_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
