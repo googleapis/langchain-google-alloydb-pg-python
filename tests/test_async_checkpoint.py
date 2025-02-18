@@ -267,6 +267,26 @@ async def test_checkpoint_alist(
 
 
 @pytest.mark.asyncio
+async def test_checkpoint_aget_tuple(
+    checkpointer: AsyncAlloyDBSaver,
+    test_data: dict[str, Any],
+) -> None:
+    configs = test_data["configs"]
+    checkpoints = test_data["checkpoints"]
+    metadata = test_data["metadata"]
+
+    await checkpointer.aput(configs[1], checkpoints[1], metadata[0], {})
+
+    saved = await checkpointer.aget_tuple(configs[1])
+
+    # from the tests in https://github.com/langchain-ai/langgraph/blob/909190cede6a80bb94a2d4cfe7dedc49ef0d4127/libs/langgraph/tests/test_prebuilt.py
+    assert saved is not None
+    assert saved.checkpoint["channel_values"] == {}
+    assert saved.metadata == metadata[0]
+    assert saved.pending_writes == {}
+
+
+@pytest.mark.asyncio
 async def test_null_chars(
     checkpointer: AsyncAlloyDBSaver,
     test_data: dict[str, Any],
@@ -277,7 +297,7 @@ async def test_null_chars(
         {"my_key": "\x00abc"},  # type: ignore
         {},
     )
-    # assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
+    assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
     assert [c async for c in checkpointer.alist(None, filter={"my_key": "abc"})][
         0
     ].metadata[
