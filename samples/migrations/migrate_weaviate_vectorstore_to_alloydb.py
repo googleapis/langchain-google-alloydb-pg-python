@@ -17,6 +17,8 @@
 import asyncio
 from typing import Any, Iterator
 
+from google.cloud.alloydb.connector import IPTypes
+
 """Migrate WeaviateVectorStore to Langchain AlloyDBVectorStore.
 Given a weaviate collection, the following code fetches the data from weaviate
 in batches and uploads to an AlloyDBVectorStore.
@@ -125,6 +127,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
+        ip_type=IPTypes.PUBLIC,
     )
     # [END weaviate_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
