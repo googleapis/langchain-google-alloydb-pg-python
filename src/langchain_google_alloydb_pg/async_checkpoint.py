@@ -209,7 +209,9 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             id=checkpoint["id"],
             channel_values=self._load_blobs(channel_values),
             channel_versions=dict(checkpoint["channel_versions"]),
-            versions_seen={k: dict(v) for k, v in dict(checkpoint["versions_seen"]).items()},
+            versions_seen={
+                k: dict(v) for k, v in dict(checkpoint["versions_seen"]).items()
+            },
             pending_sends=[
                 self.serde.loads_typed((c.decode(), b)) for c, b in pending_sends or []
             ],

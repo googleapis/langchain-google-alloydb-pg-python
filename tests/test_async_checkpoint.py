@@ -286,8 +286,6 @@ async def test_checkpoint_aget_tuple(
     assert saved.pending_writes == {}
 
 
-
-
 @pytest.mark.asyncio
 async def test_null_chars(
     checkpointer: AsyncAlloyDBSaver,
