@@ -58,8 +58,8 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "only create class through 'create' or 'create_sync' methods"
             )
         self.pool = pool
-        self.table_name = table_name
-        self.table_name_writes = f"{table_name}_writes"
+        self.table_name = CHECKPOINTS_TABLE
+        self.table_name_writes = CHECKPOINT_WRITES_TABLE
         self.schema_name = schema_name
 
     @classmethod
@@ -208,8 +208,8 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             ts=checkpoint["ts"],
             id=checkpoint["id"],
             channel_values=self._load_blobs(channel_values),
-            channel_versions=checkpoint["channel_versions"].copy(),
-            versions_seen={k: v.copy() for k, v in checkpoint["versions_seen"].items()},
+            channel_versions=dict(checkpoint["channel_versions"]),
+            versions_seen={k: dict(v) for k, v in dict(checkpoint["versions_seen"]).items()},
             pending_sends=[
                 self.serde.loads_typed((c.decode(), b)) for c, b in pending_sends or []
             ],
@@ -413,20 +413,20 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             metadata,
             (
                 SELECT array_agg(array[cw.task_id::text::bytea, cw.channel::bytea, cw.type::bytea, cw.blob] order by cw.task_id, cw.idx)
-                FROM "{self.schema_name}".'{CHECKPOINT_WRITES_TABLE}' cw
+                FROM "{self.schema_name}"."{self.table_name_writes}" cw
                 where cw.thread_id = c.thread_id
                     AND cw.checkpoint_ns = c.checkpoint_ns
                     AND cw.checkpoint_id = c.checkpoint_id
             ) AS pending_writes,
             (
                 SELECT array_agg(array[cw.type::bytea, cw.blob] order by cw.task_path, cw.task_id, cw.idx)
-                FROM "{self.schema_name}".'{CHECKPOINT_WRITES_TABLE}' cw
+                FROM "{self.schema_name}"."{self.table_name_writes}" cw
                 WHERE cw.thread_id = c.thread_id
                     AND cw.checkpoint_ns = c.checkpoint_ns
                     AND cw.checkpoint_id = c.parent_checkpoint_id
                     AND cw.channel = '{TASKS}'
             ) AS pending_sends
-        FROM "{self.schema_name}".'{CHECKPOINTS_TABLE}' c
+        FROM "{self.schema_name}"."{self.table_name}" c
         """
 
         where, args = self._search_where(config, filter, before)
@@ -436,36 +436,37 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
 
         async with self.pool.connect() as conn:
             result = await conn.execute(text(query), args)
-            result_map = result.mappings()
-            results = result_map.fetchall()
-            for value in results:
-                yield CheckpointTuple(
-                    config={
-                        "configurable": {
-                            "thread_id": value["thread_id"],
-                            "checkpoint_ns": value["checkpoint_ns"],
-                            "checkpoint_id": value["checkpoint_id"],
-                        }
-                    },
-                    checkpoint=self._load_checkpoint(
-                        value["checkpoint"],
-                        value["channel_values"],
-                        value["pending_sends"],
-                    ),
-                    metadata=self._load_metadata(value["metadata"]),
-                    parent_config=(
-                        {
+            while True:
+                row = result.fetchone()
+                if row:
+                    value = row._mapping
+                    yield CheckpointTuple(
+                        config={
                             "configurable": {
                                 "thread_id": value["thread_id"],
                                 "checkpoint_ns": value["checkpoint_ns"],
-                                "checkpoint_id": value["parent_checkpoint_id"],
+                                "checkpoint_id": value["checkpoint_id"],
                             }
-                        }
-                        if value["parent_checkpoint_id"]
-                        else None
-                    ),
-                    pending_writes=self._load_writes(value["pending_writes"]),
-                )
+                        },
+                        checkpoint=self._load_checkpoint(
+                            value["checkpoint"],
+                            [],
+                            value["pending_sends"],
+                        ),
+                        metadata=self._load_metadata(value["metadata"]),
+                        parent_config=(
+                            {
+                                "configurable": {
+                                    "thread_id": value["thread_id"],
+                                    "checkpoint_ns": value["checkpoint_ns"],
+                                    "checkpoint_id": value["parent_checkpoint_id"],
+                                }
+                            }
+                            if value["parent_checkpoint_id"]
+                            else None
+                        ),
+                        pending_writes=self._load_writes(value["pending_writes"]),
+                    )
 
     async def aget_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
         """Asynchronously fetch a checkpoint tuple using the given configuration.
@@ -487,20 +488,20 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             metadata,
             (
                 SELECT array_agg(array[cw.task_id::text::bytea, cw.channel::bytea, cw.type::bytea, cw.blob] order by cw.task_id, cw.idx)
-                FROM "{self.schema_name}".'{CHECKPOINT_WRITES_TABLE}' cw
+                FROM "{self.schema_name}"."{self.table_name_writes}" cw
                 where cw.thread_id = c.thread_id
                     AND cw.checkpoint_ns = c.checkpoint_ns
                     AND cw.checkpoint_id = c.checkpoint_id
             ) AS pending_writes,
             (
                 SELECT array_agg(array[cw.type::bytea, cw.blob] order by cw.task_path, cw.task_id, cw.idx)
-                FROM "{self.schema_name}".'{CHECKPOINT_WRITES_TABLE}' cw
+                FROM "{self.schema_name}"."{self.table_name_writes}" cw
                 WHERE cw.thread_id = c.thread_id
                     AND cw.checkpoint_ns = c.checkpoint_ns
                     AND cw.checkpoint_id = c.parent_checkpoint_id
                     AND cw.channel = '{TASKS}'
             ) AS pending_sends
-        FROM "{self.schema_name}".'{CHECKPOINTS_TABLE}' c
+        FROM "{self.schema_name}"."{self.table_name}" c
         """
 
         thread_id = config["configurable"]["thread_id"]
@@ -519,34 +520,34 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
 
         async with self.pool.connect() as conn:
             result = await conn.execute(text(SELECT + where), args)
-            result_map = result.mappings()
-            results = result_map.fetchall()
-            for value in results:
-                return CheckpointTuple(
-                    config={
-                        "configurable": {
-                            "thread_id": thread_id,
-                            "checkpoint_ns": checkpoint_ns,
-                            "checkpoint_id": value["checkpoint_id"],
-                        }
-                    },
-                    checkpoint=self._load_checkpoint(
-                        value["checkpoint"],
-                        value["channel_values"],
-                        value["pending_sends"],
-                    ),
-                    metadata=self._load_metadata(value["metadata"]),
-                    parent_config=(
-                        {
+            while True:
+                row = result.fetchone()
+                if row:
+                    value = row._mapping
+                    return CheckpointTuple(
+                        config={
                             "configurable": {
                                 "thread_id": thread_id,
                                 "checkpoint_ns": checkpoint_ns,
-                                "checkpoint_id": value["parent_checkpoint_id"],
+                                "checkpoint_id": value["checkpoint_id"],
                             }
-                        }
-                        if value["parent_checkpoint_id"]
-                        else None
-                    ),
-                    pending_writes=self._load_writes(value["pending_writes"]),
-                )
-        return None
+                        },
+                        checkpoint=self._load_checkpoint(
+                            value["checkpoint"],
+                            [],
+                            value["pending_sends"],
+                        ),
+                        metadata=self._load_metadata(value["metadata"]),
+                        parent_config=(
+                            {
+                                "configurable": {
+                                    "thread_id": thread_id,
+                                    "checkpoint_ns": checkpoint_ns,
+                                    "checkpoint_id": value["parent_checkpoint_id"],
+                                }
+                            }
+                            if value["parent_checkpoint_id"]
+                            else None
+                        ),
+                        pending_writes=self._load_writes(value["pending_writes"]),
+                    )

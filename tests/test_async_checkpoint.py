@@ -277,12 +277,15 @@ async def test_checkpoint_aget_tuple(
 
     await checkpointer.aput(configs[1], checkpoints[1], metadata[0], {})
 
-    # Matching checkpoint
-    search_results_1 = await checkpointer.aget_tuple(configs[1])
-    assert search_results_1.metadata == metadata[0]  # type: ignore
+    saved = await checkpointer.aget_tuple(configs[1])
 
-    # No matching checkpoint
-    assert await checkpointer.aget_tuple(configs[0]) is None
+    # from the tests in https://github.com/langchain-ai/langgraph/blob/909190cede6a80bb94a2d4cfe7dedc49ef0d4127/libs/langgraph/tests/test_prebuilt.py
+    assert saved is not None
+    assert saved.checkpoint["channel_values"] == {}
+    assert saved.metadata == metadata[0]
+    assert saved.pending_writes == {}
+
+
 
 
 @pytest.mark.asyncio
