@@ -19,6 +19,7 @@ from typing import Sequence
 import pytest
 import pytest_asyncio
 import weaviate
+from google.cloud.alloydb.connector import IPTypes
 from langchain_core.documents import Document
 from langchain_core.embeddings import FakeEmbeddings
 from langchain_weaviate.vectorstores import WeaviateVectorStore  # type: ignore
@@ -153,6 +154,7 @@ class TestMigrations:
             database=db_name,
             user=db_user,
             password=db_password,
+            ip_type=IPTypes.PUBLIC,
         )
 
         yield engine
