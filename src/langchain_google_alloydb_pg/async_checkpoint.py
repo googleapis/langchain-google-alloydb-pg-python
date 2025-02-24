@@ -58,8 +58,8 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 "only create class through 'create' or 'create_sync' methods"
             )
         self.pool = pool
-        self.table_name = CHECKPOINTS_TABLE
-        self.table_name_writes = CHECKPOINT_WRITES_TABLE
+        self.table_name = table_name
+        self.table_name_writes = f"{table_name}_writes"
         self.schema_name = schema_name
 
     @classmethod
@@ -440,35 +440,36 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             result = await conn.execute(text(query), args)
             while True:
                 row = result.fetchone()
-                if row:
-                    value = row._mapping
-                    yield CheckpointTuple(
-                        config={
+                if not row:
+                    break
+                value = row._mapping
+                yield CheckpointTuple(
+                    config={
+                        "configurable": {
+                            "thread_id": value["thread_id"],
+                            "checkpoint_ns": value["checkpoint_ns"],
+                            "checkpoint_id": value["checkpoint_id"],
+                        }
+                    },
+                    checkpoint=self._load_checkpoint(
+                        value["checkpoint"],
+                        [],
+                        value["pending_sends"],
+                    ),
+                    metadata=self._load_metadata(value["metadata"]),
+                    parent_config=(
+                        {
                             "configurable": {
                                 "thread_id": value["thread_id"],
                                 "checkpoint_ns": value["checkpoint_ns"],
-                                "checkpoint_id": value["checkpoint_id"],
+                                "checkpoint_id": value["parent_checkpoint_id"],
                             }
-                        },
-                        checkpoint=self._load_checkpoint(
-                            value["checkpoint"],
-                            [],
-                            value["pending_sends"],
-                        ),
-                        metadata=self._load_metadata(value["metadata"]),
-                        parent_config=(
-                            {
-                                "configurable": {
-                                    "thread_id": value["thread_id"],
-                                    "checkpoint_ns": value["checkpoint_ns"],
-                                    "checkpoint_id": value["parent_checkpoint_id"],
-                                }
-                            }
-                            if value["parent_checkpoint_id"]
-                            else None
-                        ),
-                        pending_writes=self._load_writes(value["pending_writes"]),
-                    )
+                        }
+                        if value["parent_checkpoint_id"]
+                        else None
+                    ),
+                    pending_writes=self._load_writes(value["pending_writes"]),
+                )
 
     async def aget_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
         """Asynchronously fetch a checkpoint tuple using the given configuration.
@@ -522,34 +523,34 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
 
         async with self.pool.connect() as conn:
             result = await conn.execute(text(SELECT + where), args)
-            while True:
-                row = result.fetchone()
-                if row:
-                    value = row._mapping
-                    return CheckpointTuple(
-                        config={
-                            "configurable": {
-                                "thread_id": thread_id,
-                                "checkpoint_ns": checkpoint_ns,
-                                "checkpoint_id": value["checkpoint_id"],
-                            }
-                        },
-                        checkpoint=self._load_checkpoint(
-                            value["checkpoint"],
-                            [],
-                            value["pending_sends"],
-                        ),
-                        metadata=self._load_metadata(value["metadata"]),
-                        parent_config=(
-                            {
-                                "configurable": {
-                                    "thread_id": thread_id,
-                                    "checkpoint_ns": checkpoint_ns,
-                                    "checkpoint_id": value["parent_checkpoint_id"],
-                                }
-                            }
-                            if value["parent_checkpoint_id"]
-                            else None
-                        ),
-                        pending_writes=self._load_writes(value["pending_writes"]),
-                    )
+            row = result.fetchone()
+            if not row:
+                return None
+            value = row._mapping
+            return CheckpointTuple(
+                config={
+                    "configurable": {
+                        "thread_id": thread_id,
+                        "checkpoint_ns": checkpoint_ns,
+                        "checkpoint_id": value["checkpoint_id"],
+                    }
+                },
+                checkpoint=self._load_checkpoint(
+                    value["checkpoint"],
+                    [],
+                    value["pending_sends"],
+                ),
+                metadata=self._load_metadata(value["metadata"]),
+                parent_config=(
+                    {
+                        "configurable": {
+                            "thread_id": thread_id,
+                            "checkpoint_ns": checkpoint_ns,
+                            "checkpoint_id": value["parent_checkpoint_id"],
+                        }
+                    }
+                    if value["parent_checkpoint_id"]
+                    else None
+                ),
+                pending_writes=self._load_writes(value["pending_writes"]),
+            )
