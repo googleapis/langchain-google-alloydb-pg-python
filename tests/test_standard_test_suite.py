@@ -46,6 +46,8 @@ async def aexecute(
     await engine._run_as_async(run(engine, query))
 
 
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.asyncio
 class TestStandardSuiteSync(VectorStoreIntegrationTests):
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
@@ -109,11 +111,9 @@ class TestStandardSuiteSync(VectorStoreIntegrationTests):
         )
         yield vs
 
-    @property
-    def has_async(self) -> bool:
-        return False  # Skip async tests for sync vector store
 
-
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.asyncio
 class TestStandardSuiteAsync(VectorStoreIntegrationTests):
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
@@ -177,7 +177,3 @@ class TestStandardSuiteAsync(VectorStoreIntegrationTests):
         )
 
         yield vs
-
-    @property
-    def has_sync(self) -> bool:
-        return False  # Skip sync tests for async vector store
