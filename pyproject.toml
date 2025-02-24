@@ -46,7 +46,8 @@ test = [
     "pytest==8.3.3",
     "pytest-cov==6.0.0",
     "pytest-depends==1.0.1",
-    "Pillow==11.0.0"
+    "Pillow==11.0.0",
+    "langgraph==0.2.74"
 ]
 langgraph = ["langgraph-checkpoint"]
 
