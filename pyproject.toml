@@ -46,7 +46,8 @@ test = [
     "pytest==8.3.4",
     "pytest-cov==6.0.0",
     "pytest-depends==1.0.1",
-    "Pillow==11.1.0"
+    "Pillow==11.1.0",
+    "langchain-tests==0.3.12"
 ]
 
 [build-system]
