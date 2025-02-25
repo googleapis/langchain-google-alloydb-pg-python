@@ -1,6 +1,6 @@
-langchain-chroma==0.2.1
-langchain-core==0.3.34
-langchain-google-alloydb-pg==0.9.1
+langchain-chroma==0.2.2
+langchain-core==0.3.39
+langchain-google-alloydb-pg==0.9.2
 langchain-milvus==0.1.8
 langchain-pinecone==0.2.3
 langchain-qdrant==0.2.0
@@ -8,4 +8,4 @@ langchain-weaviate==0.0.4
 pinecone-client==4.1.2
 pymilvus==2.5.4
 qdrant-client==1.13.2
-weaviate-client==4.10.4
+weaviate-client==4.11.0
