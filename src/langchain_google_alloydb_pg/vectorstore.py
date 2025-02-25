@@ -644,9 +644,9 @@ class AlloyDBVectorStore(VectorStore):
         filter: Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
-        """Return docs selected by similarity search on query."""
+        """Return docs selected by similarity search on image_uri."""
         return await self._engine._run_as_async(
-            self.__vs.asimilarity_search(image_uri, k, filter, **kwargs)
+            self.__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)
         )
 
     # Required for (a)similarity_search_with_relevance_scores
