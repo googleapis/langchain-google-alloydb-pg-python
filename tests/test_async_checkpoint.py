@@ -356,7 +356,7 @@ class FakeToolCallingModel(BaseChatModel):
 
 
 @pytest.mark.asyncio
-async def test_checkpoint_aget_tuple(
+async def test_checkpoint_with_agent(
     checkpointer: AsyncAlloyDBSaver,
 ) -> None:
     # from the tests in https://github.com/langchain-ai/langgraph/blob/909190cede6a80bb94a2d4cfe7dedc49ef0d4127/libs/langgraph/tests/test_prebuilt.py
