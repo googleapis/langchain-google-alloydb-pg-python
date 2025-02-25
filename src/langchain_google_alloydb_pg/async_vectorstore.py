@@ -237,6 +237,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """
         if not ids:
             ids = [str(uuid.uuid4()) for _ in texts]
+        else:
+            ids = [id if id is not None else str(uuid.uuid4()) for id in ids]
         if not metadatas:
             metadatas = [{} for _ in texts]
         # Insert embeddings
@@ -274,7 +276,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
             else:
                 values_stmt += ")"
 
-            query = insert_stmt + values_stmt
+            upsert_stmt = f' ON CONFLICT ("{self.id_column}") DO UPDATE SET "{self.content_column}" = EXCLUDED."{self.content_column}", "{self.embedding_column}" = EXCLUDED."{self.embedding_column}"'
+
+            if self.metadata_json_column:
+                upsert_stmt += f', "{self.metadata_json_column}" = EXCLUDED."{self.metadata_json_column}"'
+
+            for column in self.metadata_columns:
+                upsert_stmt += f', "{column}" = EXCLUDED."{column}"'
+
+            upsert_stmt += ";"
+
+            query = insert_stmt + values_stmt + upsert_stmt
             async with self.engine.connect() as conn:
                 await conn.execute(text(query), values)
                 await conn.commit()
@@ -316,6 +328,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
+        if not ids:
+            ids = [doc.id or doc.metadata.get("id", None) for doc in documents]
         ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
         return ids
 
@@ -705,6 +719,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     Document(
                         page_content=row[self.content_column],
                         metadata=metadata,
+                        id=row[self.id_column],
                     ),
                     row["distance"],
                 )
@@ -795,6 +810,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     Document(
                         page_content=row[self.content_column],
                         metadata=metadata,
+                        id=row[self.id_column],
                     ),
                     row["distance"],
                 )
