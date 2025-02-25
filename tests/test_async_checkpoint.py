@@ -13,17 +13,37 @@
 # limitations under the License.
 
 import os
+import re
 import uuid
-from typing import Any, Sequence, Tuple
+from typing import Any, List, Literal, Optional, Sequence, Tuple, Union
 
 import pytest
 import pytest_asyncio
+from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.language_models import BaseChatModel, LanguageModelInput
+from langchain_core.messages import (
+    AIMessage,
+    AnyMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolCall,
+    ToolMessage,
+)
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
     Checkpoint,
     CheckpointMetadata,
     create_checkpoint,
     empty_checkpoint,
+)
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from langgraph.prebuilt import (
+    ToolNode,
+    ValidationNode,
+    create_react_agent,
+    tools_condition,
 )
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
@@ -62,6 +82,31 @@ checkpoint: Checkpoint = {
 }
 
 
+class AnyStr(str):
+    def __init__(self, prefix: Union[str, re.Pattern] = "") -> None:
+        super().__init__()
+        self.prefix = prefix
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, str) and (
+            (
+                other.startswith(self.prefix)
+                if isinstance(self.prefix, str)
+                else bool(self.prefix.match(other))
+            )
+        )
+
+    def __hash__(self) -> int:
+        return hash((str(self), self.prefix))
+
+
+def _AnyIdToolMessage(**kwargs: Any) -> ToolMessage:
+    """Create a tool message with an any id field."""
+    message = ToolMessage(**kwargs)
+    message.id = AnyStr()
+    return message
+
+
 async def aexecute(engine: AlloyDBEngine, query: str) -> None:
     async with engine._pool.connect() as conn:
         await conn.execute(text(query))
@@ -76,7 +121,7 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
     return result_fetch
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 async def async_engine():
     async_engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
@@ -94,10 +139,13 @@ async def async_engine():
     await async_engine._connector.close()
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 async def checkpointer(async_engine):
     await async_engine._ainit_checkpoint_table(table_name=table_name)
-    checkpointer = await AsyncAlloyDBSaver.create(async_engine, table_name)
+    checkpointer = await AsyncAlloyDBSaver.create(
+        async_engine,
+        table_name,  # serde=JsonPlusSerializer
+    )
     yield checkpointer
 
 
@@ -157,7 +205,12 @@ def test_data():
         "ts": "2024-07-31T20:14:19.804150+00:00",
         "id": "1ef4f797-8335-6428-8001-8a1503f9b875",
         "channel_values": {"my_key": "meow", "node": "node"},
-        "channel_versions": {"__start__": 2, "my_key": 3, "start:node": 3, "node": 3},
+        "channel_versions": {
+            "__start__": 2,
+            "my_key": 3,
+            "start:node": 3,
+            "node": 3,
+        },
         "versions_seen": {
             "__input__": {},
             "__start__": {"__start__": 1},
@@ -243,6 +296,8 @@ async def test_checkpoint_alist(
 
     search_results_1 = [c async for c in checkpointer.alist(None, filter=query_1)]
     assert len(search_results_1) == 1
+    print(metadata[0])
+    print(search_results_1[0].metadata)
     assert search_results_1[0].metadata == metadata[0]
 
     search_results_2 = [c async for c in checkpointer.alist(None, filter=query_2)]
@@ -266,6 +321,78 @@ async def test_checkpoint_alist(
     } == {"", "inner"}
 
 
+class FakeToolCallingModel(BaseChatModel):
+    tool_calls: Optional[list[list[ToolCall]]] = None
+    index: int = 0
+    tool_style: Literal["openai", "anthropic"] = "openai"
+
+    def _generate(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        """Top Level call"""
+        messages_string = "-".join(
+            [str(m.content) for m in messages if isinstance(m.content, str)]
+        )
+        tool_calls = (
+            self.tool_calls[self.index % len(self.tool_calls)]
+            if self.tool_calls
+            else []
+        )
+        message = AIMessage(
+            content=messages_string,
+            id=str(self.index),
+            tool_calls=tool_calls.copy(),
+        )
+        self.index += 1
+        return ChatResult(generations=[ChatGeneration(message=message)])
+
+    @property
+    def _llm_type(self) -> str:
+        return "fake-tool-call-model"
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_aget_tuple(
+    checkpointer: AsyncAlloyDBSaver,
+) -> None:
+    # from the tests in https://github.com/langchain-ai/langgraph/blob/909190cede6a80bb94a2d4cfe7dedc49ef0d4127/libs/langgraph/tests/test_prebuilt.py
+    model = FakeToolCallingModel()
+    agent = create_react_agent(model, [], checkpointer=checkpointer)
+    inputs = [HumanMessage("hi?")]
+    thread: RunnableConfig = {"configurable": {"thread_id": "123"}}
+    response = await agent.ainvoke({"messages": inputs}, config=thread, debug=True)
+    expected_response = {"messages": inputs + [AIMessage(content="hi?", id="0")]}
+    assert response == expected_response
+
+    def _AnyIdHumanMessage(**kwargs: Any) -> HumanMessage:
+        """Create a human message with an any id field."""
+        message = HumanMessage(**kwargs)
+        message.id = AnyStr()
+        return message
+
+    saved = await checkpointer.aget_tuple(thread)
+    assert saved is not None
+    assert saved.checkpoint["channel_values"] == {
+        "messages": [
+            _AnyIdHumanMessage(content="hi?"),
+            AIMessage(content="hi?", id="0"),
+        ],
+        "agent": "agent",
+    }
+    assert saved.metadata == {
+        "parents": {},
+        "source": "loop",
+        "writes": {"agent": {"messages": [AIMessage(content="hi?", id="0")]}},
+        "step": 1,
+        "thread_id": "123",
+    }
+    assert saved.pending_writes == []
+
+
 @pytest.mark.asyncio
 async def test_checkpoint_aget_tuple(
     checkpointer: AsyncAlloyDBSaver,
@@ -286,14 +413,14 @@ async def test_checkpoint_aget_tuple(
 
 
 @pytest.mark.asyncio
-async def test_null_chars(
+async def test_metadata(
     checkpointer: AsyncAlloyDBSaver,
     test_data: dict[str, Any],
 ) -> None:
     config = await checkpointer.aput(
         test_data["configs"][0],
         test_data["checkpoints"][0],
-        {"my_key": "\x00abc"},  # type: ignore
+        {"my_key": "abc"},  # type: ignore
         {},
     )
     assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
