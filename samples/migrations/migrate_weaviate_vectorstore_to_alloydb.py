@@ -55,15 +55,15 @@ def get_data_batch(
     # [START weaviate_get_data_batch]
     # Iterate through the IDs and download their contents
     weaviate_collection = weaviate_client.collections.get(weaviate_collection_name)
-    ids = []
-    content = []
-    embeddings = []
-    metadatas = []
+    ids: list[str] = []
+    content: list[Any] = []
+    embeddings: list[list[float]] = []
+    metadatas: list[Any] = []
 
     for item in weaviate_collection.iterator(include_vector=True):
         ids.append(str(item.uuid))
         content.append(item.properties[weaviate_text_key])
-        embeddings.append(item.vector["default"])
+        embeddings.append(item.vector["default"])  # type: ignore
         del item.properties[weaviate_text_key]  # type: ignore
         metadatas.append(item.properties)
 
