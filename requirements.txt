@@ -1,5 +1,5 @@
 google-cloud-alloydb-connector[asyncpg]==1.7.0
-google-cloud-storage==2.19.0
+google-cloud-storage==3.0.0
 langchain-core==0.3.39
 numpy==1.26.4
 pgvector==0.3.6
