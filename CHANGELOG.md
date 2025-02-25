@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.3](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.2...v0.9.3) (2025-02-25)
+
+
+### Bug Fixes
+
+* **asimilarity_search_image:** Fix bug in image search functionality ([#357](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/357)) ([23b05d2](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/23b05d20da1c891a327ff5a9113194906c395aec))
+* Revert "chore(deps): update dependency google-cloud-storage to v3" ([#360](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/360)) ([0fcfdd5](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/0fcfdd5557211c8c77adf5c92b6ddf5eaf59a4d2))
+
 ## [0.9.2](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.1...v0.9.2) (2025-02-12)
 
 
