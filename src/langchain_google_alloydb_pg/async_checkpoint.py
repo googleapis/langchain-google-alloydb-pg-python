@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Any, AsyncIterator, Optional, Sequence, Tuple
+from typing import Any, AsyncIterator, Iterator, Optional, Sequence, Tuple
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
