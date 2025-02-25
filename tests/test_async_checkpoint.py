@@ -121,7 +121,7 @@ async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
     return result_fetch
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 async def async_engine():
     async_engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
@@ -129,8 +129,6 @@ async def async_engine():
         cluster=cluster_id,
         instance=instance_id,
         database=db_name,
-        user="postgres",
-        password="my-pg-password",
     )
 
     yield async_engine
@@ -141,7 +139,7 @@ async def async_engine():
     await async_engine._connector.close()
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 async def checkpointer(async_engine):
     await async_engine._ainit_checkpoint_table(table_name=table_name)
     checkpointer = await AsyncAlloyDBSaver.create(
