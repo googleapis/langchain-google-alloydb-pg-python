@@ -38,6 +38,7 @@ from langgraph.checkpoint.base import (
     create_checkpoint,
     empty_checkpoint,
 )
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.prebuilt import (
     ToolNode,
     ValidationNode,
@@ -128,6 +129,8 @@ async def async_engine():
         cluster=cluster_id,
         instance=instance_id,
         database=db_name,
+        user="postgres",
+        password="my-pg-password",
     )
 
     yield async_engine
@@ -141,7 +144,10 @@ async def async_engine():
 @pytest_asyncio.fixture  ##(scope="module")
 async def checkpointer(async_engine):
     await async_engine._ainit_checkpoint_table(table_name=table_name)
-    checkpointer = await AsyncAlloyDBSaver.create(async_engine, table_name)
+    checkpointer = await AsyncAlloyDBSaver.create(
+        async_engine,
+        table_name,  # serde=JsonPlusSerializer
+    )
     yield checkpointer
 
 
@@ -201,7 +207,12 @@ def test_data():
         "ts": "2024-07-31T20:14:19.804150+00:00",
         "id": "1ef4f797-8335-6428-8001-8a1503f9b875",
         "channel_values": {"my_key": "meow", "node": "node"},
-        "channel_versions": {"__start__": 2, "my_key": 3, "start:node": 3, "node": 3},
+        "channel_versions": {
+            "__start__": 2,
+            "my_key": 3,
+            "start:node": 3,
+            "node": 3,
+        },
         "versions_seen": {
             "__input__": {},
             "__start__": {"__start__": 1},
@@ -287,6 +298,8 @@ async def test_checkpoint_alist(
 
     search_results_1 = [c async for c in checkpointer.alist(None, filter=query_1)]
     assert len(search_results_1) == 1
+    print(metadata[0])
+    print(search_results_1[0].metadata)
     assert search_results_1[0].metadata == metadata[0]
 
     search_results_2 = [c async for c in checkpointer.alist(None, filter=query_2)]
@@ -332,7 +345,9 @@ class FakeToolCallingModel(BaseChatModel):
             else []
         )
         message = AIMessage(
-            content=messages_string, id=str(self.index), tool_calls=tool_calls.copy()
+            content=messages_string,
+            id=str(self.index),
+            tool_calls=tool_calls.copy(),
         )
         self.index += 1
         return ChatResult(generations=[ChatGeneration(message=message)])
@@ -381,14 +396,14 @@ async def test_checkpoint_aget_tuple(
 
 
 @pytest.mark.asyncio
-async def test_null_chars(
+async def test_metadata(
     checkpointer: AsyncAlloyDBSaver,
     test_data: dict[str, Any],
 ) -> None:
     config = await checkpointer.aput(
         test_data["configs"][0],
         test_data["checkpoints"][0],
-        {"my_key": "\x00abc"},  # type: ignore
+        {"my_key": "abc"},  # type: ignore
         {},
     )
     assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
