@@ -101,7 +101,7 @@ class TestStandardSuiteSync(VectorStoreIntegrationTests):
         sync_engine.init_vectorstore_table(
             DEFAULT_TABLE_SYNC,
             EMBEDDING_SIZE,
-            id_column=Column(name="langchain_id", data_type="VARCHAR", nullable=False),
+            id_column=Column(name="langchain_id", data_type="INTEGER", nullable=False),
         )
 
         vs = AlloyDBVectorStore.create_sync(
@@ -167,7 +167,7 @@ class TestStandardSuiteAsync(VectorStoreIntegrationTests):
         await async_engine.ainit_vectorstore_table(
             DEFAULT_TABLE,
             EMBEDDING_SIZE,
-            id_column=Column(name="langchain_id", data_type="VARCHAR", nullable=False),
+            id_column=Column(name="langchain_id", data_type="INTEGER", nullable=False),
         )
 
         vs = await AlloyDBVectorStore.create(
