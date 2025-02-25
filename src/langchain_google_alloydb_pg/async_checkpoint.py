@@ -388,33 +388,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         FROM "{self.schema_name}"."{self.table_name}" c
         """
 
-        # Select SQL used in `alist` method
-        SELECT = f"""
-        SELECT
-            thread_id,
-            checkpoint,
-            checkpoint_ns,
-            checkpoint_id,
-            parent_checkpoint_id,
-            metadata,
-            (
-                SELECT array_agg(array[cw.task_id::text::bytea, cw.channel::bytea, cw.type::bytea, cw.blob] order by cw.task_id, cw.idx)
-                FROM "{self.schema_name}".'{CHECKPOINT_WRITES_TABLE}' cw
-                where cw.thread_id = c.thread_id
-                    AND cw.checkpoint_ns = c.checkpoint_ns
-                    AND cw.checkpoint_id = c.checkpoint_id
-            ) AS pending_writes,
-            (
-                SELECT array_agg(array[cw.type::bytea, cw.blob] order by cw.task_path, cw.task_id, cw.idx)
-                FROM "{self.schema_name}".'{CHECKPOINT_WRITES_TABLE}' cw
-                WHERE cw.thread_id = c.thread_id
-                    AND cw.checkpoint_ns = c.checkpoint_ns
-                    AND cw.checkpoint_id = c.parent_checkpoint_id
-                    AND cw.channel = '{TASKS}'
-            ) AS pending_sends
-        FROM "{self.schema_name}".'{CHECKPOINTS_TABLE}' c
-        """
-
         where, args = self._search_where(config, filter, before)
         query = SELECT + where + " ORDER BY checkpoint_id DESC"
         if limit:
