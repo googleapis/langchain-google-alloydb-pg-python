@@ -329,7 +329,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         if not ids:
-            ids = [doc.id or doc.metadata.get("id", None) for doc in documents]
+            ids = [doc.id for doc in documents]
         ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
         return ids
 
