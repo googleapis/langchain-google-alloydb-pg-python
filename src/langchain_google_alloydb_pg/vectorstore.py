@@ -15,7 +15,7 @@
 # TODO: Remove below import when minimum supported Python version is 3.10
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable, List, Optional, Sequence
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -905,6 +905,14 @@ class AlloyDBVectorStore(VectorStore):
     ) -> bool:
         """Check if index exists in the table."""
         return self._engine._run_as_sync(self.__vs.is_valid_index(index_name))
+
+    async def aget_by_ids(self, ids: Sequence[str]) -> List[Document]:
+        """Get documents by ids."""
+        return await self._engine._run_as_async(self.__vs.aget_by_ids(ids=ids))
+
+    def get_by_ids(self, ids: Sequence[str]) -> List[Document]:
+        """Get documents by ids."""
+        return self._engine._run_as_sync(self.__vs.aget_by_ids(ids=ids))
 
     def get_table_name(self) -> str:
         return self.__vs.table_name
