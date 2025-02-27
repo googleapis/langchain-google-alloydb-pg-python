@@ -68,6 +68,7 @@ def get_data_batch(
             iterator.close()
             break
         for i in range(len(page)):
+            # You need to update this data translation logic according to field names
             doc = page[i]
             ids.append(doc["pk"])
             content.append(doc["text"])
@@ -130,6 +131,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # You can customize the ID column types with `id_column`
     )
     # [END milvus_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")

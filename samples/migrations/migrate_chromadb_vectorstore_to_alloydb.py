@@ -51,6 +51,7 @@ def get_data_batch(
     # Iterate through the IDs and download their contents
     offset = 0
     while True:
+        # You need to update this data translation logic according to field names
         docs = chromadb_client.get(
             include=["metadatas", "documents", "embeddings"],
             limit=chromadb_batch_size,
@@ -125,6 +126,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # You can customize the ID column types with `id_column`
     )
     # [END chromadb_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")

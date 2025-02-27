@@ -61,6 +61,7 @@ def get_data_batch(
     metadatas: list[Any] = []
 
     for item in weaviate_collection.iterator(include_vector=True):
+        # You need to update this data translation logic according to field names
         ids.append(str(item.uuid))
         content.append(item.properties[weaviate_text_key])
         embeddings.append(item.vector["default"])  # type: ignore
@@ -136,6 +137,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # You can customize the ID column types with `id_column`
     )
 
     # [END weaviate_vectorstore_alloydb_migration_create_table]

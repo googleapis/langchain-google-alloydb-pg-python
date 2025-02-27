@@ -87,6 +87,7 @@ def get_data_batch(
 
         # Process each vector in the current batch
         for doc in all_data["vectors"].values():
+            # You need to update this data translation logic according to field names
             ids.append(doc["id"])
             embeddings.append(doc["values"])
             contents.append(str(doc["metadata"]["text"]))
@@ -144,6 +145,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # You can customize the ID column types with `id_column`
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
