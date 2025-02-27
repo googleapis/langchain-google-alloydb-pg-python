@@ -1,4 +1,4 @@
-google-cloud-aiplatform[reasoningengine,langchain]==1.81.0
+google-cloud-aiplatform[reasoningengine,langchain]==1.82.0
 google-cloud-resource-manager==1.14.1
 langchain-community==0.3.18
 langchain-google-alloydb-pg==0.9.3
