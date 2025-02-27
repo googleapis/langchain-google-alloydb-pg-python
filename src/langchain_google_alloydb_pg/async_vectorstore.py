@@ -912,7 +912,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
         columns = self.metadata_columns + [
             self.id_column,
             self.content_column,
-            self.embedding_column,
         ]
         if self.metadata_json_column:
             columns.append(self.metadata_json_column)
