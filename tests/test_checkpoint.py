@@ -72,17 +72,23 @@ def get_env_var(key: str, desc: str) -> str:
 
 
 async def aexecute(engine: AlloyDBEngine, query: str) -> None:
-    async with engine._pool.connect() as conn:
-        await conn.execute(text(query))
-        await conn.commit()
+    async def run(engine, query):
+        async with engine._pool.connect() as conn:
+            await conn.execute(text(query))
+            await conn.commit()
+
+    await engine._run_as_async(run(engine, query))
 
 
 async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
-    async with engine._pool.connect() as conn:
-        result = await conn.execute(text(query))
-        result_map = result.mappings()
-        result_fetch = result_map.fetchall()
-    return result_fetch
+    async def run(engine, query):
+        async with engine._pool.connect() as conn:
+            result = await conn.execute(text(query))
+            result_map = result.mappings()
+            result_fetch = result_map.fetchall()
+        return result_fetch
+
+    return await engine._run_as_async(run(engine, query))
 
 
 @pytest_asyncio.fixture
@@ -94,7 +100,6 @@ async def engine():
         instance=instance_id,
         database=db_name,
     )
-    engine.init_checkpoint_table(table_name=table_name)
     yield engine
     # use default table
     await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}"')
@@ -103,7 +108,7 @@ async def engine():
     await engine._connector.close()
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 async def async_engine():
     async_engine = await AlloyDBEngine.afrom_instance(
         project_id=project_id,
@@ -112,9 +117,6 @@ async def async_engine():
         instance=instance_id,
         database=db_name,
     )
-
-    await async_engine.ainit_checkpoint_table(table_name=table_name_async)
-
     yield async_engine
 
     await aexecute(async_engine, f'DROP TABLE IF EXISTS "{table_name_async}"')
@@ -125,8 +127,16 @@ async def async_engine():
 
 @pytest_asyncio.fixture  ##(scope="module")
 def checkpointer(engine):
+    engine.init_checkpoint_table(table_name=table_name)
     checkpointer = AlloyDBSaver.create_sync(engine, table_name)
     yield checkpointer
+
+
+@pytest_asyncio.fixture  ##(scope="module")
+async def async_checkpointer(async_engine):
+    await async_engine.ainit_checkpoint_table(table_name=table_name_async)
+    async_checkpointer = AlloyDBSaver.create_sync(async_engine, table_name_async)
+    yield async_checkpointer
 
 
 async def test_checkpoint(
@@ -159,7 +169,7 @@ def test_checkpoint_table(engine: Any) -> None:
 @pytest.mark.asyncio
 async def test_checkpoint_async(
     async_engine: AlloyDBEngine,
-    checkpointer: AlloyDBSaver,
+    async_checkpointer: AlloyDBSaver,
 ) -> None:
 
     test_config = {
@@ -170,15 +180,15 @@ async def test_checkpoint_async(
         }
     }
     # Verify if updated configuration after storing the checkpoint is correct
-    next_config = await checkpointer.aput(write_config, checkpoint, {}, {})
+    next_config = await async_checkpointer.aput(write_config, checkpoint, {}, {})
     assert dict(next_config) == test_config
 
     # Verify if the checkpoint is stored correctly in the database
-    results = await afetch(async_engine, f'SELECT * FROM "{table_name}"')
+    results = await afetch(async_engine, f'SELECT * FROM "{table_name_async}"')
     assert len(results) == 1
     for row in results:
         assert isinstance(row["thread_id"], str)
-    await aexecute(async_engine, f'TRUNCATE TABLE "{table_name}"')
+    await aexecute(async_engine, f'TRUNCATE TABLE "{table_name_async}"')
 
 
 @pytest.mark.asyncio
