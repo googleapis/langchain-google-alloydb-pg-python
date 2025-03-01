@@ -87,11 +87,15 @@ def get_data_batch(
 
         # Process each vector in the current batch
         for doc in all_data["vectors"].values():
-            # You need to update this data translation logic according to field names
+            # You might need to update this data translation logic according to your field names
+            # id is the unqiue identifier for the content
             ids.append(doc["id"])
+            # values is the vector embedding of the content
             embeddings.append(doc["values"])
+            # text is the content which was encoded
             contents.append(str(doc["metadata"]["text"]))
             del doc["metadata"]["text"]
+            # metatdata is the additional context
             metadata = doc["metadata"]
             metadatas.append(metadata)
 
@@ -145,7 +149,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
-        # You can customize the ID column types with `id_column`
+        # Customize the ID column types with `id_column` if not using the UUID data type
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
