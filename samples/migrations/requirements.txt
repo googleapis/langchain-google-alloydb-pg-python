@@ -8,4 +8,4 @@ langchain-weaviate==0.0.4
 pinecone-client==4.1.2
 pymilvus==2.5.4
 qdrant-client==1.13.2
-weaviate-client==4.11.0
+weaviate-client==4.11.1
