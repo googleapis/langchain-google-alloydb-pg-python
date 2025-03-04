@@ -19,7 +19,7 @@ import base64
 import json
 import re
 import uuid
-from typing import Any, Callable, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Iterable, Optional, Sequence
 
 import numpy as np
 import requests
