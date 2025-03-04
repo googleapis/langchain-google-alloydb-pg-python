@@ -38,7 +38,6 @@ from langgraph.checkpoint.base import (
     create_checkpoint,
     empty_checkpoint,
 )
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.prebuilt import (
     ToolNode,
     ValidationNode,
@@ -343,9 +342,7 @@ class FakeToolCallingModel(BaseChatModel):
             else []
         )
         message = AIMessage(
-            content=messages_string,
-            id=str(self.index),
-            tool_calls=tool_calls.copy(),
+            content=messages_string, id=str(self.index), tool_calls=tool_calls.copy()
         )
         self.index += 1
         return ChatResult(generations=[ChatGeneration(message=message)])
@@ -394,7 +391,7 @@ async def test_checkpoint_aget_tuple(
 
 
 @pytest.mark.asyncio
-async def test_metadata(
+async def test_null_chars(
     checkpointer: AsyncAlloyDBSaver,
     test_data: dict[str, Any],
 ) -> None:

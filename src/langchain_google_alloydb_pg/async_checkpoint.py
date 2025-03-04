@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Any, AsyncIterator, Optional, Sequence, Tuple
+from typing import Any, AsyncIterator, Iterator, Optional, Sequence, Tuple
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
@@ -175,6 +175,40 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             }
             for idx, (channel, value) in enumerate(writes)
         ]
+
+    def _load_blobs(
+        self, blob_values: list[tuple[bytes, bytes, bytes]]
+    ) -> dict[str, Any]:
+        if not blob_values:
+            return {}
+        return {
+            k.decode(): self.serde.loads_typed((t.decode(), v))
+            for k, t, v in blob_values
+            if t.decode() != "empty"
+        }
+
+    def _load_checkpoint(
+        self,
+        checkpoint: dict[str, Any],
+        channel_values: list[tuple[bytes, bytes, bytes]],
+        pending_sends: list[tuple[bytes, bytes]],
+    ) -> Checkpoint:
+        return Checkpoint(
+            v=checkpoint["v"],
+            ts=checkpoint["ts"],
+            id=checkpoint["id"],
+            channel_values=self._load_blobs(channel_values),
+            channel_versions=dict(checkpoint["channel_versions"]),
+            versions_seen={
+                k: dict(v) for k, v in dict(checkpoint["versions_seen"]).items()
+            },
+            pending_sends=[
+                self.serde.loads_typed((c.decode(), b)) for c, b in pending_sends or []
+            ],
+        )
+
+    def _load_metadata(self, metadata: str) -> CheckpointMetadata:
+        return self.jsonplus_serde.loads(self.jsonplus_serde.dumps(metadata))
 
     def _load_writes(
         self, writes: list[tuple[bytes, bytes, bytes, bytes]]
@@ -361,6 +395,8 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             AsyncIterator[CheckpointTuple]: Async iterator of matching checkpoint tuples.
         """
+
+        # Select SQL used in `alist` method
         SELECT = f"""
         SELECT
             thread_id,
@@ -408,14 +444,12 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                             "checkpoint_id": value["checkpoint_id"],
                         }
                     },
-                    checkpoint=self.serde.loads_typed(
-                        (value["type"], value["checkpoint"])
+                    checkpoint=self._load_checkpoint(
+                        value["checkpoint"],
+                        [],
+                        value["pending_sends"],
                     ),
-                    metadata=(
-                        self.jsonplus_serde.loads(value["metadata"])
-                        if value["metadata"] is not None
-                        else {}
-                    ),
+                    metadata=self._load_metadata(value["metadata"]),
                     parent_config=(
                         {
                             "configurable": {
@@ -490,22 +524,22 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             return CheckpointTuple(
                 config={
                     "configurable": {
-                        "thread_id": value["thread_id"],
-                        "checkpoint_ns": value["checkpoint_ns"],
+                        "thread_id": thread_id,
+                        "checkpoint_ns": checkpoint_ns,
                         "checkpoint_id": value["checkpoint_id"],
                     }
                 },
-                checkpoint=self.serde.loads_typed((value["type"], value["checkpoint"])),
-                metadata=(
-                    self.jsonplus_serde.loads(value["metadata"])
-                    if value["metadata"] is not None
-                    else {}
+                checkpoint=self._load_checkpoint(
+                    value["checkpoint"],
+                    [],
+                    value["pending_sends"],
                 ),
+                metadata=self._load_metadata(value["metadata"]),
                 parent_config=(
                     {
                         "configurable": {
-                            "thread_id": value["thread_id"],
-                            "checkpoint_ns": value["checkpoint_ns"],
+                            "thread_id": thread_id,
+                            "checkpoint_ns": checkpoint_ns,
                             "checkpoint_id": value["parent_checkpoint_id"],
                         }
                     }
