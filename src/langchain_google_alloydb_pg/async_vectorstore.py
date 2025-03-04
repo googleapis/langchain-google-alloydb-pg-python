@@ -19,7 +19,7 @@ import base64
 import json
 import re
 import uuid
-from typing import Any, Callable, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Iterable, Optional, Sequence
 
 import numpy as np
 import requests
@@ -720,7 +720,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     Document(
                         page_content=row[self.content_column],
                         metadata=metadata,
-                        id=row[self.id_column],
+                        id=str(row[self.id_column]),
                     ),
                     row["distance"],
                 )
@@ -811,7 +811,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     Document(
                         page_content=row[self.content_column],
                         metadata=metadata,
-                        id=row[self.id_column],
+                        id=str(row[self.id_column]),
                     ),
                     row["distance"],
                 )
@@ -903,7 +903,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             results = result_map.fetchall()
         return bool(len(results) == 1)
 
-    async def aget_by_ids(self, ids: Sequence[str]) -> List[Document]:
+    async def aget_by_ids(self, ids: Sequence[str]) -> list[Document]:
         """Get documents by ids."""
 
         quoted_ids = [f"'{id_val}'" for id_val in ids]
@@ -918,7 +918,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
         column_names = ", ".join(f'"{col}"' for col in columns)
 
-        query = f'SELECT {column_names} FROM "{self.schema_name}"."{self.table_name}" WHERE {self.id_column} IN ({id_list_str});'
+        query = f'SELECT {column_names} FROM "{self.schema_name}"."{self.table_name}" WHERE "{self.id_column}" IN ({id_list_str});'
 
         async with self.engine.connect() as conn:
             result = await conn.execute(text(query))
@@ -939,14 +939,14 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     Document(
                         page_content=row[self.content_column],
                         metadata=metadata,
-                        id=row[self.id_column],
+                        id=str(row[self.id_column]),
                     )
                 )
             )
 
         return documents
 
-    def get_by_ids(self, ids: Sequence[str]) -> List[Document]:
+    def get_by_ids(self, ids: Sequence[str]) -> list[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
