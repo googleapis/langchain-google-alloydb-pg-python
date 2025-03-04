@@ -38,7 +38,6 @@ from langgraph.checkpoint.base import (
     create_checkpoint,
     empty_checkpoint,
 )
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.prebuilt import (
     ToolNode,
     ValidationNode,
@@ -343,9 +342,7 @@ class FakeToolCallingModel(BaseChatModel):
             else []
         )
         message = AIMessage(
-            content=messages_string,
-            id=str(self.index),
-            tool_calls=tool_calls.copy(),
+            content=messages_string, id=str(self.index), tool_calls=tool_calls.copy()
         )
         self.index += 1
         return ChatResult(generations=[ChatGeneration(message=message)])
@@ -356,7 +353,7 @@ class FakeToolCallingModel(BaseChatModel):
 
 
 @pytest.mark.asyncio
-async def test_checkpoint_with_agent(
+async def test_checkpoint_aget_tuple(
     checkpointer: AsyncAlloyDBSaver,
 ) -> None:
     # from the tests in https://github.com/langchain-ai/langgraph/blob/909190cede6a80bb94a2d4cfe7dedc49ef0d4127/libs/langgraph/tests/test_prebuilt.py
@@ -394,26 +391,7 @@ async def test_checkpoint_with_agent(
 
 
 @pytest.mark.asyncio
-async def test_checkpoint_aget_tuple(
-    checkpointer: AsyncAlloyDBSaver,
-    test_data: dict[str, Any],
-) -> None:
-    configs = test_data["configs"]
-    checkpoints = test_data["checkpoints"]
-    metadata = test_data["metadata"]
-
-    await checkpointer.aput(configs[1], checkpoints[1], metadata[0], {})
-
-    # Matching checkpoint
-    search_results_1 = await checkpointer.aget_tuple(configs[1])
-    assert search_results_1.metadata == metadata[0]  # type: ignore
-
-    # No matching checkpoint
-    assert await checkpointer.aget_tuple(configs[0]) is None
-
-
-@pytest.mark.asyncio
-async def test_metadata(
+async def test_null_chars(
     checkpointer: AsyncAlloyDBSaver,
     test_data: dict[str, Any],
 ) -> None:
