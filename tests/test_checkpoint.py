@@ -125,45 +125,18 @@ async def async_engine():
     await async_engine._connector.close()
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 def checkpointer(engine):
     engine.init_checkpoint_table(table_name=table_name)
     checkpointer = AlloyDBSaver.create_sync(engine, table_name)
     yield checkpointer
 
 
-@pytest_asyncio.fixture  ##(scope="module")
+@pytest_asyncio.fixture
 async def async_checkpointer(async_engine):
     await async_engine.ainit_checkpoint_table(table_name=table_name_async)
     async_checkpointer = AlloyDBSaver.create_sync(async_engine, table_name_async)
     yield async_checkpointer
-
-
-async def test_checkpoint(
-    engine: AlloyDBEngine,
-    checkpointer: AlloyDBSaver,
-) -> None:
-    test_config = {
-        "configurable": {
-            "thread_id": "1",
-            "checkpoint_ns": "",
-            "checkpoint_id": "1ef4f797-8335-6428-8001-8a1503f9b875",
-        }
-    }
-    # Verify if updated configuration after storing the checkpoint is correct
-    next_config = checkpointer.put(write_config, checkpoint, {}, {})
-    assert dict(next_config) == test_config
-
-    results = await afetch(engine, f'SELECT * FROM "{table_name}"')
-    assert len(results) == 1
-    for row in results:
-        assert isinstance(row["thread_id"], str)
-    await aexecute(engine, f'TRUNCATE TABLE "{table_name}"')
-
-
-def test_checkpoint_table(engine: Any) -> None:
-    with pytest.raises(ValueError):
-        AlloyDBSaver.create_sync(engine=engine, table_name="doesnotexist")
 
 
 @pytest.mark.asyncio
@@ -191,7 +164,151 @@ async def test_checkpoint_async(
     await aexecute(async_engine, f'TRUNCATE TABLE "{table_name_async}"')
 
 
+# Test put and get methods for checkpoint
+@pytest.mark.asyncio
+async def test_checkpoint_sync(
+    engine: AlloyDBEngine,
+    checkpointer: AlloyDBSaver,
+) -> None:
+
+    test_config = {
+        "configurable": {
+            "thread_id": "1",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1ef4f797-8335-6428-8001-8a1503f9b875",
+        }
+    }
+    # Verify if updated configuration after storing the checkpoint is correct
+    next_config = checkpointer.put(write_config, checkpoint, {}, {})
+    assert dict(next_config) == test_config
+
+    # No checkpoint tuple is returned when the configuration is not found
+    assert checkpointer.get_tuple(read_config) is None
+
+    # Return the checkpoint tuple when the configuration is found
+    assert checkpointer.get_tuple(next_config) is not None
+
+    # Verify if the checkpoint is stored correctly in the database
+    results = await afetch(engine, f'SELECT * FROM "{table_name}"')
+    assert len(results) == 1
+    for row in results:
+        assert isinstance(row["thread_id"], str)
+    await aexecute(engine, f'TRUNCATE TABLE "{table_name}"')
+
+
 @pytest.mark.asyncio
 async def test_chat_table_async(async_engine):
     with pytest.raises(ValueError):
         await AlloyDBSaver.create(engine=async_engine, table_name="doesnotexist")
+
+
+def test_checkpoint_table(engine: Any) -> None:
+    with pytest.raises(ValueError):
+        AlloyDBSaver.create_sync(engine=engine, table_name="doesnotexist")
+
+
+@pytest.fixture
+def test_data():
+    """Fixture providing test data for checkpoint tests."""
+    config_1: RunnableConfig = {
+        "configurable": {
+            "thread_id": "thread-1",
+            # for backwards compatibility testing
+            "thread_ts": "1",
+            "checkpoint_ns": "",
+        }
+    }
+    config_2: RunnableConfig = {
+        "configurable": {
+            "thread_id": "thread-2",
+            "checkpoint_id": "2",
+            "checkpoint_ns": "",
+        }
+    }
+    config_3: RunnableConfig = {
+        "configurable": {
+            "thread_id": "thread-2",
+            "checkpoint_id": "2-inner",
+            "checkpoint_ns": "inner",
+        }
+    }
+
+    chkpnt_1: Checkpoint = empty_checkpoint()
+    chkpnt_2: Checkpoint = create_checkpoint(chkpnt_1, {}, 1)
+    chkpnt_3: Checkpoint = empty_checkpoint()
+
+    return {
+        "configs": [config_1, config_2, config_3],
+        "checkpoints": [chkpnt_1, chkpnt_2, chkpnt_3],
+    }
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_put_writes(
+    engine: AlloyDBEngine,
+    checkpointer: AlloyDBSaver,
+) -> None:
+
+    config: RunnableConfig = {
+        "configurable": {
+            "thread_id": "1",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1ef4f797-8335-6428-8001-8a1503f9b875",
+        }
+    }
+
+    # Verify if the checkpoint writes are stored correctly in the database
+    writes: Sequence[Tuple[str, Any]] = [
+        ("test_channel1", {}),
+        ("test_channel2", {}),
+    ]
+    checkpointer.put_writes(config, writes, task_id="1")
+
+    results = await afetch(engine, f'SELECT * FROM "{table_name_writes}"')
+    assert len(results) == 2
+    for row in results:
+        assert isinstance(row["task_id"], str)
+    await aexecute(engine, f'TRUNCATE TABLE "{table_name_writes}"')
+
+
+def test_checkpoint_list(
+    checkpointer: AlloyDBSaver,
+    test_data: dict[str, Any],
+) -> None:
+    configs = test_data["configs"]
+    checkpoints = test_data["checkpoints"]
+
+    checkpointer.put(configs[1], checkpoints[1], {}, {})
+    checkpointer.put(configs[2], checkpoints[2], {}, {})
+    checkpointer.put(configs[3], checkpoints[3], {}, {})
+
+    # call method / assertions
+    query_1 = {"source": "input"}  # search by 1 key
+    query_2 = {
+        "step": 1,
+        "writes": {"foo": "bar"},
+    }  # search by multiple keys
+    query_3: dict[str, Any] = {}  # search by no keys, return all checkpoints
+    query_4 = {"source": "update", "step": 1}  # no match
+
+    search_results_1 = list(checkpointer.list(None, filter=query_1))
+    assert len(search_results_1) == 1
+
+    search_results_2 = list(checkpointer.list(None, filter=query_2))
+    assert len(search_results_2) == 1
+
+    search_results_3 = list(checkpointer.list(None, filter=query_3))
+    assert len(search_results_3) == 3
+
+    search_results_4 = list(checkpointer.list(None, filter=query_4))
+    assert len(search_results_4) == 0
+
+    # search by config (defaults to checkpoints across all namespaces)
+    search_results_5 = list(
+        checkpointer.list({"configurable": {"thread_id": "thread-2"}})
+    )
+    assert len(search_results_5) == 2
+    assert {
+        search_results_5[0].config["configurable"]["checkpoint_ns"],
+        search_results_5[1].config["configurable"]["checkpoint_ns"],
+    } == {"", "inner"}
