@@ -51,6 +51,10 @@ def get_data_batch(
     # Iterate through the IDs and download their contents
     offset = 0
     while True:
+        # You might need to update this data translation logic according to one or more of your field names
+        # documents is the content which was encoded
+        # embeddings is the vector embedding of the content
+        # metadatas is the additional context
         docs = chromadb_client.get(
             include=["metadatas", "documents", "embeddings"],
             limit=chromadb_batch_size,
@@ -60,6 +64,7 @@ def get_data_batch(
         if len(docs["documents"]) == 0:
             break
 
+        # ids is the unqiue identifier for the content
         yield docs["ids"], docs["documents"], docs["embeddings"].tolist(), docs[
             "metadatas"
         ]
@@ -125,6 +130,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # Customize the ID column types with `id_column` if not using the UUID data type
     )
     # [END chromadb_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
