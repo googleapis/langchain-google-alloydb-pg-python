@@ -61,6 +61,8 @@ steps:
         "PINECONE_INDEX_NAME",
         "CHROMADB_COLLECTION_NAME",
         "MILVUS_COLLECTION_NAME",
+        "WEAVIATE_API_KEY",
+        "WEAVIATE_URL",
         "WEAVIATE_COLLECTION_NAME",
         "QDRANT_COLLECTION_NAME",
       ]
@@ -87,6 +89,10 @@ availableSecrets:
       env: "CHROMADB_COLLECTION_NAME"
     - versionName: projects/$PROJECT_ID/secrets/MILVUS_COLLECTION_NAME/versions/1
       env: "MILVUS_COLLECTION_NAME"
+    - versionName: projects/$PROJECT_ID/secrets/WEAVIATE_API_KEY/versions/1
+      env: "WEAVIATE_API_KEY"
+    - versionName: projects/$PROJECT_ID/secrets/WEAVIATE_URL/versions/1
+      env: "WEAVIATE_URL"
     - versionName: projects/$PROJECT_ID/secrets/WEAVIATE_COLLECTION_NAME/versions/1
       env: "WEAVIATE_COLLECTION_NAME"
     - versionName: projects/$PROJECT_ID/secrets/QDRANT_COLLECTION_NAME/versions/1
