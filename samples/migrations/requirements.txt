@@ -6,6 +6,6 @@ langchain-pinecone==0.2.3
 langchain-qdrant==0.2.0
 langchain-weaviate==0.0.4
 pinecone-client==4.1.2
-pymilvus==2.5.4
-qdrant-client==1.13.2
+pymilvus==2.5.5
+qdrant-client==1.13.3
 weaviate-client==4.11.1
