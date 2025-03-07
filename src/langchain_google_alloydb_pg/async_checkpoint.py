@@ -176,40 +176,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             for idx, (channel, value) in enumerate(writes)
         ]
 
-    def _load_blobs(
-        self, blob_values: list[tuple[bytes, bytes, bytes]]
-    ) -> dict[str, Any]:
-        if not blob_values:
-            return {}
-        return {
-            k.decode(): self.serde.loads_typed((t.decode(), v))
-            for k, t, v in blob_values
-            if t.decode() != "empty"
-        }
-
-    def _load_checkpoint(
-        self,
-        checkpoint: dict[str, Any],
-        channel_values: list[tuple[bytes, bytes, bytes]],
-        pending_sends: list[tuple[bytes, bytes]],
-    ) -> Checkpoint:
-        return Checkpoint(
-            v=checkpoint["v"],
-            ts=checkpoint["ts"],
-            id=checkpoint["id"],
-            channel_values=self._load_blobs(channel_values),
-            channel_versions=dict(checkpoint["channel_versions"]),
-            versions_seen={
-                k: dict(v) for k, v in dict(checkpoint["versions_seen"]).items()
-            },
-            pending_sends=[
-                self.serde.loads_typed((c.decode(), b)) for c, b in pending_sends or []
-            ],
-        )
-
-    def _load_metadata(self, metadata: str) -> CheckpointMetadata:
-        return self.jsonplus_serde.loads(self.jsonplus_serde.dumps(metadata))
-
     def _load_writes(
         self, writes: list[tuple[bytes, bytes, bytes, bytes]]
     ) -> list[tuple[str, str, Any]]:
@@ -395,8 +361,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             AsyncIterator[CheckpointTuple]: Async iterator of matching checkpoint tuples.
         """
-
-        # Select SQL used in `alist` method
         SELECT = f"""
         SELECT
             thread_id,
@@ -444,12 +408,14 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                             "checkpoint_id": value["checkpoint_id"],
                         }
                     },
-                    checkpoint=self._load_checkpoint(
-                        value["checkpoint"],
-                        [],
-                        value["pending_sends"],
+                    checkpoint=self.serde.loads_typed(
+                        (value["type"], value["checkpoint"])
                     ),
-                    metadata=self._load_metadata(value["metadata"]),
+                    metadata=(
+                        self.jsonplus_serde.loads(value["metadata"])
+                        if value["metadata"] is not None
+                        else {}
+                    ),
                     parent_config=(
                         {
                             "configurable": {
@@ -524,22 +490,22 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
             return CheckpointTuple(
                 config={
                     "configurable": {
-                        "thread_id": thread_id,
-                        "checkpoint_ns": checkpoint_ns,
+                        "thread_id": value["thread_id"],
+                        "checkpoint_ns": value["checkpoint_ns"],
                         "checkpoint_id": value["checkpoint_id"],
                     }
                 },
-                checkpoint=self._load_checkpoint(
-                    value["checkpoint"],
-                    [],
-                    value["pending_sends"],
+                checkpoint=self.serde.loads_typed((value["type"], value["checkpoint"])),
+                metadata=(
+                    self.jsonplus_serde.loads(value["metadata"])
+                    if value["metadata"] is not None
+                    else {}
                 ),
-                metadata=self._load_metadata(value["metadata"]),
                 parent_config=(
                     {
                         "configurable": {
-                            "thread_id": thread_id,
-                            "checkpoint_ns": checkpoint_ns,
+                            "thread_id": value["thread_id"],
+                            "checkpoint_ns": value["checkpoint_ns"],
                             "checkpoint_id": value["parent_checkpoint_id"],
                         }
                     }
@@ -548,3 +514,82 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 ),
                 pending_writes=self._load_writes(value["pending_writes"]),
             )
+
+    def put(
+        self,
+        config: RunnableConfig,
+        checkpoint: Checkpoint,
+        metadata: CheckpointMetadata,
+        new_versions: ChannelVersions,
+    ) -> RunnableConfig:
+        """Asynchronously store a checkpoint with its configuration and metadata.
+
+        Args:
+            config (RunnableConfig): Configuration for the checkpoint.
+            checkpoint (Checkpoint): The checkpoint to store.
+            metadata (CheckpointMetadata): Additional metadata for the checkpoint.
+            new_versions (ChannelVersions): New channel versions as of this write.
+
+        Returns:
+            RunnableConfig: Updated configuration after storing the checkpoint.
+        """
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBSaver. Use AlloyDBSaver interface instead."
+        )
+
+    def put_writes(
+        self,
+        config: RunnableConfig,
+        writes: Sequence[Tuple[str, Any]],
+        task_id: str,
+        task_path: str = "",
+    ) -> None:
+        """Asynchronously store intermediate writes linked to a checkpoint.
+        Args:
+            config (RunnableConfig): Configuration of the related checkpoint.
+            writes (List[Tuple[str, Any]]): List of writes to store.
+            task_id (str): Identifier for the task creating the writes.
+            task_path (str): Path of the task creating the writes.
+
+            Returns:
+                None
+        """
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBSaver. Use AlloyDBSaver interface instead."
+        )
+
+    def list(
+        self,
+        config: Optional[RunnableConfig],
+        *,
+        filter: Optional[dict[str, Any]] = None,
+        before: Optional[RunnableConfig] = None,
+        limit: Optional[int] = None,
+    ) -> Iterator[CheckpointTuple]:
+        """Asynchronously list checkpoints that match the given criteria.
+
+        Args:
+            config (Optional[RunnableConfig]): Base configuration for filtering checkpoints.
+            filter (Optional[Dict[str, Any]]): Additional filtering criteria for metadata.
+            before (Optional[RunnableConfig]): List checkpoints created before this configuration.
+            limit (Optional[int]): Maximum number of checkpoints to return.
+
+        Returns:
+            AsyncIterator[CheckpointTuple]: Async iterator of matching checkpoint tuples.
+        """
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBSaver. Use AlloyDBSaver interface instead."
+        )
+
+    def get_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
+        """Asynchronously fetch a checkpoint tuple using the given configuration.
+
+        Args:
+            config (RunnableConfig): Configuration specifying which checkpoint to retrieve.
+
+        Returns:
+            Optional[CheckpointTuple]: The requested checkpoint tuple, or None if not found.
+        """
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBSaver. Use AlloyDBSaver interface instead."
+        )
