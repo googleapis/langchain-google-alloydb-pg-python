@@ -68,9 +68,14 @@ def get_data_batch(
 
         for doc in docs:
             if doc.payload and doc.vector:
+                # You might need to update this data translation logic according to one or more of your field names
+                # id is the unqiue identifier for the content
                 ids.append(str(doc.id))
+                # page_content is the content which was encoded
                 contents.append(doc.payload["page_content"])
+                # vector is the vector embedding of the content
                 embeddings.append(doc.vector)  # type: ignore
+                # metatdata is the additional context
                 metadatas.append(doc.payload["metadata"])
 
         yield ids, contents, embeddings, metadatas
@@ -134,6 +139,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # Customize the ID column types with `id_column` if not using the UUID data type
     )
     # [END qdrant_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
