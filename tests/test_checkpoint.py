@@ -164,7 +164,7 @@ async def test_checkpoint_async(
     await aexecute(async_engine, f'TRUNCATE TABLE "{table_name_async}"')
 
 
-# Test put and get methods for checkpoint
+# Test put method for checkpoint
 @pytest.mark.asyncio
 async def test_checkpoint_sync(
     engine: AlloyDBEngine,
