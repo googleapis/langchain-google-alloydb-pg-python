@@ -116,8 +116,6 @@ async def async_engine():
         cluster=cluster_id,
         instance=instance_id,
         database=db_name,
-        user="postgres",
-        password="alloydbtest",
     )
     yield async_engine
 
