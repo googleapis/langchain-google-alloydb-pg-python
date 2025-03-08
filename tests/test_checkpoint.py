@@ -116,6 +116,8 @@ async def async_engine():
         cluster=cluster_id,
         instance=instance_id,
         database=db_name,
+        user="postgres",
+        password="alloydbtest",
     )
     yield async_engine
 
@@ -182,12 +184,6 @@ async def test_checkpoint_sync(
     next_config = checkpointer.put(write_config, checkpoint, {}, {})
     assert dict(next_config) == test_config
 
-    # No checkpoint tuple is returned when the configuration is not found
-    assert checkpointer.get_tuple(read_config) is None
-
-    # Return the checkpoint tuple when the configuration is found
-    assert checkpointer.get_tuple(next_config) is not None
-
     # Verify if the checkpoint is stored correctly in the database
     results = await afetch(engine, f'SELECT * FROM "{table_name}"')
     assert len(results) == 1
@@ -210,6 +206,7 @@ def test_checkpoint_table(engine: Any) -> None:
 @pytest.fixture
 def test_data():
     """Fixture providing test data for checkpoint tests."""
+    config_0: RunnableConfig = {"configurable": {"thread_id": "1", "checkpoint_ns": ""}}
     config_1: RunnableConfig = {
         "configurable": {
             "thread_id": "thread-1",
@@ -232,14 +229,46 @@ def test_data():
             "checkpoint_ns": "inner",
         }
     }
-
+    chkpnt_0: Checkpoint = {
+        "v": 1,
+        "ts": "2024-07-31T20:14:19.804150+00:00",
+        "id": "1ef4f797-8335-6428-8001-8a1503f9b875",
+        "channel_values": {"my_key": "meow", "node": "node"},
+        "channel_versions": {
+            "__start__": 2,
+            "my_key": 3,
+            "start:node": 3,
+            "node": 3,
+        },
+        "versions_seen": {
+            "__input__": {},
+            "__start__": {"__start__": 1},
+            "node": {"start:node": 2},
+        },
+        "pending_sends": [],
+    }
     chkpnt_1: Checkpoint = empty_checkpoint()
     chkpnt_2: Checkpoint = create_checkpoint(chkpnt_1, {}, 1)
     chkpnt_3: Checkpoint = empty_checkpoint()
 
+    metadata_1: CheckpointMetadata = {
+        "source": "input",
+        "step": 2,
+        "writes": {},
+        "parents": 1,
+    }
+    metadata_2: CheckpointMetadata = {
+        "source": "loop",
+        "step": 1,
+        "writes": {"foo": "bar"},
+        "parents": None,
+    }
+    metadata_3: CheckpointMetadata = {}
+
     return {
-        "configs": [config_1, config_2, config_3],
-        "checkpoints": [chkpnt_1, chkpnt_2, chkpnt_3],
+        "configs": [config_0, config_1, config_2, config_3],
+        "checkpoints": [chkpnt_0, chkpnt_1, chkpnt_2, chkpnt_3],
+        "metadata": [metadata_1, metadata_2, metadata_3],
     }
 
 
@@ -277,10 +306,11 @@ def test_checkpoint_list(
 ) -> None:
     configs = test_data["configs"]
     checkpoints = test_data["checkpoints"]
+    metadata = test_data["metadata"]
 
-    checkpointer.put(configs[1], checkpoints[1], {}, {})
-    checkpointer.put(configs[2], checkpoints[2], {}, {})
-    checkpointer.put(configs[3], checkpoints[3], {}, {})
+    checkpointer.put(configs[1], checkpoints[1], metadata[0], {})
+    checkpointer.put(configs[2], checkpoints[2], metadata[1], {})
+    checkpointer.put(configs[3], checkpoints[3], metadata[2], {})
 
     # call method / assertions
     query_1 = {"source": "input"}  # search by 1 key
@@ -293,9 +323,10 @@ def test_checkpoint_list(
 
     search_results_1 = list(checkpointer.list(None, filter=query_1))
     assert len(search_results_1) == 1
-
+    assert search_results_1[0].metadata == metadata[0]
     search_results_2 = list(checkpointer.list(None, filter=query_2))
     assert len(search_results_2) == 1
+    assert search_results_2[0].metadata == metadata[1]
 
     search_results_3 = list(checkpointer.list(None, filter=query_3))
     assert len(search_results_3) == 3
@@ -312,3 +343,21 @@ def test_checkpoint_list(
         search_results_5[0].config["configurable"]["checkpoint_ns"],
         search_results_5[1].config["configurable"]["checkpoint_ns"],
     } == {"", "inner"}
+
+
+def test_checkpoint_get_tuple(
+    checkpointer: AlloyDBSaver,
+    test_data: dict[str, Any],
+) -> None:
+    configs = test_data["configs"]
+    checkpoints = test_data["checkpoints"]
+    metadata = test_data["metadata"]
+
+    new_config = checkpointer.put(configs[1], checkpoints[1], metadata[0], {})
+
+    # Matching checkpoint
+    search_results_1 = checkpointer.get_tuple(new_config)
+    assert search_results_1.metadata == metadata[0]  # type: ignore
+
+    # No matching checkpoint
+    assert checkpointer.get_tuple(configs[0]) is None

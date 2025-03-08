@@ -402,10 +402,10 @@ async def test_checkpoint_aget_tuple(
     checkpoints = test_data["checkpoints"]
     metadata = test_data["metadata"]
 
-    await checkpointer.aput(configs[1], checkpoints[1], metadata[0], {})
+    new_config = await checkpointer.aput(configs[1], checkpoints[1], metadata[0], {})
 
     # Matching checkpoint
-    search_results_1 = await checkpointer.aget_tuple(configs[1])
+    search_results_1 = await checkpointer.aget_tuple(new_config)
     assert search_results_1.metadata == metadata[0]  # type: ignore
 
     # No matching checkpoint
