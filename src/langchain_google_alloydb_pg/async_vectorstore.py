@@ -598,9 +598,10 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
         column_names = ", ".join(f'"{col}"' for col in columns)
 
-        filter_string = self._create_filter_clause(filter)
-
-        filter = f"WHERE {filter_string}" if filter else ""
+        filter_string = ""
+        if filter:
+            filter_string = self._create_filter_clause(filter)
+            filter_string = f"WHERE {filter_string}" if filter else ""
         if (
             not embedding
             and isinstance(self.embedding_service, AlloyDBEmbeddings)
@@ -609,7 +610,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])
         else:
             query_embedding = f"'{embedding}'"
-        stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
+        stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter_string} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
             async with self.engine.connect() as conn:
                 # Set each query option individually
