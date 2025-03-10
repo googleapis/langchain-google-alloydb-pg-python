@@ -405,7 +405,8 @@ class TestVectorStoreSearch:
         expected_ids,
     ):
         """Test end to end construction and search."""
-        print(vs_custom_filter_sync.aget_by_ids(ids="FT004"))
+        for i in ids:
+            print(vs_custom_filter_sync.aget_by_ids(ids=ids[i]))
         docs = vs_custom_filter_sync.similarity_search("meow", k=5, filter=test_filter)
         assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
 
