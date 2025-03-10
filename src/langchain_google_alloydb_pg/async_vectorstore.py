@@ -318,9 +318,12 @@ class AsyncAlloyDBVectorStore(VectorStore):
             upsert_stmt += ";"
 
             query = insert_stmt + values_stmt + upsert_stmt
+            print(query)
+            print("Adding")
             async with self.engine.connect() as conn:
                 await conn.execute(text(query), values)
                 await conn.commit()
+            print("Added")
 
         return ids
 
@@ -602,6 +605,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if filter:
             filter_string = self._create_filter_clause(filter)
             filter_string = f"WHERE {filter_string}" if filter else ""
+        print("Query is ", filter_string)
         if (
             not embedding
             and isinstance(self.embedding_service, AlloyDBEmbeddings)

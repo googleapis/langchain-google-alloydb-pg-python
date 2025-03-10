@@ -147,7 +147,7 @@ class TestVectorStoreSearch:
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
-        # await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_FILTER_TABLE_SYNC}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_FILTER_TABLE_SYNC}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
