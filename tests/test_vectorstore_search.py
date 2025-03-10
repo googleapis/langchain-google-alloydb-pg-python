@@ -389,9 +389,7 @@ class TestVectorStoreSearchSync:
             cluster=db_cluster,
             instance=db_instance,
             region=db_region,
-            database=db_name,
-            user="postgres",
-            password="demo-project"
+            database=db_name
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE_SYNC}")
