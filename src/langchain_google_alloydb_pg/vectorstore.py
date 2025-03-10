@@ -605,7 +605,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
@@ -617,7 +617,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on image."""
@@ -629,7 +629,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
@@ -641,7 +641,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
@@ -664,7 +664,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
@@ -676,7 +676,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by vector similarity search."""
@@ -688,7 +688,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
@@ -704,7 +704,7 @@ class AlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -720,7 +720,7 @@ class AlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -736,7 +736,7 @@ class AlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
@@ -750,7 +750,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
@@ -762,7 +762,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by vector similarity search."""
@@ -774,7 +774,7 @@ class AlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on vector."""
@@ -790,7 +790,7 @@ class AlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -806,7 +806,7 @@ class AlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -822,7 +822,7 @@ class AlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""

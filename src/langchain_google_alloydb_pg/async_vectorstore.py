@@ -42,6 +42,36 @@ from .indexes import (
     ScaNNIndex,
 )
 
+COMPARISONS_TO_NATIVE = {
+    "$eq": "=",
+    "$ne": "!=",
+    "$lt": "<",
+    "$lte": "<=",
+    "$gt": ">",
+    "$gte": ">=",
+}
+
+SPECIAL_CASED_OPERATORS = {
+    "$in",
+    "$nin",
+    "$between",
+    "$exists",
+}
+
+TEXT_OPERATORS = {
+    "$like",
+    "$ilike",
+}
+
+LOGICAL_OPERATORS = {"$and", "$or", "$not"}
+
+SUPPORTED_OPERATORS = (
+    set(COMPARISONS_TO_NATIVE)
+    .union(TEXT_OPERATORS)
+    .union(LOGICAL_OPERATORS)
+    .union(SPECIAL_CASED_OPERATORS)
+)
+
 
 class AsyncAlloyDBVectorStore(VectorStore):
     """Google AlloyDB Vector Store class"""
@@ -550,7 +580,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> Sequence[RowMapping]:
         """Perform similarity search query on database."""
@@ -568,7 +598,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
         column_names = ", ".join(f'"{col}"' for col in columns)
 
-        filter = f"WHERE {filter}" if filter else ""
+        filter_string = self._create_filter_clause(filter)
+
+        filter = f"WHERE {filter_string}" if filter else ""
         if (
             not embedding
             and isinstance(self.embedding_service, AlloyDBEmbeddings)
@@ -598,7 +630,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
@@ -639,7 +671,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
@@ -664,7 +696,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
@@ -684,7 +716,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by vector similarity search."""
@@ -698,7 +730,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
@@ -734,7 +766,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -755,7 +787,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -778,7 +810,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
@@ -946,7 +978,214 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
         return documents
 
-    def get_by_ids(self, ids: Sequence[str]) -> list[Document]:
+    def _handle_field_filter(
+        self,
+        field: str,
+        value: Any,
+    ) -> str:
+        """Create a filter for a specific field.
+
+        Args:
+            field: name of field
+            value: value to filter
+                If provided as is then this will be an equality filter
+                If provided as a dictionary then this will be a filter, the key
+                will be the operator and the value will be the value to filter by
+
+        Returns:
+            sql where query as a string
+        """
+        if not isinstance(field, str):
+            raise ValueError(
+                f"field should be a string but got: {type(field)} with value: {field}"
+            )
+
+        if field.startswith("$"):
+            raise ValueError(
+                f"Invalid filter condition. Expected a field but got an operator: "
+                f"{field}"
+            )
+
+        # Allow [a-zA-Z0-9_], disallow $ for now until we support escape characters
+        if not field.isidentifier():
+            raise ValueError(
+                f"Invalid field name: {field}. Expected a valid identifier."
+            )
+
+        if isinstance(value, dict):
+            # This is a filter specification
+            if len(value) != 1:
+                raise ValueError(
+                    "Invalid filter condition. Expected a value which "
+                    "is a dictionary with a single key that corresponds to an operator "
+                    f"but got a dictionary with {len(value)} keys. The first few "
+                    f"keys are: {list(value.keys())[:3]}"
+                )
+            operator, filter_value = list(value.items())[0]
+            # Verify that that operator is an operator
+            if operator not in SUPPORTED_OPERATORS:
+                raise ValueError(
+                    f"Invalid operator: {operator}. "
+                    f"Expected one of {SUPPORTED_OPERATORS}"
+                )
+        else:  # Then we assume an equality operator
+            operator = "$eq"
+            filter_value = value
+
+        if operator in COMPARISONS_TO_NATIVE:
+            # Then we implement an equality filter
+            # native is trusted input
+            if isinstance(filter_value, str):
+                filter_value = f"'{filter_value}'"
+            native = COMPARISONS_TO_NATIVE[operator]
+            return f"({field} {native} {filter_value})"
+        elif operator == "$between":
+            # Use AND with two comparisons
+            low, high = filter_value
+
+            return f"({field} BETWEEN {low} AND {high})"
+        elif operator in {"$in", "$nin", "$like", "$ilike"}:
+            # We'll do force coercion to text
+            if operator in {"$in", "$nin"}:
+                for val in filter_value:
+                    if not isinstance(val, (str, int, float)):
+                        raise NotImplementedError(
+                            f"Unsupported type: {type(val)} for value: {val}"
+                        )
+
+                    if isinstance(val, bool):  # b/c bool is an instance of int
+                        raise NotImplementedError(
+                            f"Unsupported type: {type(val)} for value: {val}"
+                        )
+
+            if operator in {"$in"}:
+                values = str(tuple(val for val in filter_value))
+                return f"({field} IN {values})"
+            elif operator in {"$nin"}:
+                values = str(tuple(val for val in filter_value))
+                return f"({field} NOT IN {values})"
+            elif operator in {"$like"}:
+                return f"({field} LIKE '{filter_value}')"
+            elif operator in {"$ilike"}:
+                return f"({field} ILIKE '{filter_value}')"
+            else:
+                raise NotImplementedError()
+        elif operator == "$exists":
+            if not isinstance(filter_value, bool):
+                raise ValueError(
+                    "Expected a boolean value for $exists "
+                    f"operator, but got: {filter_value}"
+                )
+            else:
+                if filter_value:
+                    return f"({field} IS NOT NULL)"
+                else:
+                    return f"({field} IS NULL)"
+        else:
+            raise NotImplementedError()
+
+    def _create_filter_clause(self, filters: Any) -> str:
+        """Create LangChain filter representation to matching SQL where clauses
+
+        Args:
+            filters: Dictionary of filters to apply to the query.
+
+        Returns:
+            String containing the sql where query.
+        """
+
+        if isinstance(filters, dict):
+            if len(filters) == 1:
+                # The only operators allowed at the top level are $AND, $OR, and $NOT
+                # First check if an operator or a field
+                key, value = list(filters.items())[0]
+                if key.startswith("$"):
+                    # Then it's an operator
+                    if key.lower() not in ["$and", "$or", "$not"]:
+                        raise ValueError(
+                            f"Invalid filter condition. Expected $and, $or or $not "
+                            f"but got: {key}"
+                        )
+                else:
+                    # Then it's a field
+                    return self._handle_field_filter(key, filters[key])
+
+                if key.lower() == "$and":
+                    if not isinstance(value, list):
+                        raise ValueError(
+                            f"Expected a list, but got {type(value)} for value: {value}"
+                        )
+                    and_ = [self._create_filter_clause(el) for el in value]
+                    if len(and_) > 1:
+                        return f"({' AND '.join(and_)})"
+                    elif len(and_) == 1:
+                        return and_[0]
+                    else:
+                        raise ValueError(
+                            "Invalid filter condition. Expected a dictionary "
+                            "but got an empty dictionary"
+                        )
+                elif key.lower() == "$or":
+                    if not isinstance(value, list):
+                        raise ValueError(
+                            f"Expected a list, but got {type(value)} for value: {value}"
+                        )
+                    or_ = [self._create_filter_clause(el) for el in value]
+                    if len(or_) > 1:
+                        return f"({' OR '.join(or_)})"
+                    elif len(or_) == 1:
+                        return or_[0]
+                    else:
+                        raise ValueError(
+                            "Invalid filter condition. Expected a dictionary "
+                            "but got an empty dictionary"
+                        )
+                elif key.lower() == "$not":
+                    if isinstance(value, list):
+                        not_conditions = [
+                            self._create_filter_clause(item) for item in value
+                        ]
+                        not_stmts = [f"NOT {condition}" for condition in not_conditions]
+                        return f"({' AND '.join(not_stmts)})"
+                    elif isinstance(value, dict):
+                        not_ = self._create_filter_clause(value)
+                        return f"(NOT {not_})"
+                    else:
+                        raise ValueError(
+                            f"Invalid filter condition. Expected a dictionary "
+                            f"or a list but got: {type(value)}"
+                        )
+                else:
+                    raise ValueError(
+                        f"Invalid filter condition. Expected $and, $or or $not "
+                        f"but got: {key}"
+                    )
+            elif len(filters) > 1:
+                # Then all keys have to be fields (they cannot be operators)
+                for key in filters.keys():
+                    if key.startswith("$"):
+                        raise ValueError(
+                            f"Invalid filter condition. Expected a field but got: {key}"
+                        )
+                # These should all be fields and combined using an $and operator
+                and_ = [self._handle_field_filter(k, v) for k, v in filters.items()]
+                if len(and_) > 1:
+                    return f"({' AND '.join(and_)})"
+                elif len(and_) == 1:
+                    return and_[0]
+                else:
+                    raise ValueError(
+                        "Invalid filter condition. Expected a dictionary "
+                        "but got an empty dictionary"
+                    )
+            else:
+                raise ValueError("Got an empty dictionary for filters.")
+        else:
+            raise ValueError(
+                f"Invalid type: Expected a dictionary but got type: {type(filters)}"
+            )
+
+    def get_by_ids(self, ids: Sequence[str]) -> List[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
@@ -1037,7 +1276,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1048,7 +1287,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1059,7 +1298,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
@@ -1070,7 +1309,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1081,7 +1320,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
@@ -1094,7 +1333,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1107,7 +1346,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1120,7 +1359,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
