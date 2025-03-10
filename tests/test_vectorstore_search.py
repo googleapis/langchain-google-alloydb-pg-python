@@ -192,6 +192,7 @@ class TestVectorStoreSearch:
             ],
             id_column="langchain_id",
             store_metadata=False,
+            overwrite_existing=True,
         )
 
         vs_custom_filter = await AlloyDBVectorStore.create(
@@ -438,6 +439,7 @@ class TestVectorStoreSearchSync:
             ],
             id_column="langchain_id",
             store_metadata=False,
+            overwrite_existing=True,
         )
 
         vs_custom_filter_sync = AlloyDBVectorStore.create_sync(
