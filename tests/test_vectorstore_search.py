@@ -212,6 +212,41 @@ class TestVectorStoreSearch:
         await vs_custom_filter.aadd_documents(filter_docs, ids=ids)
         yield vs_custom_filter
 
+    async def vs_custom_filter_sync(self, engine_sync):
+        engine_sync.init_vectorstore_table(
+            CUSTOM_FILTER_TABLE_SYNC,
+            VECTOR_SIZE,
+            metadata_columns=[
+                Column("name", "TEXT"),
+                Column("code", "TEXT"),
+                Column("price", "FLOAT"),
+                Column("is_available", "BOOLEAN"),
+                Column("tags", "TEXT[]"),
+                Column("inventory_location", "INTEGER[]"),
+                Column("available_quantity", "INTEGER", nullable=True),
+            ],
+            id_column="langchain_id",
+            store_metadata=False,
+        )
+
+        vs_custom_filter_sync = AlloyDBVectorStore.create_sync(
+            engine_sync,
+            embedding_service=embeddings_service,
+            table_name=CUSTOM_FILTER_TABLE_SYNC,
+            metadata_columns=[
+                "name",
+                "code",
+                "price",
+                "is_available",
+                "tags",
+                "inventory_location",
+                "available_quantity",
+            ],
+            id_column="langchain_id",
+        )
+        vs_custom_filter_sync.add_documents(filter_docs, ids=ids)
+        yield vs_custom_filter_sync
+
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
         red_uri = str(uuid.uuid4()).replace("-", "_") + "test_image_red.jpg"
@@ -358,6 +393,17 @@ class TestVectorStoreSearch:
         )
         assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
 
+    @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
+    def test_sync_vectorstore_with_metadata_filters(
+        self,
+        vs_custom_filter_sync,
+        test_filter,
+        expected_ids,
+    ):
+        """Test end to end construction and search."""
+        docs = vs_custom_filter_sync.similarity_search("meow", k=5, filter=test_filter)
+        assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
+
 
 class TestVectorStoreSearchSync:
     @pytest.fixture(scope="module")
@@ -390,8 +436,6 @@ class TestVectorStoreSearchSync:
             instance=db_instance,
             region=db_region,
             database=db_name,
-            user="postgres",
-            password="demo-project",
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE_SYNC}")
@@ -424,42 +468,6 @@ class TestVectorStoreSearchSync:
         )
         vs_custom.add_documents(docs, ids=ids)
         yield vs_custom
-
-    @pytest_asyncio.fixture(scope="class")
-    def vs_custom_filter(self, engine_sync):
-        engine_sync.init_vectorstore_table(
-            CUSTOM_FILTER_TABLE_SYNC,
-            VECTOR_SIZE,
-            metadata_columns=[
-                Column("name", "TEXT"),
-                Column("code", "TEXT"),
-                Column("price", "FLOAT"),
-                Column("is_available", "BOOLEAN"),
-                Column("tags", "TEXT[]"),
-                Column("inventory_location", "INTEGER[]"),
-                Column("available_quantity", "INTEGER", nullable=True),
-            ],
-            id_column="langchain_id",
-            store_metadata=False,
-        )
-
-        vs_custom_filter = AlloyDBVectorStore.create_sync(
-            engine_sync,
-            embedding_service=embeddings_service,
-            table_name=CUSTOM_FILTER_TABLE_SYNC,
-            metadata_columns=[
-                "name",
-                "code",
-                "price",
-                "is_available",
-                "tags",
-                "inventory_location",
-                "available_quantity",
-            ],
-            id_column="langchain_id",
-        )
-        vs_custom_filter.add_documents(filter_docs, ids=ids)
-        yield vs_custom_filter
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
@@ -541,14 +549,3 @@ class TestVectorStoreSearchSync:
         results = vs_custom.get_by_ids(ids=test_ids)
 
         assert results[0] == Document(page_content="foo", id=ids[0])
-
-    @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
-    def test_vectorstore_with_metadata_filters(
-        self,
-        vs_custom_filter,
-        test_filter,
-        expected_ids,
-    ):
-        """Test end to end construction and search."""
-        docs = vs_custom_filter.similarity_search("meow", k=5, filter=test_filter)
-        assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
