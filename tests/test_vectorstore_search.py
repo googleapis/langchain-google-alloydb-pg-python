@@ -213,6 +213,7 @@ class TestVectorStoreSearch:
         await vs_custom_filter.aadd_documents(filter_docs, ids=ids)
         yield vs_custom_filter
 
+    @pytest_asyncio.fixture(scope="class")
     async def vs_custom_filter_sync(self, engine_sync):
         engine_sync.init_vectorstore_table(
             CUSTOM_FILTER_TABLE_SYNC,
