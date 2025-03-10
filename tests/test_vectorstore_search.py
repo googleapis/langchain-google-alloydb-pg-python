@@ -385,7 +385,7 @@ class TestVectorStoreSearchSync:
     async def engine_sync(
         self, db_project, db_region, db_cluster, db_instance, db_name
     ):
-        engine = AlloyDBEngine.from_instance(
+        engine = await AlloyDBEngine.afrom_instance(
             project_id=db_project,
             cluster=db_cluster,
             instance=db_instance,
@@ -394,6 +394,7 @@ class TestVectorStoreSearchSync:
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE_SYNC}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
@@ -411,7 +412,7 @@ class TestVectorStoreSearchSync:
             store_metadata=False,
         )
 
-        vs_custom = AlloyDBVectorStore.create_sync(
+        vs_custom = await AlloyDBVectorStore.create(
             engine_sync,
             embedding_service=embeddings_service,
             table_name=DEFAULT_TABLE_SYNC,
@@ -442,7 +443,7 @@ class TestVectorStoreSearchSync:
             overwrite_existing=True,
         )
 
-        vs_custom_filter_sync = AlloyDBVectorStore.create_sync(
+        vs_custom_filter_sync = await AlloyDBVectorStore.create(
             engine_sync,
             embedding_service=embeddings_service,
             table_name=CUSTOM_FILTER_TABLE_SYNC,
@@ -459,7 +460,6 @@ class TestVectorStoreSearchSync:
         )
         vs_custom_filter_sync.add_documents(filter_docs, ids=ids)
         yield vs_custom_filter_sync
-        await aexecute(engine_sync, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
