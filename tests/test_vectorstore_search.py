@@ -143,11 +143,11 @@ class TestVectorStoreSearch:
             cluster=db_cluster,
             instance=db_instance,
             region=db_region,
-            database=db_name,
+            database=db_name
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
-        await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_FILTER_TABLE_SYNC}")
+        # await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_FILTER_TABLE_SYNC}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
@@ -230,6 +230,8 @@ class TestVectorStoreSearch:
             id_column="langchain_id",
             store_metadata=False,
         )
+
+        print("table is ", CUSTOM_FILTER_TABLE_SYNC)
 
         vs_custom_filter_sync = AlloyDBVectorStore.create_sync(
             engine_sync,
