@@ -426,7 +426,7 @@ class TestVectorStoreSearchSync:
         yield vs_custom
 
     @pytest_asyncio.fixture(scope="class")
-    async def vs_custom_filter(self, engine_sync):
+    def vs_custom_filter(self, engine_sync):
         engine_sync.init_vectorstore_table(
             CUSTOM_FILTER_TABLE_SYNC,
             VECTOR_SIZE,
