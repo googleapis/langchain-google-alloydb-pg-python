@@ -135,7 +135,7 @@ def checkpointer(engine):
 @pytest_asyncio.fixture
 async def async_checkpointer(async_engine):
     await async_engine.ainit_checkpoint_table(table_name=table_name_async)
-    async_checkpointer = AlloyDBSaver.create_sync(async_engine, table_name_async)
+    async_checkpointer = await AlloyDBSaver.create(async_engine, table_name_async)
     yield async_checkpointer
 
 
