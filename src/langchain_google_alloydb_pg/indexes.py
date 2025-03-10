@@ -175,7 +175,7 @@ class ScaNNIndex(BaseIndex):
         """Set index query options for vector store initialization."""
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
 
-    async def create_index(self, engine: AsyncEngine) -> str:
+    async def create_extension(self, engine: AsyncEngine) -> str:
         """Creates a ScaNN index in the DB.
 
         Args:
