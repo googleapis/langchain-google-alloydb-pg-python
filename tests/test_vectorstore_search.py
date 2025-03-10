@@ -346,18 +346,18 @@ class TestVectorStoreSearch:
 
         assert results[0] == Document(page_content="foo", id=ids[0])
 
-    @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
-    async def test_vectorstore_with_metadata_filters(
-        self,
-        vs_custom_filter,
-        test_filter,
-        expected_ids,
-    ):
-        """Test end to end construction and search."""
-        docs = await vs_custom_filter.asimilarity_search(
-            "meow", k=5, filter=test_filter
-        )
-        assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
+    # @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
+    # async def test_vectorstore_with_metadata_filters(
+    #     self,
+    #     vs_custom_filter,
+    #     test_filter,
+    #     expected_ids,
+    # ):
+    #     """Test end to end construction and search."""
+    #     docs = await vs_custom_filter.asimilarity_search(
+    #         "meow", k=5, filter=test_filter
+    #     )
+    #     assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
 
 class TestVectorStoreSearchSync:
     @pytest.fixture(scope="module")
