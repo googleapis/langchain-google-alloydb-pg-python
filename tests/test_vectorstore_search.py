@@ -147,7 +147,6 @@ class TestVectorStoreSearch:
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
-        await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_FILTER_TABLE_SYNC}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
@@ -457,6 +456,7 @@ class TestVectorStoreSearchSync:
         )
         vs_custom_filter_sync.add_documents(filter_docs, ids=ids)
         yield vs_custom_filter_sync
+        await aexecute(engine_sync, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
 
     @pytest_asyncio.fixture(scope="class")
     async def image_uris(self):
@@ -491,8 +491,6 @@ class TestVectorStoreSearchSync:
         results = vs_custom.similarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
-        results = vs_custom.similarity_search("foo", k=1, filter={'id': ids[0]})
-        print(results)
 
     def test_similarity_search_image(self, image_vs, image_uris):
         results = image_vs.similarity_search_image(image_uris[0], k=1)
