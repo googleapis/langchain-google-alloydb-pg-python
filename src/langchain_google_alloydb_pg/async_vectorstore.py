@@ -1186,7 +1186,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 f"Invalid type: Expected a dictionary but got type: {type(filters)}"
             )
 
-    def get_by_ids(self, ids: Sequence[str]) -> List[Document]:
+    def get_by_ids(self, ids: Sequence[str]) -> list[Document]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
         )
