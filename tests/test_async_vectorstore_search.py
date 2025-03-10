@@ -19,9 +19,9 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS
 from PIL import Image
 from sqlalchemy import text
-from util_tests.metadata_filtering_data import FILTERING_TEST_CASES, METADATAS
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
