@@ -465,7 +465,7 @@ class TestVectorStoreSearchSync:
             id_column="langchain_id",
         )
 
-        vs_custom_filter_sync.add_documents(filter_docs_sync, ids=ids)
+        vs_custom_filter_sync.add_documents(filter_docs, ids=ids)
         yield vs_custom_filter_sync
 
     @pytest_asyncio.fixture(scope="class")
