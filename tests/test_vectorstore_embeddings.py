@@ -352,15 +352,15 @@ class TestVectorStoreEmbeddingsSync:
     def test_max_marginal_relevance_search(self, vs_custom):
         results = vs_custom.max_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
+        results = vs_custom.max_marginal_relevance_search(
+            "bar", filter="mycontent = 'boo'"
+        )
+        assert results[0] == Document(page_content="boo", id=ids[3])
 
     def test_max_marginal_relevance_search_vector(self, vs_custom, embeddings_service):
         embedding = embeddings_service.embed_query("bar")
         results = vs_custom.max_marginal_relevance_search_by_vector(embedding)
         assert results[0] == Document(page_content="bar", id=ids[1])
-        results = vs_custom.max_marginal_relevance_search(
-            "bar", filter="mycontent = 'boo'"
-        )
-        assert results[0] == Document(page_content="boo", id=ids[3])
 
     def test_max_marginal_relevance_search_vector_score(
         self, vs_custom, embeddings_service
