@@ -598,10 +598,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
         column_names = ", ".join(f'"{col}"' for col in columns)
 
-        filter_string = ""
         if filter and isinstance(filter, dict):
-            filter_string = self._create_filter_clause(filter)
-        filter_string = f"WHERE {filter_string}" if filter else ""
+            filter = self._create_filter_clause(filter)
+        filter = f"WHERE {filter}" if filter else ""
         if (
             not embedding
             and isinstance(self.embedding_service, AlloyDBEmbeddings)
