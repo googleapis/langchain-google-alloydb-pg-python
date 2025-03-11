@@ -82,7 +82,7 @@ def get_ids_batch(
 
 def get_data_batch(
     pinecone_index: Index, pinecone_namespace: str, pinecone_batch_size: int
-) -> Iterator[tuple[List[uuid.UUID], List[str], List[List[float]], List[Dict[str, Any]]]]:
+) -> Iterator[tuple[List[str], List[str], List[List[float]], List[Dict[str, Any]]]]:
     id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     """
     Fetches data (vectors, metadata, etc.) from Pinecone in batches, given an index and namespace.
@@ -167,7 +167,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
-        overwrite_existing=True,
+        #overwrite_existing=True, # Uncomment this line to overwrite existing vector store table
         # Customize the ID column types with `id_column` if not using the UUID data type
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
