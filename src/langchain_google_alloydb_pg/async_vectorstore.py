@@ -287,6 +287,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
             # Add metadata
             extra = metadata
+            print("METADATA IS ", metadata)
             for metadata_column in self.metadata_columns:
                 if metadata_column in metadata:
                     values_stmt += f", :{metadata_column}"
