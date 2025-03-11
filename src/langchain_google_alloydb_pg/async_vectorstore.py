@@ -1111,31 +1111,17 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     # Then it's a field
                     return self._handle_field_filter(key, filters[key])
 
-                if key.lower() == "$and":
+                if key.lower() == "$and" or key.lower() == "$or":
                     if not isinstance(value, list):
                         raise ValueError(
                             f"Expected a list, but got {type(value)} for value: {value}"
                         )
-                    and_ = [self._create_filter_clause(el) for el in value]
-                    if len(and_) > 1:
-                        return f"({' AND '.join(and_)})"
-                    elif len(and_) == 1:
-                        return and_[0]
-                    else:
-                        raise ValueError(
-                            "Invalid filter condition. Expected a dictionary "
-                            "but got an empty dictionary"
-                        )
-                elif key.lower() == "$or":
-                    if not isinstance(value, list):
-                        raise ValueError(
-                            f"Expected a list, but got {type(value)} for value: {value}"
-                        )
-                    or_ = [self._create_filter_clause(el) for el in value]
-                    if len(or_) > 1:
-                        return f"({' OR '.join(or_)})"
-                    elif len(or_) == 1:
-                        return or_[0]
+                    op = key[1:].upper()  # Extract the operator
+                    filter_clause = [self._create_filter_clause(el) for el in value]
+                    if len(filter_clause) > 1:
+                        return f"({f' {op} '.join(filter_clause)})"
+                    elif len(filter_clause) == 1:
+                        return filter_clause[0]
                     else:
                         raise ValueError(
                             "Invalid filter condition. Expected a dictionary "
