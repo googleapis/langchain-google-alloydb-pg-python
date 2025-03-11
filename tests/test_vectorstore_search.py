@@ -52,6 +52,9 @@ docs = [
 filter_docs = [
     Document(page_content=texts[i], metadata=METADATAS[i]) for i in range(len(texts))
 ]
+filter_docs_sync = [
+    Document(page_content=texts[i], metadata=METADATAS[i]) for i in range(len(texts))
+]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
 
@@ -220,6 +223,11 @@ class TestVectorStoreSearch:
             ],
             id_column="langchain_id",
         )
+
+        print(filter_docs)
+        for i in filter_docs:
+            print(i.metadata)
+
         await vs_custom_filter.aadd_documents(filter_docs, ids=ids)
         yield vs_custom_filter
 
@@ -373,6 +381,7 @@ class TestVectorStoreSearch:
         docs = await vs_custom_filter.asimilarity_search(
             "meow", k=5, filter=test_filter
         )
+        assert 1 == 2
         assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
 
 
@@ -477,7 +486,7 @@ class TestVectorStoreSearchSync:
         print(filter_docs)
         for i in filter_docs:
             print(i.metadata)
-        vs_custom_filter_sync.add_documents(filter_docs, ids=ids)
+        vs_custom_filter_sync.add_documents(filter_docs_sync, ids=ids)
         yield vs_custom_filter_sync
 
     @pytest_asyncio.fixture(scope="class")
