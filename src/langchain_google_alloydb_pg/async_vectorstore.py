@@ -318,6 +318,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
             upsert_stmt += ";"
 
             query = insert_stmt + values_stmt + upsert_stmt
+
+            print("INSERT QUERY ", query)
+            print("VALUES ", values)
             async with self.engine.connect() as conn:
                 await conn.execute(text(query), values)
                 await conn.commit()
