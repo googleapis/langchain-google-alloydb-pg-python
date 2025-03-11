@@ -580,7 +580,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> Sequence[RowMapping]:
         """Perform similarity search query on database."""
@@ -599,9 +599,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
         column_names = ", ".join(f'"{col}"' for col in columns)
 
         filter_string = ""
-        if filter:
+        if filter and isinstance(filter, dict):
             filter_string = self._create_filter_clause(filter)
-            filter_string = f"WHERE {filter_string}" if filter else ""
+        filter_string = f"WHERE {filter_string}" if filter else ""
         if (
             not embedding
             and isinstance(self.embedding_service, AlloyDBEmbeddings)
@@ -631,7 +631,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
@@ -672,7 +672,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
@@ -697,7 +697,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
@@ -717,7 +717,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by vector similarity search."""
@@ -731,7 +731,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by vector similarity search."""
@@ -767,7 +767,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -788,7 +788,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
@@ -811,7 +811,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected using the maximal marginal relevance."""
@@ -1277,7 +1277,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1288,7 +1288,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1299,7 +1299,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         query: str,
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
@@ -1310,7 +1310,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1321,7 +1321,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self,
         embedding: list[float],
         k: Optional[int] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         raise NotImplementedError(
@@ -1334,7 +1334,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1347,7 +1347,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[Document]:
         raise NotImplementedError(
@@ -1360,7 +1360,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         k: Optional[int] = None,
         fetch_k: Optional[int] = None,
         lambda_mult: Optional[float] = None,
-        filter: Optional[dict] = None,
+        filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         raise NotImplementedError(

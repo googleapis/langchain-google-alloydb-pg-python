@@ -248,11 +248,17 @@ class TestVectorStoreSearch:
         results = await vs.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
+        results = await vs.asimilarity_search("foo", k=1, filter="content = 'bar'")
+        assert results == [Document(page_content="bar", id=ids[1])]
 
     async def test_asimilarity_search_scann(self, vs_custom_scann_query_option):
         results = await vs_custom_scann_query_option.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
+        results = await vs_custom_scann_query_option.asimilarity_search(
+            "foo", k=1, filter="mycontent = 'bar'"
+        )
+        assert results == [Document(page_content="bar", id=ids[1])]
 
     async def test_asimilarity_search_image(self, image_vs, image_uris):
         results = await image_vs.asimilarity_search_image(image_uris[0], k=1)
@@ -326,6 +332,10 @@ class TestVectorStoreSearch:
     async def test_amax_marginal_relevance_search(self, vs):
         results = await vs.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
+        results = await vs.amax_marginal_relevance_search(
+            "bar", filter="content = 'boo'"
+        )
+        assert results[0] == Document(page_content="boo", id=ids[3])
 
     async def test_amax_marginal_relevance_search_vector(self, vs):
         embedding = embeddings_service.embed_query("bar")
@@ -348,6 +358,10 @@ class TestVectorStoreSearch:
         results = await vs_custom.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
+        results = await vs_custom.asimilarity_search(
+            "foo", k=1, filter="mycontent = 'bar'"
+        )
+        assert results == [Document(page_content="bar", id=ids[1])]
 
     async def test_similarity_search_image(self, image_vs, image_uris):
         with pytest.raises(NotImplementedError):
@@ -371,6 +385,10 @@ class TestVectorStoreSearch:
     async def test_max_marginal_relevance_search(self, vs_custom):
         results = await vs_custom.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
+        results = await vs_custom.amax_marginal_relevance_search(
+            "bar", filter="mycontent = 'boo'"
+        )
+        assert results[0] == Document(page_content="boo", id=ids[3])
 
     async def test_max_marginal_relevance_search_vector(self, vs_custom):
         embedding = embeddings_service.embed_query("bar")
