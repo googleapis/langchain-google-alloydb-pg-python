@@ -21,7 +21,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS
 from PIL import Image
-from sqlalchemy import text
+from sqlalchemy import RowMapping, Sequence, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
@@ -82,6 +82,16 @@ async def aexecute(
             await conn.commit()
 
     await engine._run_as_async(run(engine, query))
+
+async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
+    async def run(engine, query):
+        async with engine._pool.connect() as conn:
+            result = await conn.execute(text(query))
+            result_map = result.mappings()
+            result_fetch = result_map.fetchall()
+        return result_fetch
+
+    return await engine._run_as_async(run(engine, query))
 
 
 @pytest.mark.asyncio(loop_scope="class")
@@ -554,13 +564,18 @@ class TestVectorStoreSearchSync:
 
         assert results[0] == Document(page_content="foo", id=ids[0])
 
+    @pytest.mark.asyncio()
     @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
-    def test_sync_vectorstore_with_metadata_filters(
+    async def test_sync_vectorstore_with_metadata_filters(
         self,
+        engine_sync,
         vs_custom_filter_sync,
         test_filter,
         expected_ids,
     ):
         """Test end to end construction and search."""
+        results = await afetch(engine_sync, f'SELECT * FROM "{CUSTOM_FILTER_TABLE_SYNC}"')
+        print("RESULTS ", results)
+
         docs = vs_custom_filter_sync.similarity_search("meow", k=5, filter=test_filter)
         assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
