@@ -432,22 +432,22 @@ class TestVectorStoreSearchSync:
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom_filter_sync(self, engine_sync):
-        # engine_sync.init_vectorstore_table(
-        #     CUSTOM_FILTER_TABLE_SYNC,
-        #     VECTOR_SIZE,
-        #     metadata_columns=[
-        #         Column("name", "TEXT"),
-        #         Column("code", "TEXT"),
-        #         Column("price", "FLOAT"),
-        #         Column("is_available", "BOOLEAN"),
-        #         Column("tags", "TEXT[]"),
-        #         Column("inventory_location", "INTEGER[]"),
-        #         Column("available_quantity", "INTEGER", nullable=True),
-        #     ],
-        #     id_column="langchain_id",
-        #     store_metadata=False,
-        #     overwrite_existing=True,
-        # )
+        engine_sync.init_vectorstore_table(
+            CUSTOM_FILTER_TABLE_SYNC,
+            VECTOR_SIZE,
+            metadata_columns=[
+                Column("name", "TEXT"),
+                Column("code", "TEXT"),
+                Column("price", "FLOAT"),
+                Column("is_available", "BOOLEAN"),
+                Column("tags", "TEXT[]"),
+                Column("inventory_location", "INTEGER[]"),
+                Column("available_quantity", "INTEGER", nullable=True),
+            ],
+            id_column="langchain_id",
+            store_metadata=False,
+            overwrite_existing=True,
+        )
 
         vs_custom_filter_sync = await AlloyDBVectorStore.create(
             engine_sync,
