@@ -223,11 +223,6 @@ class TestVectorStoreSearch:
             ],
             id_column="langchain_id",
         )
-
-        print(filter_docs)
-        for i in filter_docs:
-            print(i.metadata)
-
         await vs_custom_filter.aadd_documents(filter_docs, ids=ids)
         yield vs_custom_filter
 
@@ -381,7 +376,6 @@ class TestVectorStoreSearch:
         docs = await vs_custom_filter.asimilarity_search(
             "meow", k=5, filter=test_filter
         )
-        assert 1 == 2
         assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
 
 
@@ -483,9 +477,7 @@ class TestVectorStoreSearchSync:
             ],
             id_column="langchain_id",
         )
-        print(filter_docs)
-        for i in filter_docs:
-            print(i.metadata)
+
         vs_custom_filter_sync.add_documents(filter_docs_sync, ids=ids)
         yield vs_custom_filter_sync
 
@@ -586,8 +578,6 @@ class TestVectorStoreSearchSync:
         expected_ids,
     ):
         """Test end to end construction and search."""
-        results = await afetch(engine_sync, f'SELECT * FROM "{CUSTOM_FILTER_TABLE_SYNC}"')
-        print("RESULTS ", results)
 
         docs = vs_custom_filter_sync.similarity_search("meow", k=5, filter=test_filter)
         assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter

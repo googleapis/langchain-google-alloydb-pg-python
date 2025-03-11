@@ -287,7 +287,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
             # Add metadata
             extra = metadata
-            print("METADATA IS ", metadata)
             for metadata_column in self.metadata_columns:
                 if metadata_column in metadata:
                     values_stmt += f", :{metadata_column}"
@@ -320,8 +319,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
             query = insert_stmt + values_stmt + upsert_stmt
 
-            print("INSERT QUERY ", query)
-            print("VALUES ", values)
             async with self.engine.connect() as conn:
                 await conn.execute(text(query), values)
                 await conn.commit()
@@ -363,7 +360,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
         """
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
-        print(metadatas)
         if not ids:
             ids = [doc.id for doc in documents]
         ids = await self.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
