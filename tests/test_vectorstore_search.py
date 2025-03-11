@@ -52,9 +52,6 @@ docs = [
 filter_docs = [
     Document(page_content=texts[i], metadata=METADATAS[i]) for i in range(len(texts))
 ]
-filter_docs_sync = [
-    Document(page_content=texts[i], metadata=METADATAS[i]) for i in range(len(texts))
-]
 
 embeddings = [embeddings_service.embed_query("foo") for i in range(len(texts))]
 
