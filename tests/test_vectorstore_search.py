@@ -86,16 +86,6 @@ async def aexecute(
 
     await engine._run_as_async(run(engine, query))
 
-async def afetch(engine: AlloyDBEngine, query: str) -> Sequence[RowMapping]:
-    async def run(engine, query):
-        async with engine._pool.connect() as conn:
-            result = await conn.execute(text(query))
-            result_map = result.mappings()
-            result_fetch = result_map.fetchall()
-        return result_fetch
-
-    return await engine._run_as_async(run(engine, query))
-
 
 @pytest.mark.asyncio(loop_scope="class")
 class TestVectorStoreSearch:
@@ -568,11 +558,9 @@ class TestVectorStoreSearchSync:
 
         assert results[0] == Document(page_content="foo", id=ids[0])
 
-    @pytest.mark.asyncio()
     @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
     async def test_sync_vectorstore_with_metadata_filters(
         self,
-        engine_sync,
         vs_custom_filter_sync,
         test_filter,
         expected_ids,

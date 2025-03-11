@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import json
 import re
 import uuid
@@ -286,7 +287,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 values_stmt = f"VALUES (:id, :content, {self.embedding_service.embed_query_inline(content)}"
 
             # Add metadata
-            extra = metadata
+            extra = copy.deepcopy(metadata)
             for metadata_column in self.metadata_columns:
                 if metadata_column in metadata:
                     values_stmt += f", :{metadata_column}"

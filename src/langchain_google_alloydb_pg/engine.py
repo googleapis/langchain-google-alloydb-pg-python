@@ -482,8 +482,6 @@ class AlloyDBEngine:
             query += f""",\n"{metadata_json_column}" JSON"""
         query += "\n);"
 
-        print("QUERY IS ", query)
-
         async with self._pool.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
