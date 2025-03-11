@@ -27,3 +27,4 @@ jobs:
     uses: ./.github/workflows/cloud_build_failure_reporter.yml
     with:
       trigger_names: "integration-test-nightly,continuous-test-on-merge"
+      
