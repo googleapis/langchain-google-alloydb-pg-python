@@ -452,7 +452,7 @@ class TestVectorStoreSearchSync:
         vs_custom_filter_sync = await AlloyDBVectorStore.create(
             engine_sync,
             embedding_service=embeddings_service,
-            table_name="filter-test",
+            table_name=CUSTOM_FILTER_TABLE_SYNC,
             metadata_columns=[
                 "name",
                 "code",
