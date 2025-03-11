@@ -19,11 +19,12 @@ on:
     - cron: '0 6 * * *'  # Runs at 6 AM every morning
 
 jobs:
+  permissions:
+      issues: 'write'
+      checks: 'read'
+      contents: 'read'
   run_reporter:
     uses: ./.github/workflows/cloud_build_failure_reporter.yml
     with:
       trigger_names: "integration-test-nightly,continuous-test-on-merge"
-    permissions:
-      issues: 'write'
-      checks: 'read'
-      contents: 'read'
+    
