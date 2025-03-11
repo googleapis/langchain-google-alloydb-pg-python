@@ -832,7 +832,6 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if index.enable_extension:
             if callable(getattr(index, "create_extension", None)):
                 function = await index.create_extension(self.engine)  # type: ignore
-                print(function)
         else:
             function = index.distance_strategy.index_function
 
