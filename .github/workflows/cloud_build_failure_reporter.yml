@@ -38,7 +38,7 @@ jobs:
     runs-on: 'ubuntu-latest'
 
     steps:
-      - uses: 'googleapis/langchain-google-alloydb-pg-python/.github/workflows/cloud_build_failure_reporter.yml@074f9932a8099256ff210771473badbd2156713b'
+      - uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # v7
         with:
           script: |-
                   // parse test names
