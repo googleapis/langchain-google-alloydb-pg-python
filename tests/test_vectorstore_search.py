@@ -474,6 +474,9 @@ class TestVectorStoreSearchSync:
             ],
             id_column="langchain_id",
         )
+        print(filter_docs)
+        for i in filter_docs:
+            print(i.metadata)
         vs_custom_filter_sync.add_documents(filter_docs, ids=ids)
         yield vs_custom_filter_sync
 
