@@ -16,20 +16,17 @@ steps:
   - id: Install dependencies
     name: python:${_VERSION}
     entrypoint: pip
-    args: ["install", "--user", "-r", "samples/migrations/requirements.txt"]
-
-  - id: Install module (and test requirements)
-    name: python:${_VERSION}
-    entrypoint: pip
-    args: ["install", ".[test]", "--user"]
+    dir: samples/migrations
+    args: ["install", "--user", "-r", "requirements.txt"]
 
   - id: Run samples tests
     name: python:${_VERSION}
     entrypoint: /bin/bash
+    dir: samples/migrations
     args:
       - "-c"
       - |
-        python -m pytest samples/migrations/
+        python -m pytest
     env:
       - "PROJECT_ID=$PROJECT_ID"
       - "INSTANCE_ID=$_INSTANCE_ID"
