@@ -20,6 +20,7 @@ import uuid
 
 from typing import Any, Iterator, List, Dict
 from google.cloud.alloydb.connector import IPTypes
+from langchain_google_alloydb_pg import Column
 
 """Migrate PineconeVectorStore to Langchain AlloyDBVectorStore.
 
@@ -38,6 +39,9 @@ DB_NAME = "my-db"
 DB_USER = "postgres"
 DB_PWD = "secret-password"
 IP_TYPE = IPTypes.PRIVATE # IPTypes.PUBLIC or IPTypes.PRIVATE
+PINECONE_CONTENT_KEY = 'text' # Define the metadata key that will be moved to the content column in AlloyDB
+GENERATE_ALLOYDB_IDS = True # Set True if you want to generate new UUID keys for your AlloyDB vector store table
+PINECONE_ID_COLUMN = Column("id", "UUID") # Type must be UUID if GENERATE_ALLOYDB_IDS is True
 
 # TODO(developer): Optional, change the values below.
 PINECONE_NAMESPACE = ""
@@ -81,36 +85,47 @@ def get_ids_batch(
 
 
 def get_data_batch(
-    pinecone_index: Index, pinecone_namespace: str, pinecone_batch_size: int
+    pinecone_index: Index, 
+    pinecone_namespace: str, 
+    pinecone_batch_size: int,
+    generate_alloydb_ids: bool = GENERATE_ALLOYDB_IDS,
+    pinecone_content_key: str = PINECONE_CONTENT_KEY
 ) -> Iterator[tuple[List[str], List[str], List[List[float]], List[Dict[str, Any]]]]:
-    id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     """
     Fetches data (vectors, metadata, etc.) from Pinecone in batches, given an index and namespace.
     Uses a generator to yield batches of data.
     """
+    id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
     # Iterate through the IDs and download their contents
     for ids in id_iterator:
         if not ids:
             return None
         all_data = pinecone_index.fetch(ids=ids, namespace=pinecone_namespace)
-        ids_batch: List[uuid.UUID] = []  # Explicitly type as List[uuid.UUID]
+        ids_batch = []
         embeddings = []
         contents = []
         metadatas = []
 
         # Process each vector in the current batch
         for vector_id, vector in all_data.vectors.items():
-            # You might need to update this data translation logic according to your field names
-            # id is the unqiue identifier for the content
-            ids_batch.append(uuid.uuid4()) # Generate UUIDs for AlloyDB
-            embeddings.append(vector.values)
-            # Check if 'title' exists in metadata before accessing
-            if 'title' in vector.metadata:
-                contents.append(str(vector.metadata['title']))
-                del vector.metadata['title']  # Remove 'title' after processing
+            # You might need to update this data translation logic according to one or more of your field names
+            # id_batch contains the unqiue identifiers for the content
+            # Generate UUID id for row if generate_alloydb_ids is True. Otherwise, use the source pinecone id. 
+            if generate_alloydb_ids:
+                ids_batch.append(uuid.uuid4()) # Generate UUIDs for AlloyDB
             else:
-                contents.append("")  # Or handle the missing 'title' field appropriately
+                ids_batch.append(vector.id)
+            # values is the vector embedding of the content
+            embeddings.append(vector.values)
+            # contents is the value written to the content column in AlloyDB
+            # Check if pinecone_content_key exists in metadata before accessing
+            if pinecone_content_key in vector.metadata:
+                contents.append(str(vector.metadata[pinecone_content_key]))
+                del vector.metadata[pinecone_content_key]  # Remove pinecone_content_key after processing
+            else:
+                contents.append("")  # Or handle the missing pinecone_content_key field appropriately
+            # metadatas is the additional context
             metadatas.append(vector.metadata)
 
         # Yield the current batch of results
@@ -125,6 +140,7 @@ async def main(
     pinecone_namespace: str = PINECONE_NAMESPACE,
     vector_size: int = VECTOR_SIZE,
     pinecone_batch_size: int = PINECONE_BATCH_SIZE,
+    pinecone_id_column: Column = PINECONE_ID_COLUMN,
     project_id: str = PROJECT_ID,
     region: str = REGION,
     cluster: str = CLUSTER,
@@ -167,8 +183,8 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
-        #overwrite_existing=True, # Uncomment this line to overwrite existing vector store table
-        # Customize the ID column types with `id_column` if not using the UUID data type
+        id_column = pinecone_id_column, # Customize the ID column types with `id_column`
+        overwrite_existing=True, # Uncomment this line to overwrite existing vector store table
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
@@ -189,6 +205,7 @@ async def main(
         engine=alloydb_engine,
         embedding_service=embeddings_service,
         table_name=alloydb_table,
+        id_column = pinecone_id_column.name,
     )
     # [END pinecone_vectorstore_alloydb_migration_vector_store]
     print("Langchain AlloyDBVectorStore initialized.")
