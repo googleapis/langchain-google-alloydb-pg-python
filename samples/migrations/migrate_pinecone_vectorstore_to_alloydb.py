@@ -150,6 +150,7 @@ async def main(
         table_name=alloydb_table,
         vector_size=vector_size,
         # Customize the ID column types with `id_column` if not using the UUID data type
+        #overwrite_existing=True, # Uncomment this line to overwrite existing vector store table
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
