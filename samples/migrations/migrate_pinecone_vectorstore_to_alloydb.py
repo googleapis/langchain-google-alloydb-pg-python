@@ -36,6 +36,7 @@ INSTANCE = "my-instance"
 DB_NAME = "my-db"
 DB_USER = "postgres"
 DB_PWD = "secret-password"
+PINECONE_CONTENT_COLUMN_NAME = 'title'  # Define the metadata key that will be moved to the content column in the AlloyDB vector store
 
 # TODO(developer): Optional, change the values below.
 PINECONE_NAMESPACE = ""
@@ -73,7 +74,10 @@ def get_ids_batch(
 
 
 def get_data_batch(
-    pinecone_index: Index, pinecone_namespace: str, pinecone_batch_size: int
+    pinecone_index: Index, 
+    pinecone_namespace: str, 
+    pinecone_batch_size: int,
+    pinecone_content_column_name: str = PINECONE_CONTENT_COLUMN_NAME
 ) -> Iterator[tuple[list[str], list[str], list[Any], list[Any]]]:
     id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
@@ -92,10 +96,13 @@ def get_data_batch(
             ids.append(doc["id"])
             # values is the vector embedding of the content
             embeddings.append(doc["values"])
-            # text is the content which was encoded
-            contents.append(str(doc["metadata"]["text"]))
-            del doc["metadata"]["text"]
-            # metatdata is the additional context
+            # Check if pinecone_content_column_name exists in metadata before accessing
+            if pinecone_content_column_name in doc.metadata:
+                contents.append(str(doc.metadata[pinecone_content_column_name]))
+                del doc.metadata[pinecone_content_column_name]  # Remove pinecone_content_column_name after processing
+            else:
+                contents.append("")  # Or handle the missing pinecone_content_column_name field appropriately
+            # metadata is the additional context
             metadata = doc["metadata"]
             metadatas.append(metadata)
 
@@ -111,6 +118,7 @@ async def main(
     pinecone_namespace: str = PINECONE_NAMESPACE,
     vector_size: int = VECTOR_SIZE,
     pinecone_batch_size: int = PINECONE_BATCH_SIZE,
+    pinecone_content_column_name: str = PINECONE_CONTENT_COLUMN_NAME,
     project_id: str = PROJECT_ID,
     region: str = REGION,
     cluster: str = CLUSTER,
@@ -175,7 +183,7 @@ async def main(
     print("Langchain AlloyDBVectorStore initialized.")
 
     data_iterator = get_data_batch(
-        pinecone_index, pinecone_namespace, pinecone_batch_size
+        pinecone_index, pinecone_namespace, pinecone_batch_size, pinecone_content_column_name
     )
 
     # [START pinecone_vectorstore_alloydb_migration_insert_data_batch]
