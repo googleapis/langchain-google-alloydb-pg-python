@@ -132,9 +132,7 @@ class TestEngineAsync:
         id = str(uuid.uuid4())
         content = "coffee"
         embedding = await embeddings_service.aembed_query(content)
-        # Note: DeterministicFakeEmbedding generates a numpy array, converting to list a list of float values
-        embedding_string = [float(dimension) for dimension in embedding]
-        stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding_string}');"
+        stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         await aexecute(engine, stmt)
 
     async def test_engine_args(self, engine):
@@ -367,9 +365,7 @@ class TestEngineSync:
         id = str(uuid.uuid4())
         content = "coffee"
         embedding = await embeddings_service.aembed_query(content)
-        # Note: DeterministicFakeEmbedding generates a numpy array, converting to list a list of float values
-        embedding_string = [float(dimension) for dimension in embedding]
-        stmt = f"INSERT INTO {DEFAULT_TABLE_SYNC} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding_string}');"
+        stmt = f"INSERT INTO {DEFAULT_TABLE_SYNC} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
         await aexecute(engine, stmt)
 
     async def test_init_table_custom(self, engine):

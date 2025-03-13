@@ -240,7 +240,7 @@ class TestPgvectorengine:
             [
                 mock.Mock(
                     document=f"doc{i}",
-                    embedding=f"[{i}]",
+                    embedding=[i],
                     cmetadata={"meta": f"data{i}"},
                     id=f"id{i}",
                 )

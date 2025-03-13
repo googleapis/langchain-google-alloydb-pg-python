@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import json
 import warnings
 from typing import Any, AsyncIterator, Iterator, Optional, Sequence, TypeVar
 
@@ -101,7 +100,7 @@ async def __concurrent_batch_insert(
             asyncio.ensure_future(
                 vector_store.aadd_embeddings(
                     texts=[data.document for data in batch_data],
-                    embeddings=[json.loads(data.embedding) for data in batch_data],
+                    embeddings=[data.embedding for data in batch_data],
                     metadatas=[data.cmetadata for data in batch_data],
                     ids=[data.id for data in batch_data],
                 )
