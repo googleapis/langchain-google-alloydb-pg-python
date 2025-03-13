@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.4](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.3...v0.9.4) (2025-03-13)
+
+
+### Bug Fixes
+
+* **deps:** Update dependency numpy to v2 ([#327](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/327)) ([4b1f8dc](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/4b1f8dcb44db79c99d4e76d66d697d826eaf97c9))
+
 ## [0.9.3](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.2...v0.9.3) (2025-02-25)
 
 
