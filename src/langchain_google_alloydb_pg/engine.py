@@ -428,7 +428,8 @@ class AlloyDBEngine:
 
     async def close(self) -> None:
         """Dispose of connection pool"""
-        await self._run_as_async(self._connector.close())
+        if self._connector:
+            await self._run_as_async(self._connector.close())
         await self._run_as_async(self._pool.dispose())
 
     async def _ainit_vectorstore_table(
