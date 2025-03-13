@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.9.3](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.2...v0.9.3) (2025-02-25)
+
+
+### Bug Fixes
+
+* **asimilarity_search_image:** Fix bug in image search functionality ([#357](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/357)) ([23b05d2](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/23b05d20da1c891a327ff5a9113194906c395aec))
+* Revert "chore(deps): update dependency google-cloud-storage to v3" ([#360](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/360)) ([0fcfdd5](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/0fcfdd5557211c8c77adf5c92b6ddf5eaf59a4d2))
+
+## [0.9.2](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.1...v0.9.2) (2025-02-12)
+
+
+### Bug Fixes
+
+* Add write messages to Chat History ([#341](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/341)) ([792337f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/792337f94cd07a0e2f75f6dcd919942921209231))
+* Enquote column names to not match reserved keywords. ([#346](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/346)) ([f8d1385](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f8d1385b3d20d67d790449ad02abca0a87be4472))
+
 ## [0.9.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.0...v0.9.1) (2025-01-16)
 
 

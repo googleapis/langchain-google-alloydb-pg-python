@@ -33,6 +33,7 @@ jobs:
     permissions:
       issues: 'write'
       checks: 'read'
+      contents: 'read'
 
     runs-on: 'ubuntu-latest'
 

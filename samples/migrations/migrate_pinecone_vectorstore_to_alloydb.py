@@ -18,6 +18,8 @@
 import asyncio
 from typing import Any, Iterator
 
+from google.cloud.alloydb.connector import IPTypes
+
 """Migrate PineconeVectorStore to Langchain AlloyDBVectorStore.
 
 Given a pinecone index, the following code fetches the data from pinecone
@@ -77,7 +79,7 @@ def get_data_batch(
     # [START pinecone_get_data_batch]
     # Iterate through the IDs and download their contents
     for ids in id_iterator:
-        all_data = pinecone_index.fetch(ids=ids)
+        all_data = pinecone_index.fetch(ids=ids, namespace=pinecone_namespace)
         ids = []
         embeddings = []
         contents = []
@@ -85,10 +87,15 @@ def get_data_batch(
 
         # Process each vector in the current batch
         for doc in all_data["vectors"].values():
+            # You might need to update this data translation logic according to one or more of your field names
+            # id is the unqiue identifier for the content
             ids.append(doc["id"])
+            # values is the vector embedding of the content
             embeddings.append(doc["values"])
+            # text is the content which was encoded
             contents.append(str(doc["metadata"]["text"]))
             del doc["metadata"]["text"]
+            # metatdata is the additional context
             metadata = doc["metadata"]
             metadatas.append(metadata)
 
@@ -133,6 +140,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
+        ip_type=IPTypes.PUBLIC,
     )
     # [END pinecone_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
@@ -141,6 +149,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # Customize the ID column types with `id_column` if not using the UUID data type
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")

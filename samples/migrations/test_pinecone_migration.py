@@ -19,6 +19,7 @@ from typing import Sequence
 
 import pytest
 import pytest_asyncio
+from google.cloud.alloydb.connector import IPTypes
 from langchain_core.documents import Document
 from langchain_core.embeddings import FakeEmbeddings
 from langchain_pinecone import PineconeVectorStore  # type: ignore
@@ -75,7 +76,7 @@ def create_pinecone_index(
         name=pinecone_index_name,
         dimension=768,
         metric="cosine",
-        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+        spec=ServerlessSpec(cloud="gcp", region="us-central1"),
     )
     while not client.describe_index(pinecone_index_name).status["ready"]:
         time.sleep(1)
@@ -151,6 +152,7 @@ class TestMigrations:
             database=db_name,
             user=db_user,
             password=db_password,
+            ip_type=IPTypes.PUBLIC,
         )
 
         yield engine

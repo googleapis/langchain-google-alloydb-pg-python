@@ -17,6 +17,8 @@
 import asyncio
 from typing import Any, Iterator
 
+from google.cloud.alloydb.connector import IPTypes
+
 """Migrate Milvus to Langchain AlloyDBVectorStore.
 Given a Milvus collection, the following code fetches the data from Milvus
 in batches and uploads to an AlloyDBVectorStore.
@@ -66,13 +68,18 @@ def get_data_batch(
             iterator.close()
             break
         for i in range(len(page)):
+            # You might need to update this data translation logic according to one or more of your field names
             doc = page[i]
+            # pk is the unqiue identifier for the content
             ids.append(doc["pk"])
+            # text is the content which was encoded
             content.append(doc["text"])
+            # vector is the vector embedding of the content
             embeddings.append(doc["vector"])
             del doc["pk"]
             del doc["text"]
             del doc["vector"]
+            # doc is the additional context
             metadatas.append(doc)
         yield ids, content, embeddings, metadatas
     # [END milvus_get_data_batch]
@@ -110,6 +117,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
+        ip_type=IPTypes.PUBLIC,
     )
     # [END milvus_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
@@ -127,6 +135,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # Customize the ID column types with `id_column` if not using the UUID data type
     )
     # [END milvus_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
