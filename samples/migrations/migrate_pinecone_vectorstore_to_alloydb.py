@@ -36,6 +36,7 @@ INSTANCE = "my-instance"
 DB_NAME = "my-db"
 DB_USER = "postgres"
 DB_PWD = "secret-password"
+PINECONE_CONTENT_COLUMN_NAME = 'title'  # Define the metadata key that will be moved to the content column in the AlloyDB vector store
 
 # TODO(developer): Optional, change the values below.
 PINECONE_NAMESPACE = ""
@@ -46,37 +47,48 @@ MAX_CONCURRENCY = 100
 
 from pinecone import Index  # type: ignore
 
-
 def get_ids_batch(
     pinecone_index: Index,
     pinecone_namespace: str = PINECONE_NAMESPACE,
     pinecone_batch_size: int = PINECONE_BATCH_SIZE,
 ) -> Iterator[list[str]]:
+    """
+    Fetches IDs from a Pinecone index in batches, handling pagination correctly.
+    Uses a generator to yield batches of IDs.
+    """
     # [START pinecone_get_ids_batch]
     results = pinecone_index.list_paginated(
         prefix="", namespace=pinecone_namespace, limit=pinecone_batch_size
     )
     ids = [v.id for v in results.vectors]
-    yield ids
+    if ids: # Prevents yielding an empty list.
+      yield ids
 
-    while results.pagination is not None:
-        pagination_token = results.pagination.next
+    # Corrected pagination check:  Check BOTH pagination and pagination.next
+    while results.pagination is not None and results.pagination.get("next") is not None:
+        pagination_token = results.pagination.get("next")
         results = pinecone_index.list_paginated(
-            prefix="", pagination_token=pagination_token, limit=pinecone_batch_size
+            prefix="", pagination_token=pagination_token, namespace=pinecone_namespace, limit=pinecone_batch_size
         )
 
         # Extract and yield the next batch of IDs
         ids = [v.id for v in results.vectors]
-        yield ids
+        if ids: # Prevents yielding an empty list.
+            yield ids
     # [END pinecone_get_ids_batch]
     print("Pinecone client fetched all ids from index.")
 
 
 def get_data_batch(
-    pinecone_index: Index, pinecone_namespace: str, pinecone_batch_size: int
+    pinecone_index: Index, 
+    pinecone_namespace: str, 
+    pinecone_batch_size: int,
+    pinecone_content_column_name: str = PINECONE_CONTENT_COLUMN_NAME
 ) -> Iterator[tuple[list[str], list[str], list[Any], list[Any]]]:
     id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
+    import uuid
+
     # Iterate through the IDs and download their contents
     for ids in id_iterator:
         all_data = pinecone_index.fetch(ids=ids, namespace=pinecone_namespace)
@@ -89,13 +101,22 @@ def get_data_batch(
         for doc in all_data["vectors"].values():
             # You might need to update this data translation logic according to one or more of your field names
             # id is the unqiue identifier for the content
-            ids.append(doc["id"])
+            # Check if id is in the current doc before accessing
+            if 'id' in doc:
+                ids.append(doc["id"])
+            else:
+                # Generate a uuid if id column is missing in source
+                # You will need to make sure your vector store table uses uuid for the id column
+                ids.append(str(uuid.uuid4()))
             # values is the vector embedding of the content
             embeddings.append(doc["values"])
-            # text is the content which was encoded
-            contents.append(str(doc["metadata"]["text"]))
-            del doc["metadata"]["text"]
-            # metatdata is the additional context
+            # Check if pinecone_content_column_name exists in metadata before accessing
+            if pinecone_content_column_name in doc.metadata:
+                contents.append(str(doc.metadata[pinecone_content_column_name]))
+                del doc.metadata[pinecone_content_column_name]  # Remove pinecone_content_column_name after processing
+            else:
+                contents.append("")  # Or handle the missing pinecone_content_column_name field appropriately
+            # metadata is the additional context
             metadata = doc["metadata"]
             metadatas.append(metadata)
 
@@ -111,6 +132,7 @@ async def main(
     pinecone_namespace: str = PINECONE_NAMESPACE,
     vector_size: int = VECTOR_SIZE,
     pinecone_batch_size: int = PINECONE_BATCH_SIZE,
+    pinecone_content_column_name: str = PINECONE_CONTENT_COLUMN_NAME,
     project_id: str = PROJECT_ID,
     region: str = REGION,
     cluster: str = CLUSTER,
@@ -140,16 +162,20 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
-        ip_type=IPTypes.PUBLIC,
+        ip_type=IPTypes.PRIVATE,
     )
     # [END pinecone_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
 
     # [START pinecone_vectorstore_alloydb_migration_create_table]
+    from langchain_google_alloydb_pg import Column
+
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        overwrite_existing=True,
         # Customize the ID column types with `id_column` if not using the UUID data type
+        id_column=Column("id", "TEXT") #  Default is Column("langchain_id", "UUID")
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
@@ -170,12 +196,13 @@ async def main(
         engine=alloydb_engine,
         embedding_service=embeddings_service,
         table_name=alloydb_table,
+        id_column="id"  # Must match id_column defined in ainit_vectorstore_table()
     )
     # [END pinecone_vectorstore_alloydb_migration_vector_store]
     print("Langchain AlloyDBVectorStore initialized.")
 
     data_iterator = get_data_batch(
-        pinecone_index, pinecone_namespace, pinecone_batch_size
+        pinecone_index, pinecone_namespace, pinecone_batch_size, pinecone_content_column_name
     )
 
     # [START pinecone_vectorstore_alloydb_migration_insert_data_batch]
