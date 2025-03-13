@@ -140,7 +140,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
-        ip_type=IPTypes.PUBLIC,
+        ip_type=IPTypes.PUBLIC,  # Optionally use IPTypes.PRIVATE
     )
     # [END pinecone_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
