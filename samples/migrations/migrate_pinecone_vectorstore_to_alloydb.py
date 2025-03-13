@@ -146,10 +146,13 @@ async def main(
     print("Langchain AlloyDB client initiated.")
 
     # [START pinecone_vectorstore_alloydb_migration_create_table]
+    from langchain_google_alloydb_pg import Column
+
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
-        # Customize the ID column types with `id_column` if not using the UUID data type
+        # Customize the ID column types with `id_column` if not using the default UUID data type
+        id_column=Column("id", "TEXT") #  Default is Column("langchain_id", "UUID")
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
@@ -170,6 +173,7 @@ async def main(
         engine=alloydb_engine,
         embedding_service=embeddings_service,
         table_name=alloydb_table,
+        id_column="id"  # Must match name of id_column defined in ainit_vectorstore_table()
     )
     # [END pinecone_vectorstore_alloydb_migration_vector_store]
     print("Langchain AlloyDBVectorStore initialized.")
