@@ -150,7 +150,7 @@ See the full `Chat Message History`_ tutorial.
 Langgraph Checkpoint Usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``Checkpoint`` to save snapshots of the graph state at a given point in time.
+Use ``AlloyDBSaver`` to save snapshots of the graph state at a given point in time.
 
 .. code:: python
 
@@ -165,7 +165,7 @@ Use ``Checkpoint`` to save snapshots of the graph state at a given point in time
 
 See the full `Checkpoint`_ tutorial.
 
-.. _`Checkpoint`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/checkpoint.ipynb
+.. _`Checkpoint`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/langgraph_checkpoint.ipynb
 
 Example Usage
 -------------
