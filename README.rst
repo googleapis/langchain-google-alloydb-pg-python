@@ -147,6 +147,26 @@ See the full `Chat Message History`_ tutorial.
 
 .. _`Chat Message History`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/chat_message_history.ipynb
 
+Langgraph Checkpoint Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``Checkpoint`` to save snapshots of the graph state at a given point in time.
+
+.. code:: python
+
+   from langchain_google_alloydb_pg import AlloyDBSaver, AlloyDBEngine
+
+
+   engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+   checkpoint = AlloyDBSaver.create_sync(
+       engine,
+       table_name="checkpoints"
+   )
+
+See the full `Checkpoint`_ tutorial.
+
+.. _`Checkpoint`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/checkpoint.ipynb
+
 Example Usage
 -------------
 
