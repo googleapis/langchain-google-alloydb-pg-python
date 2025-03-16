@@ -162,11 +162,14 @@ async def main(
     print("Langchain AlloyDB client initiated.")
 
     # [START pinecone_vectorstore_alloydb_migration_create_table]
+    from langchain_google_alloydb_pg import Column
+
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
-        # Customize the ID column types with `id_column` if not using the UUID data type
-        # overwrite_existing=True, # Uncomment this line to delete and re-create pre-existing vector store table
+        # Customize the ID column types if not using the UUID data type
+        # id_column=Column("langchain_id", "TEXT") #  Default is Column("langchain_id", "UUID")
+        # overwrite_existing=True, # Drop the old table and Create a new vector store table
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
