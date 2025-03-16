@@ -40,6 +40,8 @@ PINECONE_CONTENT_COLUMN_NAME = 'title'  # Define the metadata key that will be m
 
 # TODO(developer): Optional, change the values below.
 PINECONE_NAMESPACE = ""
+PINECONE_CONTENT_COLUMN_NAME = "title"  # Define the metadata key that will be moved to the content column in the AlloyDB vector store
+PINECONE_ID_COLUMN_NAME = "id_key"  # Define the metadata key that will be moved to the id column in the AlloyDB vector store
 VECTOR_SIZE = 768
 PINECONE_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
@@ -61,29 +63,33 @@ def get_ids_batch(
         prefix="", namespace=pinecone_namespace, limit=pinecone_batch_size
     )
     ids = [v.id for v in results.vectors]
-    if ids: # Prevents yielding an empty list.
-      yield ids
+    if ids:  # Prevents yielding an empty list.
+        yield ids
 
-    # Corrected pagination check:  Check BOTH pagination and pagination.next
+    # Check BOTH pagination and pagination.next
     while results.pagination is not None and results.pagination.get("next") is not None:
         pagination_token = results.pagination.get("next")
         results = pinecone_index.list_paginated(
-            prefix="", pagination_token=pagination_token, namespace=pinecone_namespace, limit=pinecone_batch_size
+            prefix="",
+            pagination_token=pagination_token,
+            namespace=pinecone_namespace,
+            limit=pinecone_batch_size,
         )
 
         # Extract and yield the next batch of IDs
         ids = [v.id for v in results.vectors]
-        if ids: # Prevents yielding an empty list.
+        if ids:  # Prevents yielding an empty list.
             yield ids
     # [END pinecone_get_ids_batch]
     print("Pinecone client fetched all ids from index.")
 
 
 def get_data_batch(
-    pinecone_index: Index, 
-    pinecone_namespace: str, 
+    pinecone_index: Index,
+    pinecone_namespace: str,
     pinecone_batch_size: int,
-    pinecone_content_column_name: str = PINECONE_CONTENT_COLUMN_NAME
+    pinecone_content_column_name: str = PINECONE_CONTENT_COLUMN_NAME,
+    pinecone_id_column_name: str = PINECONE_ID_COLUMN_NAME,
 ) -> Iterator[tuple[list[str], list[str], list[Any], list[Any]]]:
     id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
@@ -100,25 +106,25 @@ def get_data_batch(
         # Process each vector in the current batch
         for doc in all_data["vectors"].values():
             # You might need to update this data translation logic according to one or more of your field names
-            # id is the unqiue identifier for the content
-            # Check if id is in the current doc before accessing
-            if 'id' in doc:
-                ids.append(doc["id"])
+            if pinecone_id_column_name in doc:
+                # pinecone_id_column_name stores the unqiue identifier for the content
+                ids.append(doc[pinecone_id_column_name])
             else:
-                # Generate a uuid if id column is missing in source
-                # You will need to make sure your vector store table uses uuid for the id column
+                # Generate a uuid if pinecone_id_column_name is missing in source
                 ids.append(str(uuid.uuid4()))
             # values is the vector embedding of the content
             embeddings.append(doc["values"])
             # Check if pinecone_content_column_name exists in metadata before accessing
             if pinecone_content_column_name in doc.metadata:
+                # pinecone_content_column_name stores the content which was encoded
                 contents.append(str(doc.metadata[pinecone_content_column_name]))
-                del doc.metadata[pinecone_content_column_name]  # Remove pinecone_content_column_name after processing
+                # Remove pinecone_content_column_name after processing
+                del doc.metadata[pinecone_content_column_name]
             else:
-                contents.append("")  # Or handle the missing pinecone_content_column_name field appropriately
+                # Handle the missing pinecone_content_column_name field appropriately
+                contents.append("")
             # metadata is the additional context
-            metadata = doc["metadata"]
-            metadatas.append(metadata)
+            metadatas.append(doc["metadata"])
 
         # Yield the current batch of results
         yield ids, contents, embeddings, metadatas
@@ -133,6 +139,7 @@ async def main(
     vector_size: int = VECTOR_SIZE,
     pinecone_batch_size: int = PINECONE_BATCH_SIZE,
     pinecone_content_column_name: str = PINECONE_CONTENT_COLUMN_NAME,
+    pinecone_id_column_name: str = PINECONE_ID_COLUMN_NAME,
     project_id: str = PROJECT_ID,
     region: str = REGION,
     cluster: str = CLUSTER,
@@ -162,7 +169,7 @@ async def main(
         database=db_name,
         user=db_user,
         password=db_pwd,
-        ip_type=IPTypes.PRIVATE,
+        ip_type=IPTypes.PUBLIC,  # Optionally use IPTypes.PRIVATE
     )
     # [END pinecone_vectorstore_alloydb_migration_get_client]
     print("Langchain AlloyDB client initiated.")
@@ -173,9 +180,9 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
-        overwrite_existing=True,
-        # Customize the ID column types with `id_column` if not using the UUID data type
-        id_column=Column("id", "TEXT") #  Default is Column("langchain_id", "UUID")
+        # Customize the ID column types if not using the UUID data type
+        # id_column=Column("langchain_id", "TEXT"),  # Default is Column("langchain_id", "UUID")
+        # overwrite_existing=True,  # Drop the old table and Create a new vector store table
     )
     # [END pinecone_vectorstore_alloydb_migration_create_table]
     print("Langchain AlloyDB vectorstore table created.")
@@ -202,7 +209,11 @@ async def main(
     print("Langchain AlloyDBVectorStore initialized.")
 
     data_iterator = get_data_batch(
-        pinecone_index, pinecone_namespace, pinecone_batch_size, pinecone_content_column_name
+        pinecone_index,
+        pinecone_namespace,
+        pinecone_batch_size,
+        pinecone_content_column_name,
+        pinecone_id_column_name,
     )
 
     # [START pinecone_vectorstore_alloydb_migration_insert_data_batch]
