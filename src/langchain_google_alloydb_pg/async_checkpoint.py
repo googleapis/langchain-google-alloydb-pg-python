@@ -13,7 +13,15 @@
 # limitations under the License.
 
 import json
-from typing import Any, AsyncIterator, Final, Iterator, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    AsyncIterator,
+    Final,
+    Iterator,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
@@ -395,6 +403,11 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 if not row:
                     break
                 value = row._mapping
+                metadata: CheckpointMetadata = (
+                    self.jsonplus_serde.loads(value["metadata"])
+                    if value["metadata"] is not None
+                    else {}
+                )
                 yield CheckpointTuple(
                     config={
                         "configurable": {
@@ -406,11 +419,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                     checkpoint=self.serde.loads_typed(
                         (value["type"], value["checkpoint"])
                     ),
-                    metadata=(
-                        self.jsonplus_serde.loads(value["metadata"])
-                        if value["metadata"] is not None
-                        else {}
-                    ),
+                    metadata=metadata,
                     parent_config=(
                         {
                             "configurable": {
