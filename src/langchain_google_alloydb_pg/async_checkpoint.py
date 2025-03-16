@@ -404,7 +404,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                     break
                 value = row._mapping
                 metadata: CheckpointMetadata = (
-                    self.jsonplus_serde.loads(value["metadata"])
+                    dict(self.jsonplus_serde.loads(value["metadata"]))
                     if value["metadata"] is not None
                     else {}
                 )
@@ -501,7 +501,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 },
                 checkpoint=self.serde.loads_typed((value["type"], value["checkpoint"])),
                 metadata=(
-                    self.jsonplus_serde.loads(value["metadata"])
+                    dict(self.jsonplus_serde.loads(value["metadata"]))
                     if value["metadata"] is not None
                     else {}
                 ),
