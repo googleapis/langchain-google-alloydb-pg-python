@@ -181,6 +181,8 @@ class TestMigrations:
             pinecone_namespace="",
             vector_size=768,
             pinecone_batch_size=50,
+            pinecone_content_column_name="text",
+            pinecone_id_column_name="id",
             project_id=db_project,
             region=db_region,
             cluster=db_cluster,

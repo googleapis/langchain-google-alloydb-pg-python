@@ -50,6 +50,8 @@ T = TypeVar("T")
 
 USER_AGENT = "langchain-google-alloydb-pg-python/" + __version__
 
+CHECKPOINTS_TABLE = "checkpoints"
+
 
 async def _get_iam_principal_email(
     credentials: google.auth.credentials.Credentials,
@@ -775,6 +777,81 @@ class AlloyDBEngine:
                 store_metadata,
             )
         )
+
+    async def _ainit_checkpoint_table(
+        self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
+    ) -> None:
+        """
+        Create AlloyDB tables to save checkpoints.
+
+        Args:
+            schema_name (str): The schema name to store the checkpoint tables.
+                Default: "public".
+
+        Returns:
+            None
+        """
+        create_checkpoints_table = f"""CREATE TABLE "{schema_name}"."{table_name}"(
+            thread_id TEXT NOT NULL,
+            checkpoint_ns TEXT NOT NULL DEFAULT '',
+            checkpoint_id TEXT NOT NULL,
+            parent_checkpoint_id TEXT,
+            type TEXT,
+            checkpoint BYTEA,
+            metadata BYTEA,
+            PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+        );"""
+
+        create_checkpoint_writes_table = f"""CREATE TABLE "{schema_name}"."{table_name + "_writes"}"(
+            thread_id TEXT NOT NULL,
+            checkpoint_ns TEXT NOT NULL DEFAULT '',
+            checkpoint_id TEXT NOT NULL,
+            task_id TEXT NOT NULL,
+            idx INTEGER NOT NULL,
+            channel TEXT NOT NULL,
+            type TEXT,
+            blob BYTEA NOT NULL,
+            task_path TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
+        );"""
+
+        async with self._pool.connect() as conn:
+            await conn.execute(text(create_checkpoints_table))
+            await conn.execute(text(create_checkpoint_writes_table))
+            await conn.commit()
+
+    async def ainit_checkpoint_table(
+        self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
+    ) -> None:
+        """Create an AlloyDB table to save checkpoint messages.
+
+        Args:
+            schema_name (str): The schema name to store checkpoint tables.
+                Default: "public".
+
+        Returns:
+            None
+        """
+        await self._run_as_async(
+            self._ainit_checkpoint_table(
+                table_name,
+                schema_name,
+            )
+        )
+
+    def init_checkpoint_table(
+        self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
+    ) -> None:
+        """Create Cloud SQL tables to store checkpoints.
+
+        Args:
+            schema_name (str): The schema name to store checkpoint tables.
+                Default: "public".
+
+        Returns:
+            None
+        """
+        self._run_as_sync(self._ainit_checkpoint_table(table_name, schema_name))
 
     async def _aload_table_schema(
         self, table_name: str, schema_name: str = "public"
