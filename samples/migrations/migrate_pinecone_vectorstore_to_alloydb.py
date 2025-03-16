@@ -87,6 +87,8 @@ def get_data_batch(
 ) -> Iterator[tuple[list[str], list[str], list[Any], list[Any]]]:
     id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
+    import uuid
+
     # Iterate through the IDs and download their contents
     for ids in id_iterator:
         all_data = pinecone_index.fetch(ids=ids, namespace=pinecone_namespace)
@@ -99,7 +101,11 @@ def get_data_batch(
         for doc in all_data["vectors"].values():
             # You might need to update this data translation logic according to one or more of your field names
             # id is the unqiue identifier for the content
-            ids.append(doc["id"])
+            if "id" in doc:
+                ids.append(doc["id"])
+            else:
+                # Generate a uuid if id column is missing in source
+                ids.append(str(uuid.uuid4()))
             # values is the vector embedding of the content
             embeddings.append(doc["values"])
             # text is the content which was encoded
