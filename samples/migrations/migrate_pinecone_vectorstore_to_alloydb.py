@@ -68,7 +68,7 @@ def get_ids_batch(
     while results.pagination is not None and results.pagination.get("next") is not None:
         pagination_token = results.pagination.get("next")
         results = pinecone_index.list_paginated(
-            prefix="", pagination_token=pagination_token, limit=pinecone_batch_size
+            prefix="", namespace=pinecone_namespace, pagination_token=pagination_token, limit=pinecone_batch_size
         )
 
         # Extract and yield the next batch of IDs
