@@ -403,11 +403,6 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 if not row:
                     break
                 value = row._mapping
-                metadata: CheckpointMetadata = (
-                    dict(self.jsonplus_serde.loads(value["metadata"]))
-                    if value["metadata"] is not None
-                    else {}
-                )
                 yield CheckpointTuple(
                     config={
                         "configurable": {
@@ -419,7 +414,11 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                     checkpoint=self.serde.loads_typed(
                         (value["type"], value["checkpoint"])
                     ),
-                    metadata=metadata,
+                    metadata=(
+                        self.jsonplus_serde.loads(value["metadata"])  # type: ignore
+                        if value["metadata"] is not None
+                        else {}
+                    ),
                     parent_config=(
                         {
                             "configurable": {
@@ -501,7 +500,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 },
                 checkpoint=self.serde.loads_typed((value["type"], value["checkpoint"])),
                 metadata=(
-                    dict(self.jsonplus_serde.loads(value["metadata"]))
+                    self.jsonplus_serde.loads(value["metadata"])  # type: ignore
                     if value["metadata"] is not None
                     else {}
                 ),
