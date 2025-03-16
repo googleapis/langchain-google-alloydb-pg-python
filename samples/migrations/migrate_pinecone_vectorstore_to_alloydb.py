@@ -69,8 +69,8 @@ def get_ids_batch(
         pagination_token = results.pagination.get("next")
         results = pinecone_index.list_paginated(
             prefix="",
-            namespace=pinecone_namespace,
             pagination_token=pagination_token,
+            namespace=pinecone_namespace,
             limit=pinecone_batch_size,
         )
 
