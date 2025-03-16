@@ -88,7 +88,7 @@ def get_data_batch(
     id_iterator = get_ids_batch(pinecone_index, pinecone_namespace, pinecone_batch_size)
     # [START pinecone_get_data_batch]
     import uuid
-    
+
     # Iterate through the IDs and download their contents
     for ids in id_iterator:
         all_data = pinecone_index.fetch(ids=ids, namespace=pinecone_namespace)
@@ -101,13 +101,10 @@ def get_data_batch(
         for doc in all_data["vectors"].values():
             # You might need to update this data translation logic according to one or more of your field names
             # id is the unqiue identifier for the content
-            # Check if id is in the current doc before accessing
-            # You can force the script to generate a uuid by changing 'id' to a column name that does not exist in the source.
-            if 'id' in doc:
+            if "id" in doc:
                 ids.append(doc["id"])
             else:
                 # Generate a uuid if id column is missing in source
-                # You will need to make sure your vector store table uses uuid for the id column
                 ids.append(str(uuid.uuid4()))
             # values is the vector embedding of the content
             embeddings.append(doc["values"])
