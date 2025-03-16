@@ -158,10 +158,7 @@ Use ``AlloyDBSaver`` to save snapshots of the graph state at a given point in ti
 
 
    engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
-   checkpoint = AlloyDBSaver.create_sync(
-       engine,
-       table_name="checkpoints"
-   )
+   checkpoint = AlloyDBSaver.create_sync(engine)
 
 See the full `Checkpoint`_ tutorial.
 
