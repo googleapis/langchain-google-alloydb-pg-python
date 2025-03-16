@@ -61,19 +61,22 @@ def get_ids_batch(
         prefix="", namespace=pinecone_namespace, limit=pinecone_batch_size
     )
     ids = [v.id for v in results.vectors]
-    if ids: # Prevents yielding an empty list.
-      yield ids
+    if ids:  # Prevents yielding an empty list.
+        yield ids
 
     # Check BOTH pagination and pagination.next
     while results.pagination is not None and results.pagination.get("next") is not None:
         pagination_token = results.pagination.get("next")
         results = pinecone_index.list_paginated(
-            prefix="", namespace=pinecone_namespace, pagination_token=pagination_token, limit=pinecone_batch_size
+            prefix="",
+            namespace=pinecone_namespace,
+            pagination_token=pagination_token,
+            limit=pinecone_batch_size,
         )
 
         # Extract and yield the next batch of IDs
         ids = [v.id for v in results.vectors]
-        if ids: # Prevents yielding an empty list.
+        if ids:  # Prevents yielding an empty list.
             yield ids
     # [END pinecone_get_ids_batch]
     print("Pinecone client fetched all ids from index.")
