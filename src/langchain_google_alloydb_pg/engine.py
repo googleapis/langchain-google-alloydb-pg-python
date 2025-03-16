@@ -17,24 +17,12 @@ import asyncio
 from concurrent.futures import Future
 from dataclasses import dataclass
 from threading import Thread
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Mapping,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Awaitable, Mapping, Optional, TypeVar, Union
 
 import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
-from google.cloud.alloydb.connector import (
-    AsyncConnector,
-    IPTypes,
-    RefreshStrategy,
-)
+from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrategy
 from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import InvalidRequestError

@@ -38,8 +38,6 @@ class AlloyDBSaver(BaseCheckpointSaver[str]):
         key: object,
         engine: AlloyDBEngine,
         checkpoint: AsyncAlloyDBSaver,
-        table_name: str = CHECKPOINTS_TABLE,
-        schema_name: str = "public",
         serde: Optional[SerializerProtocol] = None,
     ) -> None:
         super().__init__(serde=serde)

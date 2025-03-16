@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Any, AsyncIterator, Iterator, Optional, Sequence, Tuple
+from typing import Any, AsyncIterator, Final, Iterator, Optional, Sequence, Tuple
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
@@ -34,6 +34,26 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from .engine import CHECKPOINTS_TABLE, AlloyDBEngine
 
 MetadataInput = Optional[dict[str, Any]]
+checkpoints_columns: Final = [
+    "thread_id",
+    "checkpoint_ns",
+    "checkpoint_id",
+    "parent_checkpoint_id",
+    "type",
+    "checkpoint",
+    "metadata",
+]
+
+writes_columns: Final = [
+    "thread_id",
+    "checkpoint_ns",
+    "checkpoint_id",
+    "task_id",
+    "idx",
+    "channel",
+    "type",
+    "blob",
+]
 
 
 class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
@@ -88,23 +108,11 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         )
         checkpoints_column_names = checkpoints_table_schema.columns.keys()
 
-        checkpoints_required_columns = [
-            "thread_id",
-            "checkpoint_ns",
-            "checkpoint_id",
-            "parent_checkpoint_id",
-            "type",
-            "checkpoint",
-            "metadata",
-        ]
-
-        if not (
-            all(x in checkpoints_column_names for x in checkpoints_required_columns)
-        ):
+        if not (all(x in checkpoints_column_names for x in checkpoints_columns)):
             raise IndexError(
                 f"Table checkpoints.'{schema_name}' has incorrect schema. Got "
                 f"column names '{checkpoints_column_names}' but required column names "
-                f"'{checkpoints_required_columns}'.\nPlease create table with following schema:"
+                f"'{checkpoints_columns}'.\nPlease create table with following schema:"
                 f"\nCREATE TABLE {schema_name}.checkpoints ("
                 "\n    thread_id TEXT NOT NULL,"
                 "\n    checkpoint_ns TEXT NOT NULL,"
@@ -121,24 +129,11 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         )
         checkpoint_writes_column_names = checkpoint_writes_table_schema.columns.keys()
 
-        checkpoint_writes_columns = [
-            "thread_id",
-            "checkpoint_ns",
-            "checkpoint_id",
-            "task_id",
-            "idx",
-            "channel",
-            "type",
-            "blob",
-        ]
-
-        if not (
-            all(x in checkpoint_writes_column_names for x in checkpoint_writes_columns)
-        ):
+        if not (all(x in checkpoint_writes_column_names for x in writes_columns)):
             raise IndexError(
                 f"Table checkpoint_writes.'{schema_name}' has incorrect schema. Got "
                 f"column names '{checkpoint_writes_column_names}' but required column names "
-                f"'{checkpoint_writes_columns}'.\nPlease create table with following schema:"
+                f"'{writes_columns}'.\nPlease create table with following schema:"
                 f"\nCREATE TABLE {schema_name}.checkpoint_writes ("
                 "\n    thread_id TEXT NOT NULL,"
                 "\n    checkpoint_ns TEXT NOT NULL,"
@@ -254,11 +249,11 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
         Returns:
             RunnableConfig: Updated configuration after storing the checkpoint.
         """
-        configurable = config["configurable"].copy()
-        thread_id = configurable.pop("thread_id")
-        checkpoint_ns = configurable.pop("checkpoint_ns")
-        checkpoint_id = configurable.pop(
-            "checkpoint_id", configurable.pop("thread_ts", None)
+        configurable = config["configurable"]
+        thread_id = configurable.get("thread_id")
+        checkpoint_ns = configurable.get("checkpoint_ns")
+        checkpoint_id = configurable.get(
+            "checkpoint_id", configurable.get("thread_ts", None)
         )
 
         next_config: RunnableConfig = {
