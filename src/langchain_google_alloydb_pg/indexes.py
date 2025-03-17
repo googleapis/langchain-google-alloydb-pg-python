@@ -25,8 +25,10 @@ class StrategyMixin:
     search_function: str
     index_function: str
 
+
 class DistanceStrategy(StrategyMixin, enum.Enum):
     """Enumerator of the Distance strategies."""
+
     EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops"
     COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops"
     INNER_PRODUCT = "<#>", "inner_product", "vector_ip_ops"
@@ -168,12 +170,13 @@ class ScaNNIndex(BaseIndex):
 
     class DistanceStrategy(StrategyMixin, enum.Enum):
         """Enumerator of the Distance strategies."""
+
         EUCLIDEAN = "<->", "l2_distance", "l2"
         COSINE_DISTANCE = "<=>", "cosine_distance", "cosine"
         INNER_PRODUCT = "<#>", "inner_product", "dot_prod"
 
     distance_strategy: DistanceStrategy = field(
-        default_factory=lambda: ScaNNIndex.DistanceStrategy.COSINE_DISTANCE # type: ignore
+        default_factory=lambda: ScaNNIndex.DistanceStrategy.COSINE_DISTANCE  # type: ignore
     )
 
     def index_options(self) -> str:
