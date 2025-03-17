@@ -76,7 +76,7 @@ def create_pinecone_index(
         name=pinecone_index_name,
         dimension=768,
         metric="cosine",
-        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+        spec=ServerlessSpec(cloud="gcp", region="us-central1"),
     )
     while not client.describe_index(pinecone_index_name).status["ready"]:
         time.sleep(1)
@@ -181,6 +181,8 @@ class TestMigrations:
             pinecone_namespace="",
             vector_size=768,
             pinecone_batch_size=50,
+            pinecone_content_column_name="text",
+            pinecone_id_column_name="id",
             project_id=db_project,
             region=db_region,
             cluster=db_cluster,

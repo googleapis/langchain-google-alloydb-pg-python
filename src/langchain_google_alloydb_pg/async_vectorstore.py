@@ -246,7 +246,11 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 else ""
             )
             insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"("{self.id_column}", "{self.content_column}", "{self.embedding_column}"{metadata_col_names}'
-            values = {"id": id, "content": content, "embedding": str(embedding)}
+            values = {
+                "id": id,
+                "content": content,
+                "embedding": str([float(dimension) for dimension in embedding]),
+            }
             values_stmt = "VALUES (:id, :content, :embedding"
             inline_embed_func = getattr(
                 self.embedding_service, "embed_query_inline", None
@@ -562,7 +566,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if not embedding and callable(inline_embed_func) and "query" in kwargs:
             query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])  # type: ignore
         else:
-            query_embedding = f"'{embedding}'"
+            query_embedding = f"'{[float(dimension) for dimension in embedding]}'"
         stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
             async with self.engine.connect() as conn:
