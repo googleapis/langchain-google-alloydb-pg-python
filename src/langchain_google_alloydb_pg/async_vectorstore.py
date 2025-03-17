@@ -835,6 +835,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
                 )
                 await conn.commit()
+            function = index.distance_strategy.scann_index_function
         else:
             function = index.distance_strategy.index_function
 
