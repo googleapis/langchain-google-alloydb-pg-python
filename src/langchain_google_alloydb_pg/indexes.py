@@ -24,15 +24,12 @@ class StrategyMixin:
     operator: str
     search_function: str
     index_function: str
-    scann_index_function: str
-
 
 class DistanceStrategy(StrategyMixin, enum.Enum):
     """Enumerator of the Distance strategies."""
-
-    EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops", "l2"
-    COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops", "cosine"
-    INNER_PRODUCT = "<#>", "inner_product", "vector_ip_ops", "dot_product"
+    EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops"
+    COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops"
+    INNER_PRODUCT = "<#>", "inner_product", "vector_ip_ops"
 
 
 DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.COSINE_DISTANCE
@@ -168,6 +165,16 @@ class ScaNNIndex(BaseIndex):
         default="sq8", init=False
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
     extension_name: str = "alloydb_scann"
+
+    class DistanceStrategy(StrategyMixin, enum.Enum):
+        """Enumerator of the Distance strategies."""
+        EUCLIDEAN = "<->", "l2_distance", "l2"
+        COSINE_DISTANCE = "<=>", "cosine_distance", "cosine"
+        INNER_PRODUCT = "<#>", "inner_product", "dot_prod"
+
+    distance_strategy: DistanceStrategy = field(
+        default_factory=lambda: ScaNNIndex.DistanceStrategy.COSINE_DISTANCE # type: ignore
+    )
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
