@@ -297,16 +297,12 @@ class TestAsyncIndex:
         await vs.adrop_vector_index()
 
     async def test_aapply_alloydb_scann_index_ScaNN(self, omni_vs):
-        index = ScaNNIndex(
-            distance_strategy=DistanceStrategy.EUCLIDEAN, enable_extension=True
-        )
+        index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
         await omni_vs.aset_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
         assert await omni_vs.ais_valid_index(DEFAULT_INDEX_NAME_OMNI)
         index = ScaNNIndex(
-            name="secondindex",
-            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
-            enable_extension=True,
+            name="secondindex", distance_strategy=DistanceStrategy.COSINE_DISTANCE
         )
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.ais_valid_index("secondindex")

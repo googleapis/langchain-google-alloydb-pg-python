@@ -18,9 +18,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
-
 
 @dataclass
 class StrategyMixin:
@@ -50,7 +47,7 @@ class BaseIndex(ABC):
         default_factory=lambda: DistanceStrategy.COSINE_DISTANCE
     )
     partial_indexes: Optional[list[str]] = None
-    enable_extension: Optional[bool] = False
+    extension_name: Optional[str] = None
 
     @abstractmethod
     def index_options(self) -> str:
@@ -170,24 +167,11 @@ class ScaNNIndex(BaseIndex):
     quantizer: str = field(
         default="sq8", init=False
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
+    extension_name: str = "alloydb_scann"
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
-
-    async def create_extension(self, engine: AsyncEngine) -> str:
-        """Creates a ScaNN index in the DB.
-
-        Args:
-            engine(AsyncEngine): connection pool to the database
-
-        Returns:
-            The DistanceStrategy to be used with the index
-        """
-        async with engine.connect() as conn:
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS alloydb_scann"))
-            await conn.commit()
-        return self.distance_strategy.scann_index_function
 
 
 @dataclass

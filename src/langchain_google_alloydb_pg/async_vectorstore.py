@@ -828,10 +828,13 @@ class AsyncAlloyDBVectorStore(VectorStore):
             await self.adrop_vector_index()
             return
 
-        # Create `alloydb_scann` extension when a `ScaNN` index is applied
-        if index.enable_extension:
-            if callable(getattr(index, "create_extension", None)):
-                function = await index.create_extension(self.engine)  # type: ignore
+        # if extension name is mentioned, create the extension
+        if index.extension_name:
+            async with self.engine.connect() as conn:
+                await conn.execute(
+                    text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
+                )
+                await conn.commit()
         else:
             function = index.distance_strategy.index_function
 
