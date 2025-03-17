@@ -17,12 +17,24 @@ import asyncio
 from concurrent.futures import Future
 from dataclasses import dataclass
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Awaitable, Mapping, Optional, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 import aiohttp
 import google.auth  # type: ignore
 import google.auth.transport.requests  # type: ignore
-from google.cloud.alloydb.connector import AsyncConnector, IPTypes, RefreshStrategy
+from google.cloud.alloydb.connector import (
+    AsyncConnector,
+    IPTypes,
+    RefreshStrategy,
+)
 from sqlalchemy import MetaData, RowMapping, Table, text
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import InvalidRequestError
@@ -418,7 +430,7 @@ class AlloyDBEngine:
 
     async def close(self) -> None:
         """Dispose of connection pool"""
-        await self._pool.dispose()
+        await self._run_as_async(self._pool.dispose())
 
     async def _ainit_vectorstore_table(
         self,
