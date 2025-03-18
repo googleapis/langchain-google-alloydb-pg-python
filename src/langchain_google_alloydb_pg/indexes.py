@@ -55,6 +55,9 @@ class BaseIndex(ABC):
             "index_options method must be implemented by subclass"
         )
 
+    def get_index_function(self) -> str:
+        return self.distance_strategy.index_function
+
 
 @dataclass
 class ExactNearestNeighbor(BaseIndex):
@@ -168,20 +171,17 @@ class ScaNNIndex(BaseIndex):
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
     extension_name: str = "alloydb_scann"
 
-    class DistanceStrategy(StrategyMixin, enum.Enum):
-        """Enumerator of the Distance strategies."""
-
-        EUCLIDEAN = "<->", "l2_distance", "l2"
-        COSINE_DISTANCE = "<=>", "cosine_distance", "cosine"
-        INNER_PRODUCT = "<#>", "inner_product", "dot_prod"
-
-    distance_strategy: DistanceStrategy = field(
-        default_factory=lambda: ScaNNIndex.DistanceStrategy.COSINE_DISTANCE  # type: ignore
-    )
-
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
+
+    def get_index_function(self) -> str:
+        if self.distance_strategy == DistanceStrategy.EUCLIDEAN:
+            return "l2"
+        elif self.distance_strategy == DistanceStrategy.COSINE_DISTANCE:
+            return "cosine"
+        else:
+            return "dot_prod"
 
 
 @dataclass
