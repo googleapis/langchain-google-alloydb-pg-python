@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
-from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS
+from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS, NEGATIVE_TEST_CASES
 from PIL import Image
 from sqlalchemy import RowMapping, Sequence, text
 
@@ -556,7 +556,7 @@ class TestVectorStoreSearchSync:
         assert results[0] == Document(page_content="foo", id=ids[0])
 
     @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
-    async def test_sync_vectorstore_with_metadata_filters(
+    def test_sync_vectorstore_with_metadata_filters(
         self,
         vs_custom_filter_sync,
         test_filter,
@@ -566,3 +566,10 @@ class TestVectorStoreSearchSync:
 
         docs = vs_custom_filter_sync.similarity_search("meow", k=5, filter=test_filter)
         assert [doc.metadata["code"] for doc in docs] == expected_ids, test_filter
+
+    @pytest.mark.parametrize("test_filter", NEGATIVE_TEST_CASES)
+    def test_metadata_filter_negative_tests(self, vs_custom_filter_sync, test_filter):
+        with pytest.raises((ValueError, NotImplementedError)):
+            docs = vs_custom_filter_sync.similarity_search(
+                "meow", k=5, filter=test_filter
+            )
