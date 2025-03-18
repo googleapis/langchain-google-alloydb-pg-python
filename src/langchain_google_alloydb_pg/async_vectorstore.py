@@ -839,7 +839,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
                     text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
                 )
                 await conn.commit()
-        function = index.get_index_function(index.distance_strategy)
+        function = index.get_index_function()
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
