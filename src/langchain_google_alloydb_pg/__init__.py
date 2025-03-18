@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .chat_message_history import AlloyDBChatMessageHistory
+from .checkpoint import AlloyDBSaver
 from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine, Column
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
@@ -30,5 +31,6 @@ __all__ = [
     "AlloyDBEmbeddings",
     "AlloyDBModelManager",
     "AlloyDBModel",
+    "AlloyDBSaver",
     "__version__",
 ]

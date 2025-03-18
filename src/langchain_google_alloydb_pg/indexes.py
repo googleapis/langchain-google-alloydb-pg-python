@@ -24,15 +24,14 @@ class StrategyMixin:
     operator: str
     search_function: str
     index_function: str
-    scann_index_function: str
 
 
 class DistanceStrategy(StrategyMixin, enum.Enum):
     """Enumerator of the Distance strategies."""
 
-    EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops", "l2"
-    COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops", "cosine"
-    INNER_PRODUCT = "<#>", "inner_product", "vector_ip_ops", "dot_product"
+    EUCLIDEAN = "<->", "l2_distance", "vector_l2_ops"
+    COSINE_DISTANCE = "<=>", "cosine_distance", "vector_cosine_ops"
+    INNER_PRODUCT = "<#>", "inner_product", "vector_ip_ops"
 
 
 DEFAULT_DISTANCE_STRATEGY: DistanceStrategy = DistanceStrategy.COSINE_DISTANCE
@@ -47,6 +46,7 @@ class BaseIndex(ABC):
         default_factory=lambda: DistanceStrategy.COSINE_DISTANCE
     )
     partial_indexes: Optional[list[str]] = None
+    extension_name: Optional[str] = None
 
     @abstractmethod
     def index_options(self) -> str:
@@ -54,6 +54,9 @@ class BaseIndex(ABC):
         raise NotImplementedError(
             "index_options method must be implemented by subclass"
         )
+
+    def get_index_function(self) -> str:
+        return self.distance_strategy.index_function
 
 
 @dataclass
@@ -166,10 +169,19 @@ class ScaNNIndex(BaseIndex):
     quantizer: str = field(
         default="sq8", init=False
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
+    extension_name: str = "alloydb_scann"
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
+
+    def get_index_function(self) -> str:
+        if self.distance_strategy == DistanceStrategy.EUCLIDEAN:
+            return "l2"
+        elif self.distance_strategy == DistanceStrategy.COSINE_DISTANCE:
+            return "cosine"
+        else:
+            return "dot_prod"
 
 
 @dataclass

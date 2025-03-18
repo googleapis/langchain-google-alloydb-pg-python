@@ -55,16 +55,21 @@ def get_data_batch(
     # [START weaviate_get_data_batch]
     # Iterate through the IDs and download their contents
     weaviate_collection = weaviate_client.collections.get(weaviate_collection_name)
-    ids = []
-    content = []
-    embeddings = []
-    metadatas = []
+    ids: list[str] = []
+    content: list[Any] = []
+    embeddings: list[list[float]] = []
+    metadatas: list[Any] = []
 
     for item in weaviate_collection.iterator(include_vector=True):
+        # You might need to update this data translation logic according to one or more of your field names
+        # uuid is the unqiue identifier for the content
         ids.append(str(item.uuid))
+        # weaviate_text_key is the content which was encoded
         content.append(item.properties[weaviate_text_key])
-        embeddings.append(item.vector["default"])
+        # vector is the vector embedding of the content
+        embeddings.append(item.vector["default"])  # type: ignore
         del item.properties[weaviate_text_key]  # type: ignore
+        # properties is the additional context
         metadatas.append(item.properties)
 
         if len(ids) >= weaviate_batch_size:
@@ -136,6 +141,7 @@ async def main(
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
         vector_size=vector_size,
+        # Customize the ID column types with `id_column` if not using the UUID data type
     )
 
     # [END weaviate_vectorstore_alloydb_migration_create_table]

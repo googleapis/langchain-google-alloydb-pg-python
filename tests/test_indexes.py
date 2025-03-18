@@ -32,17 +32,21 @@ class TestAlloyDBIndex:
         assert DistanceStrategy.EUCLIDEAN.operator == "<->"
         assert DistanceStrategy.EUCLIDEAN.search_function == "l2_distance"
         assert DistanceStrategy.EUCLIDEAN.index_function == "vector_l2_ops"
-        assert DistanceStrategy.EUCLIDEAN.scann_index_function == "l2"
 
         assert DistanceStrategy.COSINE_DISTANCE.operator == "<=>"
         assert DistanceStrategy.COSINE_DISTANCE.search_function == "cosine_distance"
         assert DistanceStrategy.COSINE_DISTANCE.index_function == "vector_cosine_ops"
-        assert DistanceStrategy.COSINE_DISTANCE.scann_index_function == "cosine"
 
         assert DistanceStrategy.INNER_PRODUCT.operator == "<#>"
         assert DistanceStrategy.INNER_PRODUCT.search_function == "inner_product"
         assert DistanceStrategy.INNER_PRODUCT.index_function == "vector_ip_ops"
-        assert DistanceStrategy.INNER_PRODUCT.scann_index_function == "dot_product"
+
+        scann_index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        assert scann_index.get_index_function() == "l2"
+        scann_index = ScaNNIndex(distance_strategy=DistanceStrategy.COSINE_DISTANCE)
+        assert scann_index.get_index_function() == "cosine"
+        scann_index = ScaNNIndex(distance_strategy=DistanceStrategy.INNER_PRODUCT)
+        assert scann_index.get_index_function() == "dot_prod"
 
     def test_hnsw_index(self):
         index = HNSWIndex(name="test_index", m=32, ef_construction=128)

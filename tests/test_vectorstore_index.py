@@ -302,8 +302,7 @@ class TestAsyncIndex:
         await omni_vs.aapply_vector_index(index, concurrently=True)
         assert await omni_vs.ais_valid_index(DEFAULT_INDEX_NAME_OMNI)
         index = ScaNNIndex(
-            name="secondindex",
-            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+            name="secondindex", distance_strategy=DistanceStrategy.COSINE_DISTANCE
         )
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.ais_valid_index("secondindex")

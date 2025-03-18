@@ -126,13 +126,16 @@ class TestEngineAsync:
         await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE}"')
         await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE}"')
         await engine.close()
+        await engine._connector.close()
 
     async def test_init_table(self, engine):
         await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
         embedding = await embeddings_service.aembed_query(content)
-        stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
+        # Note: DeterministicFakeEmbedding generates a numpy array, converting to list a list of float values
+        embedding_string = [float(dimension) for dimension in embedding]
+        stmt = f"INSERT INTO {DEFAULT_TABLE} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding_string}');"
         await aexecute(engine, stmt)
 
     async def test_engine_args(self, engine):
@@ -309,6 +312,42 @@ class TestEngineAsync:
         assert engine
         await aexecute(engine, "SELECT 1")
         await engine.close()
+        await engine._connector.close()
+
+    async def test_ainit_checkpoint_writes_table(self, engine):
+        table_name = f"checkpoint{uuid.uuid4()}"
+        table_name_writes = f"{table_name}_writes"
+        await engine.ainit_checkpoint_table(table_name=table_name)
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name_writes}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "task_id", "data_type": "text"},
+            {"column_name": "idx", "data_type": "integer"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+            {"column_name": "blob", "data_type": "bytea"},
+            {"column_name": "task_path", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "parent_checkpoint_id", "data_type": "text"},
+            {"column_name": "checkpoint", "data_type": "bytea"},
+            {"column_name": "metadata", "data_type": "bytea"},
+            {"column_name": "type", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name_writes}"')
 
 
 @pytest.mark.asyncio
@@ -359,13 +398,16 @@ class TestEngineSync:
         await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE_SYNC}"')
         await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE_SYNC}"')
         await engine.close()
+        await engine._connector.close()
 
     async def test_init_table(self, engine):
         engine.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
         id = str(uuid.uuid4())
         content = "coffee"
         embedding = await embeddings_service.aembed_query(content)
-        stmt = f"INSERT INTO {DEFAULT_TABLE_SYNC} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding}');"
+        # Note: DeterministicFakeEmbedding generates a numpy array, converting to list a list of float values
+        embedding_string = [float(dimension) for dimension in embedding]
+        stmt = f"INSERT INTO {DEFAULT_TABLE_SYNC} (langchain_id, content, embedding) VALUES ('{id}', '{content}','{embedding_string}');"
         await aexecute(engine, stmt)
 
     async def test_init_table_custom(self, engine):
@@ -467,3 +509,39 @@ class TestEngineSync:
         assert engine
         await aexecute(engine, "SELECT 1")
         await engine.close()
+        await engine._connector.close()
+
+    async def test_init_checkpoints_table(self, engine):
+        table_name = f"checkpoint{uuid.uuid4()}"
+        table_name_writes = f"{table_name}_writes"
+        engine.init_checkpoint_table(table_name=table_name)
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "parent_checkpoint_id", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+            {"column_name": "checkpoint", "data_type": "bytea"},
+            {"column_name": "metadata", "data_type": "bytea"},
+        ]
+        for row in results:
+            assert row in expected
+        stmt = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name_writes}';"
+        results = await afetch(engine, stmt)
+        expected = [
+            {"column_name": "thread_id", "data_type": "text"},
+            {"column_name": "checkpoint_ns", "data_type": "text"},
+            {"column_name": "checkpoint_id", "data_type": "text"},
+            {"column_name": "task_id", "data_type": "text"},
+            {"column_name": "idx", "data_type": "integer"},
+            {"column_name": "channel", "data_type": "text"},
+            {"column_name": "type", "data_type": "text"},
+            {"column_name": "blob", "data_type": "bytea"},
+            {"column_name": "task_path", "data_type": "text"},
+        ]
+        for row in results:
+            assert row in expected
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name_writes}"')
