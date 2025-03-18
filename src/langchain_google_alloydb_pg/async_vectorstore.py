@@ -30,7 +30,6 @@ from langchain_core.vectorstores import VectorStore, utils
 from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
@@ -253,8 +252,11 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 "embedding": str([float(dimension) for dimension in embedding]),
             }
             values_stmt = "VALUES (:id, :content, :embedding"
-            if not embedding and isinstance(self.embedding_service, AlloyDBEmbeddings):
-                values_stmt = f"VALUES (:id, :content, {self.embedding_service.embed_query_inline(content)}"
+            inline_embed_func = getattr(
+                self.embedding_service, "embed_query_inline", None
+            )
+            if not embedding and callable(inline_embed_func):
+                values_stmt = f"VALUES (:id, :content, {self.embedding_service.embed_query_inline(content)}"  # type: ignore
 
             # Add metadata
             extra = metadata
@@ -297,7 +299,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
         Raises:
             :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
         """
-        if isinstance(self.embedding_service, AlloyDBEmbeddings):
+        # Check for inline embedding query
+        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
+        if callable(inline_embed_func):
             embeddings: list[list[float]] = [[] for _ in list(texts)]
         else:
             embeddings = await self.embedding_service.aembed_documents(list(texts))
@@ -558,12 +562,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
         column_names = ", ".join(f'"{col}"' for col in columns)
 
         filter = f"WHERE {filter}" if filter else ""
-        if (
-            not embedding
-            and isinstance(self.embedding_service, AlloyDBEmbeddings)
-            and "query" in kwargs
-        ):
-            query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])
+        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
+        if not embedding and callable(inline_embed_func) and "query" in kwargs:
+            query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])  # type: ignore
         else:
             query_embedding = f"'{[float(dimension) for dimension in embedding]}'"
         stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
@@ -591,9 +592,10 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
+        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
         embedding = (
             []
-            if isinstance(self.embedding_service, AlloyDBEmbeddings)
+            if callable(inline_embed_func)
             else await self.embedding_service.aembed_query(text=query)
         )
         kwargs["query"] = query
@@ -657,9 +659,10 @@ class AsyncAlloyDBVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
+        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
         embedding = (
             []
-            if isinstance(self.embedding_service, AlloyDBEmbeddings)
+            if callable(inline_embed_func)
             else await self.embedding_service.aembed_query(text=query)
         )
         kwargs["query"] = query
@@ -829,14 +832,14 @@ class AsyncAlloyDBVectorStore(VectorStore):
             await self.adrop_vector_index()
             return
 
-        # Create `alloydb_scann` extension when a `ScaNN` index is applied
-        if isinstance(index, ScaNNIndex):
+        # if extension name is mentioned, create the extension
+        if index.extension_name:
             async with self.engine.connect() as conn:
-                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS alloydb_scann"))
+                await conn.execute(
+                    text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
+                )
                 await conn.commit()
-            function = index.distance_strategy.scann_index_function
-        else:
-            function = index.distance_strategy.index_function
+        function = index.get_index_function()
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
