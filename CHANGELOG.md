@@ -6,24 +6,16 @@
 ### Features
 
 * **langgraph:** Add checkpointer interface ([#391](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/391)) ([cb5fb6f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/cb5fb6f3b5b662fbe62a6b38b79ede328ca55acd))
-
+* **deps:** Update dependency numpy to v2 ([#327](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/327)) ([4b1f8dc](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/4b1f8dcb44db79c99d4e76d66d697d826eaf97c9))
 
 ### Bug Fixes
 
-* **deps:** Update dependency numpy to v2 ([#327](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/327)) ([4b1f8dc](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/4b1f8dcb44db79c99d4e76d66d697d826eaf97c9))
 * **engine:** Loop error on close ([#393](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/393)) ([9dc3266](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9dc3266de4a6b78d76f0dd16780af91c371fed99))
 
 
 ### Documentation
 
-* Add comment for private IP support. ([#388](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/388)) ([c9e31bb](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/c9e31bbf660b133953d1aff3e35d146d14ba3489))
-* Add namespace parameter to inner loop of get_ids_batch() ([#395](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/395)) ([750cf9c](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/750cf9cc5de5c3e359fb7ba6f06409da75addbcb))
-* Add optional line to overwrite existing vector store ([#387](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/387)) ([95a2db2](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/95a2db24091f6b2b2c7bce8934e3a6e8c93e23c7))
-* Add uuid generation. ([#399](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/399)) ([d9bacd8](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/d9bacd8ac7e33a053a96b43d39900e0ebd419688))
-* Fix pagination logic. ([#394](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/394)) ([1f49a45](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/1f49a456e6f6874be1bccc71667f204d4b532508))
 * **langgraph:** Add checkpointer docs ([#401](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/401)) ([0b88622](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/0b886223df7cdbea876a1fb8e292ab045c58a8c8))
-* Parameterize Pinecone content column key ([#396](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/396)) ([4c186ac](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/4c186acb842af57e75f6e2f107420409d2684f80))
-* Support non-uuid id column in vector store table. ([#397](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/397)) ([8ce7ec9](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/8ce7ec96dc1bf1269b0d55acf63f635ba4569690))
 
 ## [0.9.3](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.2...v0.9.3) (2025-02-25)
 
