@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.10.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.3...v0.10.0) (2025-03-18)
+
+
+### Features
+
+* **langgraph:** Add checkpointer interface ([#391](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/391)) ([cb5fb6f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/cb5fb6f3b5b662fbe62a6b38b79ede328ca55acd))
+* **deps:** Update dependency numpy to v2 ([#327](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/327)) ([4b1f8dc](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/4b1f8dcb44db79c99d4e76d66d697d826eaf97c9))
+
+### Bug Fixes
+
+* **engine:** Loop error on close ([#393](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/393)) ([9dc3266](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9dc3266de4a6b78d76f0dd16780af91c371fed99))
+
+
+### Documentation
+
+* **langgraph:** Add checkpointer docs ([#401](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/401)) ([0b88622](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/0b886223df7cdbea876a1fb8e292ab045c58a8c8))
+
 ## [0.9.3](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.2...v0.9.3) (2025-02-25)
 
 
