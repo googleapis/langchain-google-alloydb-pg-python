@@ -5,7 +5,7 @@ langchain-milvus==0.1.8
 langchain-pinecone==0.2.3
 langchain-qdrant==0.2.0
 langchain-weaviate==0.0.4
-pinecone-client==4.1.2
+pinecone-client==6.0.0
 pymilvus==2.5.5
 pytest-asyncio==0.25.3
 pytest==8.3.5
