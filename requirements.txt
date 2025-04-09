@@ -6,3 +6,4 @@ numpy== 2.0.2; python_version <= "3.9"
 pgvector==0.3.6
 SQLAlchemy[asyncio]==2.0.38
 langgraph-checkpoint==2.0.19
+langchain-postgres==0.0.14rc1
