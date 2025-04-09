@@ -34,10 +34,12 @@ from create_vector_embeddings import (
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
-from langchain_google_alloydb_pg.indexes import (
+from langchain_postgres.v2.indexes import (
     HNSWIndex,
     HNSWQueryOptions,
     IVFFlatIndex,
+)
+from langchain_google_alloydb_pg.indexes import (
     IVFIndex,
     ScaNNIndex,
 )
