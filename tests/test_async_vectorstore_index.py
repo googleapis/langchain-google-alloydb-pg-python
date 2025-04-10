@@ -114,12 +114,12 @@ class TestIndex:
             distance_strategy=DistanceStrategy.EUCLIDEAN,
         )
         await vs.aapply_vector_index(index, concurrently=True)
-        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
+        assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFIndex(
             name="secondindex",
             distance_strategy=DistanceStrategy.INNER_PRODUCT,
         )
         await vs.aapply_vector_index(index)
-        assert await vs.ais_valid_index("secondindex")
+        assert await vs.is_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
         await vs.adrop_vector_index()

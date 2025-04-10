@@ -133,8 +133,8 @@ class TestIndex:
         )
         vs.apply_vector_index(index)
         assert vs.is_valid_index("secondindex")
-        vs.adrop_vector_index("secondindex")
-        vs.adrop_vector_index(DEFAULT_INDEX_NAME)
+        vs.drop_vector_index("secondindex")
+        vs.drop_vector_index(DEFAULT_INDEX_NAME)
 
 
 @pytest.mark.asyncio(loop_scope="class")
