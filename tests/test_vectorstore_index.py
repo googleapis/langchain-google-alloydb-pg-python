@@ -31,12 +31,15 @@ from langchain_google_alloydb_pg.indexes import (
     ScaNNIndex,
 )
 
-DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE_ASYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE_OMNI = "test_table" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
-DEFAULT_INDEX_NAME_ASYNC = DEFAULT_TABLE_ASYNC + DEFAULT_INDEX_NAME_SUFFIX
-DEFAULT_INDEX_NAME_OMNI = DEFAULT_TABLE_OMNI + DEFAULT_INDEX_NAME_SUFFIX
+DEFAULT_TABLE_UUID = str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_ASYNC_UUID = str(uuid.uuid4()).replace("-", "_")
+OMNI_UUID = str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE = "test_table" + DEFAULT_TABLE_UUID
+DEFAULT_TABLE_ASYNC = "test_table" + DEFAULT_TABLE_ASYNC_UUID
+DEFAULT_TABLE_OMNI = "test_table" + OMNI_UUID
+DEFAULT_INDEX_NAME = DEFAULT_INDEX_NAME_SUFFIX + DEFAULT_TABLE_UUID
+DEFAULT_INDEX_NAME_ASYNC = DEFAULT_INDEX_NAME_SUFFIX + DEFAULT_TABLE_ASYNC_UUID
+DEFAULT_INDEX_NAME_OMNI = DEFAULT_INDEX_NAME_SUFFIX + OMNI_UUID
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -119,7 +122,9 @@ class TestIndex:
         yield vs
 
     async def test_aapply_vector_index_ivf(self, vs):
-        index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = IVFIndex(
+            name=DEFAULT_INDEX_NAME, distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
         vs.apply_vector_index(index, concurrently=True)
         assert vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFIndex(
@@ -129,7 +134,7 @@ class TestIndex:
         vs.apply_vector_index(index)
         assert vs.is_valid_index("secondindex")
         vs.adrop_vector_index("secondindex")
-        vs.adrop_vector_index()
+        vs.adrop_vector_index(DEFAULT_INDEX_NAME)
 
 
 @pytest.mark.asyncio(loop_scope="class")
@@ -220,7 +225,9 @@ class TestAsyncIndex:
         yield vs
 
     async def test_aapply_vector_index_ivf(self, vs):
-        index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = IVFIndex(
+            name=DEFAULT_INDEX_NAME_ASYNC, distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         index = IVFIndex(
@@ -230,10 +237,12 @@ class TestAsyncIndex:
         await vs.aapply_vector_index(index)
         assert await vs.ais_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
-        await vs.adrop_vector_index()
+        await vs.adrop_vector_index(DEFAULT_INDEX_NAME_ASYNC)
 
     async def test_aapply_alloydb_scann_index_ScaNN(self, omni_vs):
-        index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = ScaNNIndex(
+            name=DEFAULT_INDEX_NAME_OMNI, distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
         await omni_vs.aset_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
         assert await omni_vs.ais_valid_index(DEFAULT_INDEX_NAME_OMNI)
@@ -243,4 +252,4 @@ class TestAsyncIndex:
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.ais_valid_index("secondindex")
         await omni_vs.adrop_vector_index("secondindex")
-        await omni_vs.adrop_vector_index()
+        await omni_vs.adrop_vector_index(DEFAULT_INDEX_NAME_OMNI)

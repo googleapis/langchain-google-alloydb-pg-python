@@ -95,7 +95,6 @@ class AlloyDBEngine(PGEngine):
     """A class for managing connections to a AlloyDB database."""
 
     _connector: Optional[AsyncConnector] = None
-    __create_key = object()
 
     @classmethod
     def __start_background_loop(
@@ -371,7 +370,7 @@ class AlloyDBEngine(PGEngine):
             raise ValueError("Driver must be type 'postgresql+asyncpg'")
 
         engine = create_async_engine(url, **kwargs)
-        return cls(cls.__create_key, engine, cls._default_loop, cls._default_thread)
+        return cls(PGEngine._PGEngine__create_key, engine, cls._default_loop, cls._default_thread)  # type: ignore
 
     async def _ainit_chat_history_table(
         self, table_name: str, schema_name: str = "public"

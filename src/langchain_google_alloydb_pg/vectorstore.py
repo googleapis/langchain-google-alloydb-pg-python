@@ -56,7 +56,7 @@ class AlloyDBVectorStore(PGVectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[dict] | Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on image."""
@@ -68,7 +68,7 @@ class AlloyDBVectorStore(PGVectorStore):
         self,
         image_uri: str,
         k: Optional[int] = None,
-        filter: Optional[dict] | Optional[str] = None,
+        filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on image_uri."""

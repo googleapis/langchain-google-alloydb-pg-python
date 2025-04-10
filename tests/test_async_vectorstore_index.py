@@ -14,7 +14,6 @@
 
 
 import os
-import sys
 import uuid
 
 import pytest
@@ -31,8 +30,9 @@ from langchain_google_alloydb_pg.indexes import (
     IVFIndex,
 )
 
-DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
+UUID_STR = str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE = "test_table" + UUID_STR
+DEFAULT_INDEX_NAME = DEFAULT_INDEX_NAME_SUFFIX + UUID_STR
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -109,7 +109,10 @@ class TestIndex:
         yield vs
 
     async def test_aapply_vector_index_ivf(self, vs):
-        index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = IVFIndex(
+            name=DEFAULT_INDEX_NAME,
+            distance_strategy=DistanceStrategy.EUCLIDEAN,
+        )
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.ais_valid_index(DEFAULT_INDEX_NAME)
         index = IVFIndex(
