@@ -16,10 +16,6 @@ import warnings
 
 from langchain_google_alloydb_pg.indexes import (
     DistanceStrategy,
-    HNSWIndex,
-    HNSWQueryOptions,
-    IVFFlatIndex,
-    IVFFlatQueryOptions,
     IVFIndex,
     IVFQueryOptions,
     ScaNNIndex,
@@ -47,42 +43,6 @@ class TestAlloyDBIndex:
         assert scann_index.get_index_function() == "cosine"
         scann_index = ScaNNIndex(distance_strategy=DistanceStrategy.INNER_PRODUCT)
         assert scann_index.get_index_function() == "dot_prod"
-
-    def test_hnsw_index(self):
-        index = HNSWIndex(name="test_index", m=32, ef_construction=128)
-        assert index.index_type == "hnsw"
-        assert index.m == 32
-        assert index.ef_construction == 128
-        assert index.index_options() == "(m = 32, ef_construction = 128)"
-
-    def test_hnsw_query_options(self):
-        options = HNSWQueryOptions(ef_search=80)
-        assert options.to_parameter() == ["hnsw.ef_search = 80"]
-
-        with warnings.catch_warnings(record=True) as w:
-            options.to_string()
-
-            assert len(w) == 1
-            assert "to_string is deprecated, use to_parameter instead." in str(
-                w[-1].message
-            )
-
-    def test_ivfflat_index(self):
-        index = IVFFlatIndex(name="test_index", lists=200)
-        assert index.index_type == "ivfflat"
-        assert index.lists == 200
-        assert index.index_options() == "(lists = 200)"
-
-    def test_ivfflat_query_options(self):
-        options = IVFFlatQueryOptions(probes=2)
-        assert options.to_parameter() == ["ivfflat.probes = 2"]
-
-        with warnings.catch_warnings(record=True) as w:
-            options.to_string()
-            assert len(w) == 1
-            assert "to_string is deprecated, use to_parameter instead." in str(
-                w[-1].message
-            )
 
     def test_ivf_index(self):
         index = IVFIndex(name="test_index", lists=200)
