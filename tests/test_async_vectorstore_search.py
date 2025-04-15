@@ -137,7 +137,6 @@ class TestVectorStoreSearch:
                 num_leaves_to_search=1, pre_reordering_num_neighbors=2
             ),
         )
-        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         await vs_custom_scann_query_option.aadd_documents(docs, ids=ids)
         yield vs_custom_scann_query_option
 
@@ -170,7 +169,6 @@ class TestVectorStoreSearch:
             table_name=IMAGE_TABLE,
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
-        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         await vs.aadd_images(image_uris, ids=ids)
         yield vs
 

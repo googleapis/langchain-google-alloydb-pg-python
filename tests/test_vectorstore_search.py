@@ -137,7 +137,6 @@ class TestVectorStoreSearch:
             table_name=IMAGE_TABLE,
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
-        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         await vs.aadd_images(image_uris, ids=ids)
         yield vs
 
@@ -211,7 +210,6 @@ class TestVectorStoreSearchSync:
             table_name=IMAGE_TABLE_SYNC,
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
-        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         vs.add_images(image_uris, ids=ids)
         yield vs
 
