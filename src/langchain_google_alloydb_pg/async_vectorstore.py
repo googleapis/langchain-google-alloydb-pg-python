@@ -268,66 +268,66 @@ class AsyncAlloyDBVectorStore(VectorStore):
         if not ids:
             ids = [str(uuid.uuid4()) for _ in texts]
         else:
-            # This is done to fill in any missing ids
             ids = [id if id is not None else str(uuid.uuid4()) for id in ids]
         if not metadatas:
             metadatas = [{} for _ in texts]
-        # Insert embeddings
-        for id, content, embedding, metadata in zip(ids, texts, embeddings, metadatas):
-            metadata_col_names = (
-                ", " + ", ".join(f'"{col}"' for col in self.metadata_columns)
-                if len(self.metadata_columns) > 0
-                else ""
-            )
-            insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"("{self.id_column}", "{self.content_column}", "{self.embedding_column}"{metadata_col_names}'
-            values = {
-                "id": id,
-                "content": content,
-                "embedding": str([float(dimension) for dimension in embedding]),
-            }
-            values_stmt = "VALUES (:id, :content, :embedding"
-            inline_embed_func = getattr(
-                self.embedding_service, "embed_query_inline", None
-            )
-            if not embedding and callable(inline_embed_func):
-                values_stmt = f"VALUES (:id, :content, {self.embedding_service.embed_query_inline(content)}"  # type: ignore
 
-            # Add metadata
-            extra = copy.deepcopy(metadata)
-            for metadata_column in self.metadata_columns:
-                if metadata_column in metadata:
-                    values_stmt += f", :{metadata_column}"
-                    values[metadata_column] = metadata[metadata_column]
-                    del extra[metadata_column]
-                else:
-                    values_stmt += ",null"
+        # Prepare values and parameters for batch insertion
+        values = []
+        params = {}
+        for i, (id_, content, embedding, metadata) in enumerate(zip(ids, texts, embeddings, metadatas)):
+            params[f"id_{i}"] = id_
+            params[f"content_{i}"] = content
 
-            # Add JSON column and/or close statement
-            insert_stmt += (
-                f""", "{self.metadata_json_column}")"""
-                if self.metadata_json_column
-                else ")"
-            )
-            if self.metadata_json_column:
-                values_stmt += ", :extra)"
-                values["extra"] = json.dumps(extra)
+            # Handle embedding: use provided embedding or inline function
+            if embedding:
+                params[f"embedding_{i}"] = str([float(d) for d in embedding])
+                embedding_expr = f":embedding_{i}"
             else:
-                values_stmt += ")"
+                inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
+                if callable(inline_embed_func):
+                    embedding_expr = f"{self.embedding_service.embed_query_inline(':content_{i}')}"
+                else:
+                    raise ValueError("Embedding not provided and inline embedding not available.")
 
-            upsert_stmt = f' ON CONFLICT ("{self.id_column}") DO UPDATE SET "{self.content_column}" = EXCLUDED."{self.content_column}", "{self.embedding_column}" = EXCLUDED."{self.embedding_column}"'
+            # Handle metadata columns
+            metadata_values = []
+            for col in self.metadata_columns:
+                if col in metadata:
+                    params[f"{col}_{i}"] = metadata[col]
+                    metadata_values.append(f":{col}_{i}")
+                else:
+                    metadata_values.append("NULL")
+            metadata_values_str = ", ".join(metadata_values)
 
+            # Handle metadata_json_column
             if self.metadata_json_column:
-                upsert_stmt += f', "{self.metadata_json_column}" = EXCLUDED."{self.metadata_json_column}"'
+                extra = {k: v for k, v in metadata.items() if k not in self.metadata_columns}
+                params[f"extra_{i}"] = json.dumps(extra)
+                values.append(f"(:id_{i}, :content_{i}, {embedding_expr}, {metadata_values_str}, :extra_{i})")
+            else:
+                values.append(f"(:id_{i}, :content_{i}, {embedding_expr}, {metadata_values_str})")
 
-            for column in self.metadata_columns:
-                upsert_stmt += f', "{column}" = EXCLUDED."{column}"'
+        # Construct the batched INSERT statement
+        values_stmt = ", ".join(values)
+        columns = f'"{self.id_column}", "{self.content_column}", "{self.embedding_column}"'
+        if self.metadata_columns:
+            columns += ", " + ", ".join(f'"{col}"' for col in self.metadata_columns)
+        if self.metadata_json_column:
+            columns += f', "{self.metadata_json_column}"'
 
-            upsert_stmt += ";"
+        update_columns = f'"{self.content_column}" = EXCLUDED."{self.content_column}", "{self.embedding_column}" = EXCLUDED."{self.embedding_column}"'
+        if self.metadata_json_column:
+            update_columns += f', "{self.metadata_json_column}" = EXCLUDED."{self.metadata_json_column}"'
+        for col in self.metadata_columns:
+            update_columns += f', "{col}" = EXCLUDED."{col}"'
 
-            query = insert_stmt + values_stmt + upsert_stmt
-            async with self.engine.connect() as conn:
-                await conn.execute(text(query), values)
-                await conn.commit()
+        stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}" ({columns}) VALUES {values_stmt} ON CONFLICT ("{self.id_column}") DO UPDATE SET {update_columns};'
+
+        # Execute the batched statement
+        async with self.engine.connect() as conn:
+            await conn.execute(text(stmt), params)
+            await conn.commit()
 
         return ids
 
