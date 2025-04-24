@@ -624,3 +624,43 @@ class AlloyDBEngine(PGEngine):
             None
         """
         self._run_as_sync(self._ainit_checkpoint_table(table_name, schema_name))
+
+    async def _aload_table_schema(
+        self, table_name: str, schema_name: str = "public"
+    ) -> Table:
+        """
+        Load table schema from an existing table in a PgSQL database, potentially from a specific database schema.
+
+        Args:
+            table_name: The name of the table to load the table schema from.
+            schema_name: The name of the database schema where the table resides.
+                Default: "public".
+
+        Returns:
+            (sqlalchemy.Table): The loaded table, including its table schema information.
+        """
+        metadata = MetaData()
+        async with self._pool.connect() as conn:
+            try:
+                await conn.run_sync(
+                    metadata.reflect, schema=schema_name, only=[table_name]
+                )
+            except InvalidRequestError as e:
+                raise ValueError(
+                    f"Table, '{schema_name}'.'{table_name}', does not exist: " + str(e)
+                )
+
+        table = Table(table_name, metadata, schema=schema_name)
+        # Extract the schema information
+        schema = []
+        for column in table.columns:
+            schema.append(
+                {
+                    "name": column.name,
+                    "type": column.type.python_type,
+                    "max_length": getattr(column.type, "length", None),
+                    "nullable": not column.nullable,
+                }
+            )
+
+        return metadata.tables[f"{schema_name}.{table_name}"]
