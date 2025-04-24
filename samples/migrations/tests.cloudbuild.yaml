@@ -16,6 +16,11 @@ steps:
   - id: Install dependencies
     name: python:${_VERSION}
     entrypoint: pip
+    args: ["install", "--user", "-r", "requirements.txt"]
+
+  - id: Install samples dependencies
+    name: python:${_VERSION}
+    entrypoint: pip
     dir: samples/migrations
     args: ["install", "--user", "-r", "requirements.txt"]
 
