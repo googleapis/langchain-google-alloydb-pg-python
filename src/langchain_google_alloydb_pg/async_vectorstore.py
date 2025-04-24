@@ -80,61 +80,6 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         )
         return ids
 
-    async def __query_collection(
-        self,
-        embedding: list[float],
-        *,
-        k: Optional[int] = None,
-        filter: Optional[dict] = None,
-        **kwargs: Any,
-    ) -> Sequence[RowMapping]:
-        """Perform similarity search query on database."""
-        k = k if k else self.k
-        operator = self.distance_strategy.operator
-        search_function = self.distance_strategy.search_function
-
-        columns = self.metadata_columns + [
-            self.id_column,
-            self.content_column,
-            self.embedding_column,
-        ]
-        if self.metadata_json_column:
-            columns.append(self.metadata_json_column)
-
-        column_names = ", ".join(f'"{col}"' for col in columns)
-
-        safe_filter = None
-        filter_dict = None
-        if filter and isinstance(filter, dict):
-            safe_filter, filter_dict = self._create_filter_clause(filter)
-        param_filter = f"WHERE {safe_filter}" if safe_filter else ""
-        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
-        if not embedding and callable(inline_embed_func) and "query" in kwargs:
-            query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])  # type: ignore
-        else:
-            query_embedding = f"{[float(dimension) for dimension in embedding]}"
-        stmt = f"""SELECT {column_names}, {search_function}("{self.embedding_column}", :query_embedding) as distance
-        FROM "{self.schema_name}"."{self.table_name}" {param_filter} ORDER BY "{self.embedding_column}" {operator} {query_embedding} LIMIT :k;
-        """
-        param_dict = {"k": k}
-        if filter_dict:
-            param_dict.update(filter_dict)
-        if self.index_query_options:
-            async with self.engine.connect() as conn:
-                # Set each query option individually
-                for query_option in self.index_query_options.to_parameter():
-                    query_options_stmt = f"SET LOCAL {query_option};"
-                    await conn.execute(text(query_options_stmt))
-                result = await conn.execute(text(stmt), param_dict)
-                result_map = result.mappings()
-                results = result_map.fetchall()
-        else:
-            async with self.engine.connect() as conn:
-                result = await conn.execute(text(stmt), param_dict)
-                result_map = result.mappings()
-                results = result_map.fetchall()
-        return results
-
     def _images_embedding_helper(self, image_uris: list[str]) -> list[list[float]]:
         # check if either `embed_images()` or `embed_image()` API is supported by the embedding service used
         if hasattr(self.embedding_service, "embed_images"):
