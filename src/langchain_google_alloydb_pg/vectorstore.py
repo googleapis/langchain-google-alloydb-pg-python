@@ -26,7 +26,7 @@ from .async_vectorstore import AsyncAlloyDBVectorStore
 class AlloyDBVectorStore(PGVectorStore):
     """Google AlloyDB Vector Store class"""
 
-    # __vs: AsyncAlloyDBVectorStore
+    __vs: AsyncAlloyDBVectorStore
 
     async def aadd_images(
         self,
