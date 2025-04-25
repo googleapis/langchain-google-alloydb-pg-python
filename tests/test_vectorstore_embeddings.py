@@ -331,7 +331,7 @@ class TestVectorStoreEmbeddingsSync:
         results = vs_custom.similarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
-        results = vs_custom.similarity_search("foo", k=1, filter={"content": "bar"})
+        results = vs_custom.similarity_search("foo", k=1, filter={"mycontent": "bar"})
         assert results == [Document(page_content="bar", id=ids[1])]
 
     def test_similarity_search_score(self, vs_custom):
@@ -353,7 +353,7 @@ class TestVectorStoreEmbeddingsSync:
         results = vs_custom.max_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
         results = vs_custom.max_marginal_relevance_search(
-            "bar", filter={"content": "boo"}
+            "bar", filter={"mycontent": "boo"}
         )
         assert results[0] == Document(page_content="boo", id=ids[3])
 
