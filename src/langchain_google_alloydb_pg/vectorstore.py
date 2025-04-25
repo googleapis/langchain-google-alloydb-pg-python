@@ -18,19 +18,166 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from langchain_core.documents import Document
-from langchain_postgres import PGVectorStore
+from langchain_core.embeddings import Embeddings
+from langchain_postgres import PGEngine, PGVectorStore
+from langchain_postgres.v2.indexes import (
+    DEFAULT_DISTANCE_STRATEGY,
+    DistanceStrategy,
+    QueryOptions,
+)
 
 from .async_vectorstore import AsyncAlloyDBVectorStore
+from .engine import AlloyDBEngine
 
 
 class AlloyDBVectorStore(PGVectorStore):
     """Google AlloyDB Vector Store class"""
 
+    __create_key = object()
+    _engine: AlloyDBEngine
     __vs: AsyncAlloyDBVectorStore
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__vs = self._PGVectorStore__vs  # type: ignore
+    def __init__(self, key: object, engine: AlloyDBEngine, vs: AsyncAlloyDBVectorStore):
+        """AlloyDBVectorStore constructor.
+        Args:
+            key (object): Prevent direct constructor usage.
+            engine (PGEngine): Connection pool engine for managing connections to Postgres database.
+            vs (AsyncAlloyDBVectorStore): The async only VectorStore implementation
+
+
+        Raises:
+            Exception: If called directly by user.
+        """
+        if key != AlloyDBVectorStore.__create_key:
+            raise Exception(
+                "Only create class through 'create' or 'create_sync' methods!"
+            )
+
+        self._engine = engine
+        self.__vs = vs
+
+    @classmethod
+    async def create(
+        cls: type[AlloyDBVectorStore],
+        engine: AlloyDBEngine,  # type: ignore
+        embedding_service: Embeddings,
+        table_name: str,
+        schema_name: str = "public",
+        content_column: str = "content",
+        embedding_column: str = "embedding",
+        metadata_columns: Optional[list[str]] = None,
+        ignore_metadata_columns: Optional[list[str]] = None,
+        id_column: str = "langchain_id",
+        metadata_json_column: Optional[str] = "langchain_metadata",
+        distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
+        k: int = 4,
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5,
+        index_query_options: Optional[QueryOptions] = None,
+    ) -> PGVectorStore:
+        """Create an PGVectorStore instance.
+
+        Args:
+            engine (AlloyDBEngine): Connection pool engine for managing connections to postgres database.
+            embedding_service (Embeddings): Text embedding model to use.
+            table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
+            content_column (str): Column that represent a Document's page_content. Defaults to "content".
+            embedding_column (str): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (list[str]): Column(s) that represent a document's metadata.
+            ignore_metadata_columns (list[str]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str): Column that represents the Document's id. Defaults to "langchain_id".
+            metadata_json_column (str): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            distance_strategy (DistanceStrategy): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
+            k (int): Number of Documents to return from search. Defaults to 4.
+            fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
+            lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
+            index_query_options (QueryOptions): Index query option.
+
+        Returns:
+            PGVectorStore
+        """
+        coro = AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service,
+            table_name,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            ignore_metadata_columns=ignore_metadata_columns,
+            metadata_json_column=metadata_json_column,
+            id_column=id_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
+        )
+        vs = await engine._run_as_async(coro)
+        return cls(cls.__create_key, engine, vs)  # type: ignore
+
+    @classmethod
+    def create_sync(
+        cls: type[AlloyDBVectorStore],
+        engine: AlloyDBEngine,  # type: ignore
+        embedding_service: Embeddings,
+        table_name: str,
+        schema_name: str = "public",
+        content_column: str = "content",
+        embedding_column: str = "embedding",
+        metadata_columns: Optional[list[str]] = None,
+        ignore_metadata_columns: Optional[list[str]] = None,
+        id_column: str = "langchain_id",
+        metadata_json_column: str = "langchain_metadata",
+        distance_strategy: DistanceStrategy = DEFAULT_DISTANCE_STRATEGY,
+        k: int = 4,
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5,
+        index_query_options: Optional[QueryOptions] = None,
+    ) -> PGVectorStore:
+        """Create an PGVectorStore instance.
+
+        Args:
+            key (object): Prevent direct constructor usage.
+            engine (AlloyDBEngine): Connection pool engine for managing connections to postgres database.
+            embedding_service (Embeddings): Text embedding model to use.
+            table_name (str): Name of an existing table.
+            schema_name (str, optional): Name of the database schema. Defaults to "public".
+            content_column (str, optional): Column that represent a Document's page_content. Defaults to "content".
+            embedding_column (str, optional): Column for embedding vectors. The embedding is generated from the document value. Defaults to "embedding".
+            metadata_columns (list[str], optional): Column(s) that represent a document's metadata. Defaults to None.
+            ignore_metadata_columns (Optional[list[str]]): Column(s) to ignore in pre-existing tables for a document's metadata. Can not be used with metadata_columns. Defaults to None.
+            id_column (str, optional): Column that represents the Document's id. Defaults to "langchain_id".
+            metadata_json_column (str, optional): Column to store metadata as JSON. Defaults to "langchain_metadata".
+            distance_strategy (DistanceStrategy, optional): Distance strategy to use for vector similarity search. Defaults to COSINE_DISTANCE.
+            k (int, optional): Number of Documents to return from search. Defaults to 4.
+            fetch_k (int, optional): Number of Documents to fetch to pass to MMR algorithm. Defaults to 20.
+            lambda_mult (float, optional): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
+            index_query_options (Optional[QueryOptions], optional): Index query option. Defaults to None.
+
+        Returns:
+            PGVectorStore
+        """
+        coro = AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service,
+            table_name,
+            schema_name=schema_name,
+            content_column=content_column,
+            embedding_column=embedding_column,
+            metadata_columns=metadata_columns,
+            ignore_metadata_columns=ignore_metadata_columns,
+            metadata_json_column=metadata_json_column,
+            id_column=id_column,
+            distance_strategy=distance_strategy,
+            k=k,
+            fetch_k=fetch_k,
+            lambda_mult=lambda_mult,
+            index_query_options=index_query_options,
+        )
+        vs = engine._run_as_sync(coro)
+        return cls(cls.__create_key, engine, vs)  # type: ignore
 
     async def aadd_images(
         self,

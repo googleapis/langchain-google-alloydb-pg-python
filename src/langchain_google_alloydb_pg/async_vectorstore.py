@@ -30,6 +30,9 @@ from sqlalchemy import RowMapping, Sequence, text
 class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     """Google AlloyDB Vector Store class"""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def _encode_image(self, uri: str) -> str:
         """Get base64 string from a image URI."""
         gcs_uri = re.match("gs://(.*?)/(.*)", uri)
