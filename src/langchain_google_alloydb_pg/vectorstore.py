@@ -30,7 +30,7 @@ class AlloyDBVectorStore(PGVectorStore):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__vs = self.__PGVectorStore__vs  # type: ignore
+        self.__vs = self._PGVectorStore__vs  # type: ignore
 
     async def aadd_images(
         self,
