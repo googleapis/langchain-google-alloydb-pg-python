@@ -37,25 +37,6 @@ class AlloyDBVectorStore(PGVectorStore):
     _engine: AlloyDBEngine
     __vs: AsyncAlloyDBVectorStore
 
-    def __init__(self, key: object, engine: AlloyDBEngine, vs: AsyncAlloyDBVectorStore):
-        """AlloyDBVectorStore constructor.
-        Args:
-            key (object): Prevent direct constructor usage.
-            engine (PGEngine): Connection pool engine for managing connections to Postgres database.
-            vs (AsyncAlloyDBVectorStore): The async only VectorStore implementation
-
-
-        Raises:
-            Exception: If called directly by user.
-        """
-        if key != AlloyDBVectorStore.__create_key:
-            raise Exception(
-                "Only create class through 'create' or 'create_sync' methods!"
-            )
-
-        self._engine = engine
-        self.__vs = vs
-
     @classmethod
     async def create(
         cls: type[AlloyDBVectorStore],
@@ -115,7 +96,7 @@ class AlloyDBVectorStore(PGVectorStore):
             index_query_options=index_query_options,
         )
         vs = await engine._run_as_async(coro)
-        return cls(cls.__create_key, engine, vs)  # type: ignore
+        return cls(cls._PGVectorStore__create_key, engine, vs)  # type: ignore
 
     @classmethod
     def create_sync(
@@ -177,7 +158,7 @@ class AlloyDBVectorStore(PGVectorStore):
             index_query_options=index_query_options,
         )
         vs = engine._run_as_sync(coro)
-        return cls(cls.__create_key, engine, vs)  # type: ignore
+        return cls(cls._PGVectorStore__create_key, engine, vs)  # type: ignore
 
     async def aadd_images(
         self,
