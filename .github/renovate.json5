@@ -19,6 +19,10 @@
   ],
   packageRules: [
     {
+      matchFileNames: ["samples/**"],
+      groupName: "samples-deps",
+    },
+    {
       groupName: 'GitHub Actions',
       matchManagers: [
         'github-actions',
@@ -36,6 +40,7 @@
     },
     {
       groupName: 'python-nonmajor',
+      ignorePaths: ["samples/**"],
       matchCategories: [
         'python',
       ],
