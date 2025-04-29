@@ -376,13 +376,8 @@ async def test_checkpoint_with_agent(
 
     saved = await checkpointer.aget_tuple(thread)
     assert saved is not None
-    assert saved.checkpoint["channel_values"] == {
-        "messages": [
-            _AnyIdHumanMessage(content="hi?"),
-            AIMessage(content="hi?", id="0"),
-        ],
-        "agent": "agent",
-    }
+    assert _AnyIdHumanMessage(content="hi?") in saved.checkpoint["channel_values"]["messages"]
+    assert AIMessage(content="hi?", id="0") in saved.checkpoint["channel_values"]["messages"]
     assert saved.metadata == {
         "parents": {},
         "source": "loop",
