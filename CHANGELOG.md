@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.10.0...v0.11.0) (2025-04-30)
+
+
+### Features
+
+* Update AlloyDB VectorStore to expected LangChain functionality ([#402](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/402)) ([432b77f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/432b77fc21a8326255510f155d9079bfbf114b92))
+
+
+### Bug Fixes
+
+* Update JSON conversion method ([9f9154a](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9f9154aeeba6c2b1f04c0c5dc56c0fdff789af42))
+* Update JSON conversion method ([#405](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/405)) ([9f9154a](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9f9154aeeba6c2b1f04c0c5dc56c0fdff789af42))
+
 ## [0.10.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.9.3...v0.10.0) (2025-03-18)
 
 
