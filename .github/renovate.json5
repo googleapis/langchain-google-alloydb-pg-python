@@ -20,7 +20,7 @@
   packageRules: [
     {
       matchFileNames: ["samples/**"],
-      groupName: "samples-deps",
+      groupName: "Samples",
     },
     {
       groupName: 'GitHub Actions',
