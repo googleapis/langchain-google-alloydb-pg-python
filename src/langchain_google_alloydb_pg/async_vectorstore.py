@@ -32,6 +32,7 @@ from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from .engine import AlloyDBEngine
+from .hybrid_search_config import HybridSearchConfig
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DEFAULT_INDEX_NAME_SUFFIX,
@@ -95,6 +96,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
+        hybrid_search_column_exists: bool = False,
     ):
         """AsyncAlloyDBVectorStore constructor.
         Args:
@@ -113,6 +116,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
             lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (QueryOptions): Index query option.
+            hybrid_search_config (HybridSearchConfig): Hybrid search configuration. Defaults to None.
+            hybrid_search_column_exists (bool): Defines whether the existing table has the hybrid search column.
 
 
         Raises:
@@ -137,6 +142,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
         self.fetch_k = fetch_k
         self.lambda_mult = lambda_mult
         self.index_query_options = index_query_options
+        self.hybrid_search_config = hybrid_search_config
+        self.hybrid_search_column_exists = hybrid_search_column_exists
 
     @classmethod
     async def create(
@@ -156,6 +163,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
     ) -> AsyncAlloyDBVectorStore:
         """Create an AsyncAlloyDBVectorStore instance.
 
@@ -175,6 +183,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
             lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (QueryOptions): Index query option.
+            hybrid_search_config (HybridSearchConfig): Hybrid search configuration. Defaults to None.
+            hybrid_search_column_exists (bool): Defines whether the existing table has the hybrid search column.
 
         Returns:
             AsyncAlloyDBVectorStore
@@ -203,6 +213,15 @@ class AsyncAlloyDBVectorStore(VectorStore):
             raise ValueError(
                 f"Content column, {content_column}, is type, {content_type}. It must be a type of character string."
             )
+        hybrid_search_column_exists = False
+        if hybrid_search_config:
+            hybrid_search_config.tsv_column = (
+                hybrid_search_config.tsv_column
+                if hybrid_search_config.tsv_column
+                else content_column + "_tsv"
+            )
+            hybrid_search_column_exists = hybrid_search_config.tsv_column in columns
+
         if embedding_column not in columns:
             raise ValueError(f"Embedding column, {embedding_column}, does not exist.")
         if columns[embedding_column] != "USER-DEFINED":
@@ -246,6 +265,8 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k=fetch_k,
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
+            hybrid_search_config=hybrid_search_config,
+            hybrid_search_column_exists=hybrid_search_column_exists,
         )
 
     @property
@@ -279,7 +300,12 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 if len(self.metadata_columns) > 0
                 else ""
             )
-            insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"("{self.id_column}", "{self.content_column}", "{self.embedding_column}"{metadata_col_names}'
+            hybrid_search_column = (
+                f', "{self.hybrid_search_config.tsv_column}"'
+                if self.hybrid_search_config and self.hybrid_search_column_exists
+                else ""
+            )
+            insert_stmt = f'INSERT INTO "{self.schema_name}"."{self.table_name}"("{self.id_column}", "{self.content_column}", "{self.embedding_column}"{hybrid_search_column}{metadata_col_names}'
             values = {
                 "id": id,
                 "content": content,
@@ -291,6 +317,10 @@ class AsyncAlloyDBVectorStore(VectorStore):
             )
             if not embedding and callable(inline_embed_func):
                 values_stmt = f"VALUES (:id, :content, {self.embedding_service.embed_query_inline(content)}"  # type: ignore
+
+            if self.hybrid_search_config and self.hybrid_search_column_exists:
+                values_stmt += f", to_tsvector('{self.hybrid_search_config.tsv_lang}', :tsv_content)"
+                values["tsv_content"] = content
 
             # Add metadata
             extra = copy.deepcopy(metadata)
@@ -315,6 +345,9 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 values_stmt += ")"
 
             upsert_stmt = f' ON CONFLICT ("{self.id_column}") DO UPDATE SET "{self.content_column}" = EXCLUDED."{self.content_column}", "{self.embedding_column}" = EXCLUDED."{self.embedding_column}"'
+
+            if self.hybrid_search_config and self.hybrid_search_column_exists:
+                upsert_stmt += f', "{self.hybrid_search_config.tsv_column}" = EXCLUDED."{self.hybrid_search_config.tsv_column}"'
 
             if self.metadata_json_column:
                 upsert_stmt += f', "{self.metadata_json_column}" = EXCLUDED."{self.metadata_json_column}"'
@@ -464,6 +497,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
         **kwargs: Any,
     ) -> AsyncAlloyDBVectorStore:
         """Create an AsyncAlloyDBVectorStore instance from texts.
@@ -486,6 +520,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
             lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (QueryOptions): Index query option.
+            hybrid_search_column_exists (bool): Defines whether the existing table has the hybrid search column.
 
         Raises:
             :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
@@ -509,6 +544,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k=fetch_k,
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
+            hybrid_search_config=hybrid_search_config,
         )
         await vs.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
         return vs
@@ -533,6 +569,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
         **kwargs: Any,
     ) -> AsyncAlloyDBVectorStore:
         """Create an AsyncAlloyDBVectorStore instance from documents.
@@ -555,6 +592,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
             lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (QueryOptions): Index query option.
+            hybrid_search_column_exists (bool): Defines whether the existing table has the hybrid search column.
 
         Raises:
             :class:`InvalidTextRepresentationError <asyncpg.exceptions.InvalidTextRepresentationError>`: if the `ids` data type does not match that of the `id_column`.
@@ -579,6 +617,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
             fetch_k=fetch_k,
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
+            hybrid_search_config=hybrid_search_config,
         )
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
@@ -592,16 +631,29 @@ class AsyncAlloyDBVectorStore(VectorStore):
         filter: Optional[dict] | Optional[str] = None,
         **kwargs: Any,
     ) -> Sequence[RowMapping]:
-        """Perform similarity search query on database."""
-        k = k if k else self.k
+        """
+        Perform similarity search (and hybrid search if provided) query on database.
+        If the hybrid search column does not exist, then the queries might be very slow.
+        Consider creating the TSV column and adding GIN index, if hybrid search is required.
+        """
+        if not k:
+            k = (
+                max(
+                    self.k,
+                    self.hybrid_search_config.primary_top_k,
+                    self.hybrid_search_config.secondary_top_k,
+                )
+                if self.hybrid_search_config
+                else self.k
+            )
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function
 
-        columns = self.metadata_columns + [
+        columns = [
             self.id_column,
             self.content_column,
             self.embedding_column,
-        ]
+        ] + self.metadata_columns
         if self.metadata_json_column:
             columns.append(self.metadata_json_column)
 
@@ -609,28 +661,63 @@ class AsyncAlloyDBVectorStore(VectorStore):
 
         if filter and isinstance(filter, dict):
             filter = self._create_filter_clause(filter)
-        filter = f"WHERE {filter}" if filter else ""
+        where_filters = f"WHERE {filter}" if filter else ""
+        and_filters = f"AND ({filter})" if filter else ""
+
+        # dense query
         inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
         if not embedding and callable(inline_embed_func) and "query" in kwargs:
             query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])  # type: ignore
         else:
             query_embedding = f"'{[float(dimension) for dimension in embedding]}'"
-        stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {filter} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
+        dense_query_stmt = f'SELECT {column_names}, {search_function}({self.embedding_column}, {query_embedding}) as distance FROM "{self.schema_name}"."{self.table_name}" {where_filters} ORDER BY {self.embedding_column} {operator} {query_embedding} LIMIT {k};'
         if self.index_query_options:
             async with self.engine.connect() as conn:
                 # Set each query option individually
                 for query_option in self.index_query_options.to_parameter():
                     query_options_stmt = f"SET LOCAL {query_option};"
                     await conn.execute(text(query_options_stmt))
-                result = await conn.execute(text(stmt))
+                result = await conn.execute(text(dense_query_stmt))
                 result_map = result.mappings()
-                results = result_map.fetchall()
+                dense_results = result_map.fetchall()
         else:
             async with self.engine.connect() as conn:
-                result = await conn.execute(text(stmt))
+                result = await conn.execute(text(dense_query_stmt))
                 result_map = result.mappings()
-                results = result_map.fetchall()
-        return results
+                dense_results = result_map.fetchall()
+
+        hybrid_search_config = kwargs.get(
+            "hybrid_search_config", self.hybrid_search_config
+        )
+        fts_query = hybrid_search_config.fts_query if hybrid_search_config else ""
+        if hybrid_search_config and fts_query:
+            hybrid_search_config.fusion_function_parameters["fetch_top_k"] = k
+            # do the sparse query
+            lang = (
+                f"'{hybrid_search_config.tsv_lang}',"
+                if hybrid_search_config.tsv_lang
+                else ""
+            )
+            query_tsv = f"plainto_tsquery({lang} :fts_query)"
+            values = {"fts_query": fts_query}
+            if self.hybrid_search_column_exists:
+                content_tsv = f'"{hybrid_search_config.tsv_column}"'
+            else:
+                content_tsv = f'to_tsvector({lang} "{self.content_column}")'
+            sparse_query_stmt = f'SELECT {column_names}, ts_rank_cd({content_tsv}, {query_tsv}) as distance FROM "{self.schema_name}"."{self.table_name}" WHERE {content_tsv} @@ {query_tsv} {and_filters}  ORDER BY distance desc LIMIT {hybrid_search_config.secondary_top_k};'
+            async with self.engine.connect() as conn:
+                result = await conn.execute(text(sparse_query_stmt), values)
+                result_map = result.mappings()
+                sparse_results = result_map.fetchall()
+
+            combined_results = hybrid_search_config.fusion_function(
+                dense_results,
+                sparse_results,
+                **hybrid_search_config.fusion_function_parameters,
+            )
+            return combined_results
+
+        return dense_results
 
     async def asimilarity_search(
         self,
@@ -647,6 +734,14 @@ class AsyncAlloyDBVectorStore(VectorStore):
             else await self.embedding_service.aembed_query(text=query)
         )
         kwargs["query"] = query
+
+        # add fts_query to hybrid_search_config
+        hybrid_search_config = kwargs.get(
+            "hybrid_search_config", self.hybrid_search_config
+        )
+        if hybrid_search_config and not hybrid_search_config.fts_query:
+            hybrid_search_config.fts_query = query
+            kwargs["hybrid_search_config"] = hybrid_search_config
 
         return await self.asimilarity_search_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
@@ -714,6 +809,14 @@ class AsyncAlloyDBVectorStore(VectorStore):
             else await self.embedding_service.aembed_query(text=query)
         )
         kwargs["query"] = query
+
+        # add fts_query to hybrid_search_config
+        hybrid_search_config = kwargs.get(
+            "hybrid_search_config", self.hybrid_search_config
+        )
+        if hybrid_search_config and not hybrid_search_config.fts_query:
+            hybrid_search_config.fts_query = query
+            kwargs["hybrid_search_config"] = hybrid_search_config
 
         docs = await self.asimilarity_search_with_score_by_vector(
             embedding=embedding, k=k, filter=filter, **kwargs
@@ -898,13 +1001,20 @@ class AsyncAlloyDBVectorStore(VectorStore):
                 index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
             name = index.name
         stmt = f"CREATE INDEX {'CONCURRENTLY' if concurrently else ''} {name} ON \"{self.schema_name}\".\"{self.table_name}\" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};"
+        tsv_index_query = (
+            f'CREATE INDEX IF NOT EXISTS {self.hybrid_search_config.index_name} ON table_name USING {self.hybrid_search_config.index_type}("{self.content_column}");'
+            if self.hybrid_search_config
+            else ""
+        )
         if concurrently:
             async with self.engine.connect() as conn:
                 await conn.execute(text("COMMIT"))
                 await conn.execute(text(stmt))
+                await conn.execute(text(tsv_index_query))
         else:
             async with self.engine.connect() as conn:
                 await conn.execute(text(stmt))
+                await conn.execute(text(tsv_index_query))
                 await conn.commit()
 
     async def areindex(self, index_name: Optional[str] = None) -> None:
