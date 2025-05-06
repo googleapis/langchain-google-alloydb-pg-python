@@ -40,6 +40,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from .hybrid_search_config import HybridSearchConfig
 from .version import __version__
 
 if TYPE_CHECKING:
@@ -444,6 +445,7 @@ class AlloyDBEngine:
         id_column: Union[str, Column] = "langchain_id",
         overwrite_existing: bool = False,
         store_metadata: bool = True,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
     ) -> None:
         """
         Create a table for saving of vectors to be used with AlloyDBVectorStore.
@@ -466,6 +468,8 @@ class AlloyDBEngine:
             overwrite_existing (bool): Whether to drop existing table. Default: False.
             store_metadata (bool): Whether to store metadata in the table.
                 Default: True.
+            hybrid_search_config (HybridSearchConfig): Hybrid search configuration.
+                Default: None.
 
         Raises:
             :class:`DuplicateTableError <asyncpg.exceptions.DuplicateTableError>`: if table already exists.
@@ -484,11 +488,22 @@ class AlloyDBEngine:
 
         id_data_type = "UUID" if isinstance(id_column, str) else id_column.data_type
         id_column_name = id_column if isinstance(id_column, str) else id_column.name
+        hybrid_search_column = ""
+        if hybrid_search_config:
+            hybrid_search_config.tsv_column = (
+                hybrid_search_config.tsv_column
+                if hybrid_search_config.tsv_column
+                else content_column + "_tsv"
+            )
+            hybrid_search_column = (
+                f',"{hybrid_search_config.tsv_column}" TSVECTOR NOT NULL'
+            )
 
         query = f"""CREATE TABLE "{schema_name}"."{table_name}"(
             "{id_column_name}" {id_data_type} PRIMARY KEY,
             "{content_column}" TEXT NOT NULL,
-            "{embedding_column}" vector({vector_size}) NOT NULL"""
+            "{embedding_column}" vector({vector_size}) NOT NULL
+            {hybrid_search_column}"""
         for column in metadata_columns:
             nullable = "NOT NULL" if not column.nullable else ""
             query += f',\n"{column.name}" {column.data_type} {nullable}'
@@ -512,6 +527,7 @@ class AlloyDBEngine:
         id_column: Union[str, Column] = "langchain_id",
         overwrite_existing: bool = False,
         store_metadata: bool = True,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
     ) -> None:
         """
         Create a table for saving of vectors to be used with AlloyDBVectorStore.
@@ -534,6 +550,8 @@ class AlloyDBEngine:
             overwrite_existing (bool): Whether to drop existing table. Default: False.
             store_metadata (bool): Whether to store metadata in the table.
                 Default: True.
+            hybrid_search_config (HybridSearchConfig): Hybrid search configuration.
+                Default: None.
         """
         await self._run_as_async(
             self._ainit_vectorstore_table(
@@ -547,6 +565,7 @@ class AlloyDBEngine:
                 id_column,
                 overwrite_existing,
                 store_metadata,
+                hybrid_search_config,
             )
         )
 
@@ -562,6 +581,7 @@ class AlloyDBEngine:
         id_column: Union[str, Column] = "langchain_id",
         overwrite_existing: bool = False,
         store_metadata: bool = True,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
     ) -> None:
         """
         Create a table for saving of vectors to be used with AlloyDBVectorStore.
@@ -584,6 +604,8 @@ class AlloyDBEngine:
             overwrite_existing (bool): Whether to drop existing table. Default: False.
             store_metadata (bool): Whether to store metadata in the table.
                 Default: True.
+            hybrid_search_config (HybridSearchConfig): Hybrid search configuration.
+                Default: None.
         """
         self._run_as_sync(
             self._ainit_vectorstore_table(
@@ -597,6 +619,7 @@ class AlloyDBEngine:
                 id_column,
                 overwrite_existing,
                 store_metadata,
+                hybrid_search_config,
             )
         )
 
