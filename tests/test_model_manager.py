@@ -28,7 +28,7 @@ def get_env_var(key: str, desc: str) -> str:
     return v
 
 
-EMBEDDING_MODEL_NAME = "textembedding-gecko@003" + str(uuid.uuid4()).replace("-", "_")
+EMBEDDING_MODEL_NAME = "text-embedding-005" + str(uuid.uuid4()).replace("-", "_")
 
 
 @pytest.mark.asyncio
@@ -79,7 +79,7 @@ class TestAlloyDBModelManager:
         await model_manager.acreate_model(
             model_id=EMBEDDING_MODEL_NAME,
             model_provider="google",
-            model_qualified_name="textembedding-gecko@003",
+            model_qualified_name="text-embedding-005",
             model_type="text_embedding",
         )
 

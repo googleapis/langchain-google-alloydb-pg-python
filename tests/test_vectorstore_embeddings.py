@@ -23,6 +23,7 @@ from sqlalchemy import text
 from langchain_google_alloydb_pg import (
     AlloyDBEmbeddings,
     AlloyDBEngine,
+    AlloyDBModelManager,
     AlloyDBVectorStore,
     Column,
 )
@@ -31,7 +32,7 @@ from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptio
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_EMBEDDING_MODEL = "textembedding-gecko@001"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-005"
 VECTOR_SIZE = 768
 
 
@@ -106,6 +107,16 @@ class TestVectorStoreEmbeddings:
 
     @pytest_asyncio.fixture(scope="class")
     async def embeddings_service(self, engine):
+        model_manager = await AlloyDBModelManager.create(engine=engine)
+        model = await model_manager.aget_model(model_id=DEFAULT_EMBEDDING_MODEL)
+        if not model:
+            # create model if not exists
+            await model_manager.acreate_model(
+                model_id=DEFAULT_EMBEDDING_MODEL,
+                model_provider="google",
+                model_qualified_name=DEFAULT_EMBEDDING_MODEL,  # assuming model is built-in
+                model_type="text_embedding",
+            )
         return await AlloyDBEmbeddings.create(engine, DEFAULT_EMBEDDING_MODEL)
 
     @pytest_asyncio.fixture(scope="class")
@@ -197,7 +208,7 @@ class TestVectorStoreEmbeddings:
         )
         assert len(results) == 4
 
-        score_threshold = {"score_threshold": 0.73}
+        score_threshold = {"score_threshold": 0.65}
         results = await vs.asimilarity_search_with_relevance_scores(
             "foo", **score_threshold
         )

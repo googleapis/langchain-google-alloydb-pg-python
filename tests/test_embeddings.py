@@ -19,7 +19,11 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 
-from langchain_google_alloydb_pg import AlloyDBEmbeddings, AlloyDBEngine
+from langchain_google_alloydb_pg import (
+    AlloyDBEmbeddings,
+    AlloyDBEngine,
+    AlloyDBModelManager,
+)
 
 project_id = os.environ["PROJECT_ID"]
 region = os.environ["REGION"]
@@ -62,10 +66,20 @@ class TestAlloyDBEmbeddings:
 
     @pytest.fixture(scope="module")
     def model_id(self) -> str:
-        return "textembedding-gecko@001"
+        return "text-embedding-005"
 
     @pytest_asyncio.fixture
-    def embeddings(self, engine, model_id):
+    async def embeddings(self, engine, model_id):
+        model_manager = await AlloyDBModelManager.create(engine=engine)
+        model = await model_manager.aget_model(model_id=model_id)
+        if not model:
+            # create model if not exists
+            await model_manager.acreate_model(
+                model_id=model_id,
+                model_provider="google",
+                model_qualified_name=model_id,  # assuming model is built-in
+                model_type="text_embedding",
+            )
         return AlloyDBEmbeddings.create_sync(engine=engine, model_id=model_id)
 
     async def test_model_exists(self, sync_engine):
