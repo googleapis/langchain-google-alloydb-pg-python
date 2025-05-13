@@ -105,8 +105,6 @@ class TestVectorStore:
             cluster=db_cluster,
             region=db_region,
             database=db_name,
-            user="postgres",
-            password="demo-project",
         )
 
         yield engine
@@ -212,28 +210,28 @@ class TestVectorStore:
                 metadata_json_column="mymeta",
             )
 
-    # async def test_id_metadata_column(self, engine):
-    #     table_name = "id_metadata" + str(uuid.uuid4())
-    #     await engine._ainit_vectorstore_table(
-    #         table_name,
-    #         VECTOR_SIZE,
-    #         metadata_columns=[Column("id", "TEXT")],
-    #     )
-    #     custom_vs = await AsyncAlloyDBVectorStore.create(
-    #         engine,
-    #         embedding_service=embeddings_service,
-    #         table_name=table_name,
-    #         metadata_columns=["id"],
-    #     )
-    #     ids = [str(uuid.uuid4()) for i in range(len(texts))]
-    #     await custom_vs.aadd_texts(texts, id_column_as_metadata, ids)
+    async def test_id_metadata_column(self, engine):
+        table_name = "id_metadata" + str(uuid.uuid4())
+        await engine._ainit_vectorstore_table(
+            table_name,
+            VECTOR_SIZE,
+            metadata_columns=[Column("id", "TEXT")],
+        )
+        custom_vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+            metadata_columns=["id"],
+        )
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await custom_vs.aadd_texts(texts, id_column_as_metadata, ids)
 
-    #     results = await afetch(engine, f'SELECT * FROM "{table_name}"')
-    #     assert len(results) == 3
-    #     assert results[0]["id"] == "0"
-    #     assert results[1]["id"] == "1"
-    #     assert results[2]["id"] == "2"
-    #     await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}"')
+        results = await afetch(engine, f'SELECT * FROM "{table_name}"')
+        assert len(results) == 3
+        assert results[0]["id"] == "0"
+        assert results[1]["id"] == "1"
+        assert results[2]["id"] == "2"
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}"')
 
     async def test_aadd_texts(self, engine, vs):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
