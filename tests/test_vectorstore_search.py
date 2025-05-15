@@ -24,6 +24,7 @@ from PIL import Image
 from sqlalchemy import RowMapping, Sequence, text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg.hybrid_search_config import HybridSearchConfig
 from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
@@ -352,6 +353,35 @@ class TestVectorStoreSearch:
 
         assert results[0] == Document(page_content="foo", id=ids[0])
 
+    async def test_asimilarity_hybrid_search(self, vs):
+        results = await vs.asimilarity_search(
+            "foo", k=1, hybrid_search_config=HybridSearchConfig()
+        )
+        assert len(results) == 1
+        assert results == [Document(page_content="foo", id=ids[0])]
+
+        results = await vs.asimilarity_search(
+            "foo",
+            k=1,
+            filter="content = 'bar'",
+            hybrid_search_config=HybridSearchConfig(),
+        )
+        assert results == [Document(page_content="bar", id=ids[1])]
+
+        results = await vs.asimilarity_search(
+            "foo",
+            k=1,
+            filter="content = 'baz'",
+            hybrid_search_config=HybridSearchConfig(
+                fusion_function_parameters={
+                    "primary_results_weight": 0.1,
+                    "secondary_results_weight": 0.9,
+                    "fetch_top_k": 10,
+                },
+            ),
+        )
+        assert results == [Document(page_content="baz", id=ids[2])]
+
     @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
     async def test_vectorstore_with_metadata_filters(
         self,
@@ -548,6 +578,35 @@ class TestVectorStoreSearchSync:
             embedding, lambda_mult=0.75, fetch_k=10
         )
         assert results[0][0] == Document(page_content="bar", id=ids[1])
+
+    def test_similarity_hybrid_search(self, vs_custom):
+        results = vs_custom.similarity_search(
+            "foo", k=1, hybrid_search_config=HybridSearchConfig()
+        )
+        assert len(results) == 1
+        assert results == [Document(page_content="foo", id=ids[0])]
+
+        results = vs_custom.similarity_search(
+            "foo",
+            k=1,
+            filter="mycontent = 'bar'",
+            hybrid_search_config=HybridSearchConfig(),
+        )
+        assert results == [Document(page_content="bar", id=ids[1])]
+
+        results = vs_custom.similarity_search(
+            "foo",
+            k=1,
+            filter="mycontent = 'baz'",
+            hybrid_search_config=HybridSearchConfig(
+                fusion_function_parameters={
+                    "primary_results_weight": 0.1,
+                    "secondary_results_weight": 0.9,
+                    "fetch_top_k": 10,
+                },
+            ),
+        )
+        assert results == [Document(page_content="baz", id=ids[2])]
 
     def test_get_by_ids_custom_vs(self, vs_custom):
         test_ids = [ids[0]]

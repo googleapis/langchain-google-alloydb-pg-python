@@ -23,6 +23,7 @@ from langchain_core.vectorstores import VectorStore
 
 from .async_vectorstore import AsyncAlloyDBVectorStore
 from .engine import AlloyDBEngine
+from .hybrid_search_config import HybridSearchConfig
 from .indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     BaseIndex,
@@ -73,6 +74,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance.
 
@@ -92,6 +94,7 @@ class AlloyDBVectorStore(VectorStore):
             fetch_k (int): Number of Documents to fetch to pass to MMR algorithm.
             lambda_mult (float): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (QueryOptions): Index query option.
+            hybrid_search_config (HybridSearchConfig): Hybrid search configuration. Defaults to None.
 
         Returns:
             AlloyDBVectorStore
@@ -112,6 +115,7 @@ class AlloyDBVectorStore(VectorStore):
             fetch_k=fetch_k,
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
+            hybrid_search_config=hybrid_search_config,
         )
         vs = await engine._run_as_async(coro)
         return cls(cls.__create_key, engine, vs)
@@ -134,6 +138,7 @@ class AlloyDBVectorStore(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
+        hybrid_search_config: Optional[HybridSearchConfig] = None,
     ) -> AlloyDBVectorStore:
         """Create an AlloyDBVectorStore instance.
 
@@ -154,6 +159,7 @@ class AlloyDBVectorStore(VectorStore):
             fetch_k (int, optional): Number of Documents to fetch to pass to MMR algorithm. Defaults to 20.
             lambda_mult (float, optional): Number between 0 and 1 that determines the degree of diversity among the results with 0 corresponding to maximum diversity and 1 to minimum diversity. Defaults to 0.5.
             index_query_options (Optional[QueryOptions], optional): Index query option. Defaults to None.
+            hybrid_search_config (HybridSearchConfig): Hybrid search configuration. Defaults to None.
 
         Returns:
             AlloyDBVectorStore
@@ -174,6 +180,7 @@ class AlloyDBVectorStore(VectorStore):
             fetch_k=fetch_k,
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
+            hybrid_search_config=hybrid_search_config,
         )
         vs = engine._run_as_sync(coro)
         return cls(cls.__create_key, engine, vs)
