@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.11.0...v0.11.1) (2025-05-15)
+
+
+### Bug Fixes
+
+* Add support for a metadata column named id ([#421](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/421)) ([e92af36](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/e92af368a82d397d97db963d1e46d71cbb25ccde))
+
 ## [0.11.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.10.0...v0.11.0) (2025-04-30)
 
 
