@@ -154,7 +154,7 @@ class AlloyDBAgent(reasoning_engines.Queryable):
 
 # Uncomment to test locally
 # app = AlloyDBAgent(
-#     model="gemini-pro",
+#     model="gemini-2.0-flash-001",
 #     project=PROJECT_ID,
 #     region=REGION,
 #     cluster=CLUSTER,
@@ -177,7 +177,7 @@ DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBAgent"
 
 remote_app = reasoning_engines.ReasoningEngine.create(
     AlloyDBAgent(
-        model="gemini-pro",
+        model="gemini-2.0-flash-001",
         project=PROJECT_ID,
         region=REGION,
         cluster=CLUSTER,
