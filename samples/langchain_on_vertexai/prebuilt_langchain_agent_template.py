@@ -76,7 +76,7 @@ def similarity_search(query: str) -> list[Document]:
 # Uncomment to test locally
 
 # app = reasoning_engines.LangchainAgent(
-#     model="gemini-pro",
+#     model="gemini-2.0-flash-001",
 #     tools=[similarity_search],
 #     model_kwargs={
 #         "temperature": 0.1,
@@ -93,7 +93,7 @@ DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
 
 remote_app = reasoning_engines.ReasoningEngine.create(
     reasoning_engines.LangchainAgent(
-        model="gemini-pro",
+        model="gemini-2.0-flash-001",
         tools=[similarity_search],
         model_kwargs={
             "temperature": 0.1,
