@@ -131,7 +131,6 @@ class TestVectorStore:
         yield engine
         await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
         await engine.close()
-        await engine._connector.close()
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine):
@@ -515,7 +514,6 @@ class TestVectorStore:
 
             await aexecute(engine, f"DROP TABLE {table_name}")
             await engine.close()
-            await engine._connector.close()
 
     async def test_from_engine_loop_connector(
         self,
@@ -619,7 +617,6 @@ class TestVectorStore:
         assert len(results) == 2
         await aexecute(engine, f"DROP TABLE {table_name}")
         await engine.close()
-        await engine._connector.close()
 
     async def test_from_engine_loop(
         self,
@@ -660,7 +657,6 @@ class TestVectorStore:
         assert len(results) == 2
         await aexecute(engine, f"DROP TABLE {table_name}")
         await engine.close()
-        await engine._connector.close()
 
     def test_get_table_name(self, vs):
         assert vs.get_table_name() == DEFAULT_TABLE
