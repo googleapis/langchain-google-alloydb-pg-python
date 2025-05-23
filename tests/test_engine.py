@@ -126,7 +126,6 @@ class TestEngineAsync:
         await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE}"')
         await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE}"')
         await engine.close()
-        await engine._connector.close()
 
     async def test_init_table(self, engine):
         await engine.ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
@@ -312,7 +311,6 @@ class TestEngineAsync:
         assert engine
         await aexecute(engine, "SELECT 1")
         await engine.close()
-        await engine._connector.close()
 
     async def test_ainit_checkpoint_writes_table(self, engine):
         table_name = f"checkpoint{uuid.uuid4()}"
@@ -398,7 +396,6 @@ class TestEngineSync:
         await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE_SYNC}"')
         await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE_SYNC}"')
         await engine.close()
-        await engine._connector.close()
 
     async def test_init_table(self, engine):
         engine.init_vectorstore_table(DEFAULT_TABLE_SYNC, VECTOR_SIZE)
@@ -509,7 +506,6 @@ class TestEngineSync:
         assert engine
         await aexecute(engine, "SELECT 1")
         await engine.close()
-        await engine._connector.close()
 
     async def test_init_checkpoints_table(self, engine):
         table_name = f"checkpoint{uuid.uuid4()}"

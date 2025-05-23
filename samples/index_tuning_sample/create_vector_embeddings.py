@@ -146,7 +146,6 @@ async def main():
     documents = load_csv_documents()
     await create_vector_store_table(documents, engine)
     await engine.close()
-    await engine._connector.close()
 
 
 if __name__ == "__main__":

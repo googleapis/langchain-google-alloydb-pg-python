@@ -91,7 +91,6 @@ class TestStandardSuiteSync(VectorStoreIntegrationTests):
         yield sync_engine
         await aexecute(sync_engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE_SYNC}"')
         await sync_engine.close()
-        await sync_engine._connector.close()
 
     @pytest.fixture(scope="function")
     def vectorstore(self, sync_engine):
@@ -155,7 +154,6 @@ class TestStandardSuiteAsync(VectorStoreIntegrationTests):
         yield async_engine
         await aexecute(async_engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
         await async_engine.close()
-        await async_engine._connector.close()
 
     @pytest_asyncio.fixture(loop_scope="function")
     async def vectorstore(self, async_engine):
