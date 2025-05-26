@@ -278,6 +278,30 @@ class TestVectorStore:
         assert results[0]["source"] == "google.com"
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
 
+    async def test_aadd_images_store_uri_only(self, engine, image_vs, image_uris):
+        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
+        metadatas = [
+            {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
+        ]
+        await image_vs.aadd_images(image_uris, metadatas, ids, store_uri_only=True)
+        results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
+        assert len(results) == len(image_uris)
+        # Check that content column stores the URI
+        for i, result_row in enumerate(results):
+            assert result_row[image_vs.content_column] == image_uris[i]
+            # Check that embedding is not an embedding of the URI string itself (basic check)
+            uri_embedding = embeddings_service.embed_query(image_uris[i])
+            actual_embedding = image_embedding_service.embed_query(image_uris[i]) # Simulating actual image embedding
+            assert result_row[image_vs.embedding_column] != str(uri_embedding)
+            assert result_row[image_vs.embedding_column] == str(actual_embedding) # Check it's the image embedding
+            assert result_row["image_id"] == str(i)
+            assert result_row["source"] == "google.com"
+            # Check that the original URI is also in the metadata (json column)
+            assert result_row[image_vs.metadata_json_column]["image_uri"] == image_uris[i]
+
+
+        await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
+
     async def test_adelete(self, engine, vs):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
         await vs.aadd_texts(texts, ids=ids)
