@@ -397,7 +397,7 @@ class AsyncAlloyDBVectorStore(VectorStore):
         uris: list[str],
         metadatas: Optional[list[dict]] = None,
         ids: Optional[list[str]] = None,
-        store_uri_only: bool = False, 
+        store_uri_only: bool = False,
         **kwargs: Any,
     ) -> list[str]:
         """Embed images and add to the table.

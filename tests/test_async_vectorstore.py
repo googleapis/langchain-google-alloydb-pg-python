@@ -291,14 +291,19 @@ class TestVectorStore:
             assert result_row[image_vs.content_column] == image_uris[i]
             # Check that embedding is not an embedding of the URI string itself (basic check)
             uri_embedding = embeddings_service.embed_query(image_uris[i])
-            actual_embedding = image_embedding_service.embed_query(image_uris[i]) # Simulating actual image embedding
+            actual_embedding = image_embedding_service.embed_query(
+                image_uris[i]
+            )  # Simulating actual image embedding
             assert result_row[image_vs.embedding_column] != str(uri_embedding)
-            assert result_row[image_vs.embedding_column] == str(actual_embedding) # Check it's the image embedding
+            assert result_row[image_vs.embedding_column] == str(
+                actual_embedding
+            )  # Check it's the image embedding
             assert result_row["image_id"] == str(i)
             assert result_row["source"] == "google.com"
             # Check that the original URI is also in the metadata (json column)
-            assert result_row[image_vs.metadata_json_column]["image_uri"] == image_uris[i]
-
+            assert (
+                result_row[image_vs.metadata_json_column]["image_uri"] == image_uris[i]
+            )
 
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
 

@@ -236,7 +236,9 @@ class AlloyDBVectorStore(VectorStore):
     ) -> list[str]:
         """Embed images and add to the table."""
         return await self._engine._run_as_async(
-            self.__vs.aadd_images(uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs)
+            self.__vs.aadd_images(
+                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
+            )
         )
 
     def add_embeddings(
@@ -293,7 +295,9 @@ class AlloyDBVectorStore(VectorStore):
     ) -> list[str]:
         """Embed images and add to the table."""
         return self._engine._run_as_sync(
-            self.__vs.aadd_images(uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs)
+            self.__vs.aadd_images(
+                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
+            )
         )
 
     async def adelete(
