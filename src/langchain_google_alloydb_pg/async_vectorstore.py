@@ -397,29 +397,42 @@ class AsyncAlloyDBVectorStore(VectorStore):
         uris: list[str],
         metadatas: Optional[list[dict]] = None,
         ids: Optional[list[str]] = None,
+        store_uri_only: bool = False,
         **kwargs: Any,
     ) -> list[str]:
         """Embed images and add to the table.
 
         Args:
-            uris (list[str]): List of local image URIs to add to the table.
+            uris (list[str]): List of image URIs to add to the table.
             metadatas (Optional[list[dict]]): List of metadatas to add to table records.
             ids: (Optional[list[str]]): List of IDs to add to table records.
+            store_uri_only (bool): If True, stores the URI in the content column
+                                   instead of the base64 encoded image. Defaults to False.
+            **kwargs: Any other arguments to pass to the embedding service.
 
         Returns:
             List of record IDs added.
         """
-        encoded_images = []
         if metadatas is None:
+            # Ensure URI is always in metadata if not explicitly provided elsewhere
             metadatas = [{"image_uri": uri} for uri in uris]
+        elif store_uri_only:
+            # If storing URI only and metadatas are provided, ensure image_uri is present
+            for i, m in enumerate(metadatas):
+                if "image_uri" not in m:  # Add if not already provided by user
+                    m["image_uri"] = uris[i]
 
-        for uri in uris:
-            encoded_image = self._encode_image(uri)
-            encoded_images.append(encoded_image)
+        texts_for_content_column: list[str]
+        if store_uri_only:
+            texts_for_content_column = uris
+        else:
+            texts_for_content_column = [self._encode_image(uri) for uri in uris]
 
+        # Embeddings are always generated from the actual image content via URIs
         embeddings = self._images_embedding_helper(uris)
+
         ids = await self.aadd_embeddings(
-            encoded_images, embeddings, metadatas=metadatas, ids=ids, **kwargs
+            texts_for_content_column, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
         return ids
 
