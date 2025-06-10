@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.11.0...v0.12.0) (2025-06-02)
+
+
+### Features
+
+* **aadd_images:** Add support for store_uri_only parameter ([#428](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/428)) ([cf2b552](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/cf2b552b4e44e62c4336ec0027ae614e34376f8c))
+
+
+### Bug Fixes
+
+* Add support for a metadata column named id ([#421](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/421)) ([e92af36](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/e92af368a82d397d97db963d1e46d71cbb25ccde))
+
 ## [0.11.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.10.0...v0.11.0) (2025-04-30)
 
 
