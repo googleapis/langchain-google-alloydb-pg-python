@@ -51,9 +51,7 @@ from sqlalchemy.engine.row import RowMapping
 from langchain_google_alloydb_pg.async_checkpoint import AsyncAlloyDBSaver
 from langchain_google_alloydb_pg.engine import AlloyDBEngine
 
-write_config: RunnableConfig = {
-    "configurable": {"thread_id": "1", "checkpoint_ns": ""}
-}
+write_config: RunnableConfig = {"configurable": {"thread_id": "1", "checkpoint_ns": ""}}
 read_config: RunnableConfig = {"configurable": {"thread_id": "1"}}
 
 project_id = os.environ["PROJECT_ID"]
@@ -178,9 +176,7 @@ async def test_checkpoint_async(
 @pytest.fixture
 def test_data() -> dict[str, Any]:
     """Fixture providing test data for checkpoint tests."""
-    config_0: RunnableConfig = {
-        "configurable": {"thread_id": "1", "checkpoint_ns": ""}
-    }
+    config_0: RunnableConfig = {"configurable": {"thread_id": "1", "checkpoint_ns": ""}}
     config_1: RunnableConfig = {
         "configurable": {
             "thread_id": "thread-1",
@@ -297,36 +293,25 @@ async def test_checkpoint_alist(
     query_3: dict[str, Any] = {}  # search by no keys, return all checkpoints
     query_4 = {"source": "update", "step": 1}  # no match
 
-    search_results_1 = [
-        c async for c in checkpointer.alist(None, filter=query_1)
-    ]
+    search_results_1 = [c async for c in checkpointer.alist(None, filter=query_1)]
     assert len(search_results_1) == 1
     print(metadata[0])
     print(search_results_1[0].metadata)
     assert search_results_1[0].metadata == metadata[0]
 
-    search_results_2 = [
-        c async for c in checkpointer.alist(None, filter=query_2)
-    ]
+    search_results_2 = [c async for c in checkpointer.alist(None, filter=query_2)]
     assert len(search_results_2) == 1
     assert search_results_2[0].metadata == metadata[1]
 
-    search_results_3 = [
-        c async for c in checkpointer.alist(None, filter=query_3)
-    ]
+    search_results_3 = [c async for c in checkpointer.alist(None, filter=query_3)]
     assert len(search_results_3) == 3
 
-    search_results_4 = [
-        c async for c in checkpointer.alist(None, filter=query_4)
-    ]
+    search_results_4 = [c async for c in checkpointer.alist(None, filter=query_4)]
     assert len(search_results_4) == 0
 
     # search by config (defaults to checkpoints across all namespaces)
     search_results_5 = [
-        c
-        async for c in checkpointer.alist(
-            {"configurable": {"thread_id": "thread-2"}}
-        )
+        c async for c in checkpointer.alist({"configurable": {"thread_id": "thread-2"}})
     ]
     assert len(search_results_5) == 2
     assert {
@@ -378,12 +363,8 @@ async def test_checkpoint_with_agent(
     agent = create_react_agent(model, [], checkpointer=checkpointer)
     inputs = [HumanMessage("hi?")]
     thread: RunnableConfig = {"configurable": {"thread_id": "123"}}
-    response = await agent.ainvoke(
-        {"messages": inputs}, config=thread, debug=True
-    )
-    expected_response = {
-        "messages": inputs + [AIMessage(content="hi?", id="0")]
-    }
+    response = await agent.ainvoke({"messages": inputs}, config=thread, debug=True)
+    expected_response = {"messages": inputs + [AIMessage(content="hi?", id="0")]}
     assert response == expected_response
 
     def _AnyIdHumanMessage(**kwargs: Any) -> HumanMessage:
@@ -419,9 +400,7 @@ async def test_checkpoint_aget_tuple(
     checkpoints = test_data["checkpoints"]
     metadata = test_data["metadata"]
 
-    new_config = await checkpointer.aput(
-        configs[1], checkpoints[1], metadata[0], {}
-    )
+    new_config = await checkpointer.aput(configs[1], checkpoints[1], metadata[0], {})
 
     # Matching checkpoint
     search_results_1 = await checkpointer.aget_tuple(new_config)
@@ -443,8 +422,8 @@ async def test_metadata(
         {},
     )
     assert (await checkpointer.aget_tuple(config)).metadata["my_key"] == "abc"  # type: ignore
-    assert [
-        c async for c in checkpointer.alist(None, filter={"my_key": "abc"})
-    ][0].metadata[
+    assert [c async for c in checkpointer.alist(None, filter={"my_key": "abc"})][
+        0
+    ].metadata[
         "my_key"  # type: ignore
     ] == "abc"  # type: ignore
