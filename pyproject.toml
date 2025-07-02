@@ -13,7 +13,7 @@ dependencies = [
     "google-cloud-storage>=2.18.2, <4.0.0",
     "langchain-core>=0.2.36, <1.0.0",
     "numpy>=1.24.4, <3.0.0; python_version > '3.9'",
-    "numpy>=1.24.4, <=2.0.2; python_version <= '3.9'",
+    "numpy>=2.3.1, <=2.3.1; python_version <= '3.9'",
     "pgvector>=0.2.5, <1.0.0",
     "SQLAlchemy[asyncio]>=2.0.25, <3.0.0"
 ]
@@ -46,14 +46,14 @@ langgraph = [
 test = [
     "black[jupyter]==25.1.0",
     "isort==6.0.1",
-    "langgraph==0.3.31",
-    "mypy==1.15.0",
+    "langgraph==0.5.0",
+    "mypy==1.16.1",
     "pytest-asyncio==0.26.0",
-    "pytest==8.3.5",
-    "pytest-cov==6.1.1",
+    "pytest==8.4.1",
+    "pytest-cov==6.2.1",
     "pytest-depends==1.0.1",
-    "Pillow==11.2.1",
-    "langchain-tests==0.3.19"
+    "Pillow==11.3.0",
+    "langchain-tests==0.3.20"
 ]
 
 [build-system]
