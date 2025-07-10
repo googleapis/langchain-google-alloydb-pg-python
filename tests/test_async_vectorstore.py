@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import uuid
 from typing import Sequence
@@ -48,7 +49,7 @@ embeddings = [embeddings_service.embed_query(texts[i]) for i in range(len(texts)
 class FakeImageEmbedding(DeterministicFakeEmbedding):
 
     def embed_image(self, image_paths: list[str]) -> list[list[float]]:
-        return [self.embed_query(path) for path in image_paths]
+        return [self.embed_query(f"Image Path: {path}") for path in image_paths]
 
 
 image_embedding_service = FakeImageEmbedding(size=VECTOR_SIZE)
@@ -154,6 +155,7 @@ class TestVectorStore:
                 Column("image_id", "TEXT"),
                 Column("source", "TEXT"),
             ],
+            metadata_json_column="mymeta",
         )
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
@@ -276,6 +278,32 @@ class TestVectorStore:
         assert len(results) == len(image_uris)
         assert results[0]["image_id"] == "0"
         assert results[0]["source"] == "google.com"
+        await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
+
+    async def test_aadd_images_store_uri_only(self, engine, image_vs, image_uris):
+        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
+        metadatas = [
+            {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
+        ]
+        await image_vs.aadd_images(image_uris, metadatas, ids, store_uri_only=True)
+        results = await afetch(engine, (f'SELECT * FROM "{IMAGE_TABLE}"'))
+        assert len(results) == len(image_uris)
+        # Check that content column stores the URI
+        for i, result_row in enumerate(results):
+            assert result_row[image_vs.content_column] == image_uris[i]
+            # Check that embedding is not an embedding of the URI string itself (basic check)
+            uri_embedding = embeddings_service.embed_query(image_uris[i])
+            image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
+            actual_embedding = json.loads(result_row[image_vs.embedding_column])
+            assert actual_embedding != pytest.approx(uri_embedding)
+            assert actual_embedding == pytest.approx(image_embedding)
+            assert result_row["image_id"] == str(i)
+            assert result_row["source"] == "google.com"
+            # Check that the original URI is also in the metadata (json column)
+            assert (
+                result_row[image_vs.metadata_json_column]["image_uri"] == image_uris[i]
+            )
+
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
 
     async def test_adelete(self, engine, vs):

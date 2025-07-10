@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import json
 import os
 import uuid
 from threading import Thread
@@ -52,7 +53,7 @@ embeddings = [embeddings_service.embed_query(texts[i]) for i in range(len(texts)
 class FakeImageEmbedding(DeterministicFakeEmbedding):
 
     def embed_image(self, image_paths: list[str]) -> list[list[float]]:
-        return [self.embed_query(path) for path in image_paths]
+        return [self.embed_query(f"Image Path: {path}") for path in image_paths]
 
 
 image_embedding_service = FakeImageEmbedding(size=VECTOR_SIZE)
@@ -357,7 +358,52 @@ class TestVectorStore:
         assert len(results) == len(image_uris)
         assert results[0]["image_id"] == "0"
         assert results[0]["source"] == "google.com"
-        await aexecute(engine_sync, f'TRUNCATE TABLE "{IMAGE_TABLE}"')
+        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE}"')
+
+    async def test_aadd_images_store_uri_only(self, engine_sync, image_uris):
+        table_name = IMAGE_TABLE_SYNC + "_store_uri_only"
+        engine_sync.init_vectorstore_table(
+            table_name,
+            VECTOR_SIZE,
+            metadata_columns=[
+                Column("image_id", "TEXT"),
+                Column("source", "TEXT"),
+            ],
+            metadata_json_column="mymeta",
+        )
+        vs = AlloyDBVectorStore.create_sync(
+            engine_sync,
+            embedding_service=image_embedding_service,
+            table_name=table_name,
+            metadata_columns=["image_id", "source"],
+            metadata_json_column="mymeta",
+        )
+        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
+        metadatas = [
+            {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
+        ]
+        # Test the async method on the sync class
+        await vs.aadd_images(image_uris, metadatas, ids, store_uri_only=True)
+        results = await afetch(engine_sync, f'SELECT * FROM "{table_name}"')
+        assert len(results) == len(image_uris)
+        for i, result_row in enumerate(results):
+            assert (
+                result_row[vs._AlloyDBVectorStore__vs.content_column] == image_uris[i]
+            )
+            uri_embedding = embeddings_service.embed_query(image_uris[i])
+            image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
+            actual_embedding = json.loads(
+                result_row[vs._AlloyDBVectorStore__vs.embedding_column]
+            )
+            assert actual_embedding != pytest.approx(uri_embedding)
+            assert actual_embedding == pytest.approx(image_embedding)
+            assert result_row["image_id"] == str(i)
+            assert result_row["source"] == "google.com"
+            assert (
+                result_row[vs._AlloyDBVectorStore__vs.metadata_json_column]["image_uri"]
+                == image_uris[i]
+            )
+        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{table_name}"')
 
     async def test_adelete_custom(self, engine, vs_custom):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
@@ -404,6 +450,49 @@ class TestVectorStore:
         assert len(results) == len(image_uris)
         await vs.adelete(ids)
         await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE_SYNC}"')
+
+    async def test_add_images_store_uri_only(self, engine_sync, image_uris):
+        table_name = IMAGE_TABLE_SYNC + "_store_uri_only"
+        engine_sync.init_vectorstore_table(
+            table_name,
+            VECTOR_SIZE,
+            metadata_columns=[Column("image_id", "TEXT"), Column("source", "TEXT")],
+            metadata_json_column="mymeta",
+        )
+        vs = AlloyDBVectorStore.create_sync(
+            engine_sync,
+            embedding_service=image_embedding_service,
+            table_name=table_name,
+            metadata_columns=["image_id", "source"],
+            metadata_json_column="mymeta",
+        )
+
+        ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
+        metadatas = [
+            {"image_id": str(i), "source": "google.com"} for i in range(len(image_uris))
+        ]
+        vs.add_images(image_uris, metadatas, ids, store_uri_only=True)
+        results = await afetch(engine_sync, (f'SELECT * FROM "{table_name}"'))
+        assert len(results) == len(image_uris)
+        for i, result_row in enumerate(results):
+            assert (
+                result_row[vs._AlloyDBVectorStore__vs.content_column] == image_uris[i]
+            )
+            uri_embedding = embeddings_service.embed_query(image_uris[i])
+            image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
+            actual_embedding = json.loads(
+                result_row[vs._AlloyDBVectorStore__vs.embedding_column]
+            )
+            assert actual_embedding != pytest.approx(uri_embedding)
+            assert actual_embedding == pytest.approx(image_embedding)
+            assert result_row["image_id"] == str(i)
+            assert result_row["source"] == "google.com"
+            assert (
+                result_row[vs._AlloyDBVectorStore__vs.metadata_json_column]["image_uri"]
+                == image_uris[i]
+            )
+        await vs.adelete(ids)
+        await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{table_name}"')
 
     async def test_cross_env(self, engine_sync, vs_sync):
         ids = [str(uuid.uuid4()) for i in range(len(texts))]
