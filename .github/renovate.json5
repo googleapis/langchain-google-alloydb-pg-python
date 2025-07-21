@@ -49,5 +49,9 @@
         'patch',
       ],
     },
+    {
+      matchPackageNames: ["numpy"],
+      matchUpdateTypes: ["major"]
+    }
   ],
 }
