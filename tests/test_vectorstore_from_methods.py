@@ -20,11 +20,12 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from langchain_postgres import Column
 from sqlalchemy import VARCHAR, text
 from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4()).replace("-", "_")

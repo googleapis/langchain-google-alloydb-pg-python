@@ -19,13 +19,13 @@ import uuid
 import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
+from langchain_postgres import Column
 from sqlalchemy import text
 
 from langchain_google_alloydb_pg import (
     AlloyDBDocumentSaver,
     AlloyDBEngine,
     AlloyDBLoader,
-    Column,
 )
 
 project_id = os.environ["PROJECT_ID"]

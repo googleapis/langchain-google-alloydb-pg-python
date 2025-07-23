@@ -19,9 +19,10 @@ import uuid
 import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
+from langchain_postgres import Column
 from sqlalchemy import text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, Column
+from langchain_google_alloydb_pg import AlloyDBEngine
 from langchain_google_alloydb_pg.async_loader import (
     AsyncAlloyDBDocumentSaver,
     AsyncAlloyDBLoader,
