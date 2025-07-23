@@ -19,8 +19,9 @@ import uuid
 import sqlalchemy
 from langchain_community.document_loaders import CSVLoader
 from langchain_google_vertexai import VertexAIEmbeddings
+from langchain_postgres import Column
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
 EMBEDDING_COUNT = 100000
 VECTOR_SIZE = 768

@@ -175,7 +175,7 @@ async def main(
     print("Langchain AlloyDB client initiated.")
 
     # [START pinecone_vectorstore_alloydb_migration_create_table]
-    from langchain_google_alloydb_pg import Column
+    from langchain_postgres import Column
 
     await alloydb_engine.ainit_vectorstore_table(
         table_name=alloydb_table,
