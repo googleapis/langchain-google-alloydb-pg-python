@@ -22,14 +22,16 @@ import pytest_asyncio
 import sqlalchemy
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
-from sqlalchemy import text
-
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
-from langchain_google_alloydb_pg.indexes import (
+from langchain_postgres.v2.indexes import (
     DEFAULT_INDEX_NAME_SUFFIX,
     DistanceStrategy,
     HNSWIndex,
     IVFFlatIndex,
+)
+from sqlalchemy import text
+
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+from langchain_google_alloydb_pg.indexes import (
     IVFIndex,
     ScaNNIndex,
 )

@@ -19,6 +19,10 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from langchain_postgres.v2.indexes import (
+    DistanceStrategy,
+    HNSWQueryOptions,
+)
 from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS
 from PIL import Image
 from sqlalchemy import text
@@ -26,8 +30,6 @@ from sqlalchemy import text
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
-    DistanceStrategy,
-    HNSWQueryOptions,
     ScaNNQueryOptions,
 )
 
