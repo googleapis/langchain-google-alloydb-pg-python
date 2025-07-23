@@ -28,19 +28,18 @@ from google.cloud import storage  # type: ignore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore, utils
-from sqlalchemy import RowMapping, text
-from sqlalchemy.ext.asyncio import AsyncEngine
-
-from .engine import AlloyDBEngine
-from .indexes import (
+from langchain_postgres.v2.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DEFAULT_INDEX_NAME_SUFFIX,
     BaseIndex,
     DistanceStrategy,
     ExactNearestNeighbor,
     QueryOptions,
-    ScaNNIndex,
 )
+from sqlalchemy import RowMapping, text
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+from .engine import AlloyDBEngine
 
 COMPARISONS_TO_NATIVE = {
     "$eq": "=",

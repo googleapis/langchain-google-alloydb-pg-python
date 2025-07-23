@@ -23,7 +23,7 @@ from langchain_core.vectorstores import VectorStore
 
 from .async_vectorstore import AsyncAlloyDBVectorStore
 from .engine import AlloyDBEngine
-from .indexes import (
+from langchain_postgres.v2.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     BaseIndex,
     DistanceStrategy,
