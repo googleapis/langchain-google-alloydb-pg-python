@@ -140,6 +140,7 @@ class TestVectorStoreSearch:
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
         await vs.aadd_images(image_uris, ids=ids)
         yield vs
+
     async def test_asimilarity_search_image(self, image_vs, image_uris):
         results = await image_vs.asimilarity_search_image(image_uris[0], k=1)
         assert len(results) == 1

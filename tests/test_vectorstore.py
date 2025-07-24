@@ -482,4 +482,3 @@ class TestVectorStore:
         assert len(results) == 2
         await aexecute(engine, f"DROP TABLE {table_name}")
         await engine.close()
-
