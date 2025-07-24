@@ -114,7 +114,34 @@ class TestVectorStoreSearch:
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
-    async def vs_custom_scann_query_option(self, engine):
+    async def vs_custom(self, engine):
+        await engine._ainit_vectorstore_table(
+            CUSTOM_TABLE,
+            VECTOR_SIZE,
+            id_column="myid",
+            content_column="mycontent",
+            embedding_column="myembedding",
+            metadata_columns=[
+                Column("page", "TEXT"),
+                Column("source", "TEXT"),
+            ],
+            store_metadata=False,
+        )
+
+        vs_custom = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=CUSTOM_TABLE,
+            id_column="myid",
+            content_column="mycontent",
+            embedding_column="myembedding",
+            index_query_options=HNSWQueryOptions(ef_search=1),
+        )
+        await vs_custom.aadd_documents(docs, ids=ids)
+        yield vs_custom
+
+    @pytest_asyncio.fixture(scope="class")
+    async def vs_custom_scann_query_option(self, engine, vs_custom):
         vs_custom_scann_query_option = await AsyncAlloyDBVectorStore.create(
             engine,
             embedding_service=embeddings_service,

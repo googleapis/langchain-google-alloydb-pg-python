@@ -194,7 +194,7 @@ class TestVectorStore:
         await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE}"')
 
     async def test_aadd_images_store_uri_only(self, engine_sync, image_uris):
-        table_name = IMAGE_TABLE_SYNC + "_store_uri_only"
+        table_name = IMAGE_TABLE_SYNC + "_uri"
         engine_sync.init_vectorstore_table(
             table_name,
             VECTOR_SIZE,
@@ -254,7 +254,7 @@ class TestVectorStore:
         await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{IMAGE_TABLE_SYNC}"')
 
     async def test_add_images_store_uri_only(self, engine_sync, image_uris):
-        table_name = IMAGE_TABLE_SYNC + "_store_uri_only"
+        table_name = IMAGE_TABLE_SYNC + "_uri"
         engine_sync.init_vectorstore_table(
             table_name,
             VECTOR_SIZE,

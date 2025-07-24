@@ -183,7 +183,7 @@ class TestVectorStoreEmbeddings:
         results = await vs.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
-        results = await vs.asimilarity_search("foo", k=1, filter={"mycontent": "bar"})
+        results = await vs.asimilarity_search("foo", k=1, filter={"content": "bar"})
         assert results == [Document(page_content="bar", id=ids[1])]
 
     async def test_asimilarity_search_score(self, vs):
@@ -242,7 +242,7 @@ class TestVectorStoreEmbeddings:
         results = await vs.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
         results = await vs.amax_marginal_relevance_search(
-            "bar", filter={"mycontent": "boo"}
+            "bar", filter={"content": "boo"}
         )
         assert results[0] == Document(page_content="boo", id=ids[3])
 
@@ -343,7 +343,7 @@ class TestVectorStoreEmbeddingsSync:
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
         results = vs_custom.similarity_search("foo", k=1, filter={"mycontent": "boo"})
-        assert results == [Document(page_content="bar", id=ids[1])]
+        assert results == [Document(page_content="boo", id=ids[3])]
 
     def test_similarity_search_score(self, vs_custom):
         results = vs_custom.similarity_search_with_score("foo")
