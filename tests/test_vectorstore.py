@@ -31,8 +31,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
-IMAGE_TABLE = "test_image_table" + str(uuid.uuid4())
-IMAGE_TABLE_SYNC = "test_image_table_sync" + str(uuid.uuid4())
+IMAGE_TABLE = "test_table" + str(uuid.uuid4())
+IMAGE_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)

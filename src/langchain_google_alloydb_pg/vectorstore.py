@@ -176,9 +176,7 @@ class AlloyDBVectorStore(PGVectorStore):
     ) -> list[str]:
         """Embed images and add to the table."""
         return await self._engine._run_as_async(
-            self.__vs.aadd_images(
-                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
-            )
+            self._PGVectorStore__vs.aadd_images(uris, metadatas, ids, **kwargs)  # type: ignore
         )
 
     def add_images(
@@ -191,9 +189,7 @@ class AlloyDBVectorStore(PGVectorStore):
     ) -> list[str]:
         """Embed images and add to the table."""
         return self._engine._run_as_sync(
-            self.__vs.aadd_images(
-                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
-            )
+            self._PGVectorStore__vs.aadd_images(uris, metadatas, ids, **kwargs)  # type: ignore
         )
 
     def similarity_search_image(
@@ -205,7 +201,7 @@ class AlloyDBVectorStore(PGVectorStore):
     ) -> list[Document]:
         """Return docs selected by similarity search on image."""
         return self._engine._run_as_sync(
-            self.__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)
+            self._PGVectorStore__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)  # type: ignore
         )
 
     async def asimilarity_search_image(
@@ -217,7 +213,7 @@ class AlloyDBVectorStore(PGVectorStore):
     ) -> list[Document]:
         """Return docs selected by similarity search on image_uri."""
         return await self._engine._run_as_async(
-            self.__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)
+            self._PGVectorStore__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)  # type: ignore
         )
 
     async def aset_maintenance_work_mem(
@@ -225,11 +221,11 @@ class AlloyDBVectorStore(PGVectorStore):
     ) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
         await self._engine._run_as_async(
-            self.__vs.set_maintenance_work_mem(num_leaves, vector_size)
+            self._PGVectorStore__vs.set_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
         )
 
     def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
         self._engine._run_as_sync(
-            self.__vs.set_maintenance_work_mem(num_leaves, vector_size)
+            self._PGVectorStore__vs.set_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
         )

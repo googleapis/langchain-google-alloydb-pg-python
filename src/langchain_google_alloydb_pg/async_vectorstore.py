@@ -94,7 +94,9 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         ids = await self.aadd_embeddings(
             texts_for_content_column, embeddings, metadatas=metadatas, ids=ids, **kwargs
         )
-        return ids
+        if ids:
+            return ids
+        return []
 
     def _images_embedding_helper(self, image_uris: list[str]) -> list[list[float]]:
         # check if either `embed_images()` or `embed_image()` API is supported by the embedding service used

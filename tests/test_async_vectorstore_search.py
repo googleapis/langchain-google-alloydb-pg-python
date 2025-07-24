@@ -114,7 +114,7 @@ class TestVectorStoreSearch:
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
-    async def vs_custom_scann_query_option(self, engine, vs_custom):
+    async def vs_custom_scann_query_option(self, engine):
         vs_custom_scann_query_option = await AsyncAlloyDBVectorStore.create(
             engine,
             embedding_service=embeddings_service,
