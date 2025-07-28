@@ -176,7 +176,9 @@ class AlloyDBVectorStore(PGVectorStore):
     ) -> list[str]:
         """Embed images and add to the table."""
         return await self._engine._run_as_async(
-            self._PGVectorStore__vs.aadd_images(uris, metadatas, ids, **kwargs)  # type: ignore
+            self._PGVectorStore__vs.aadd_images(  # type: ignore
+                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
+            )
         )
 
     def add_images(
@@ -189,7 +191,9 @@ class AlloyDBVectorStore(PGVectorStore):
     ) -> list[str]:
         """Embed images and add to the table."""
         return self._engine._run_as_sync(
-            self._PGVectorStore__vs.aadd_images(uris, metadatas, ids, **kwargs)  # type: ignore
+            self._PGVectorStore__vs.aadd_images(  # type: ignore
+                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
+            )
         )
 
     def similarity_search_image(
