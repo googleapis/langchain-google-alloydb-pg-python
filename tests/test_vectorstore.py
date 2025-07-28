@@ -220,9 +220,7 @@ class TestVectorStore:
         results = await afetch(engine_sync, f'SELECT * FROM "{table_name}"')
         assert len(results) == len(image_uris)
         for i, result_row in enumerate(results):
-            assert (
-                result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
-            )
+            assert result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
             uri_embedding = embeddings_service.embed_query(image_uris[i])
             image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
             actual_embedding = json.loads(
@@ -277,9 +275,7 @@ class TestVectorStore:
         results = await afetch(engine_sync, (f'SELECT * FROM "{table_name}"'))
         assert len(results) == len(image_uris)
         for i, result_row in enumerate(results):
-            assert (
-                result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
-            )
+            assert result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
             uri_embedding = embeddings_service.embed_query(image_uris[i])
             image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
             actual_embedding = json.loads(

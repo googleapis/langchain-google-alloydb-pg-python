@@ -193,7 +193,7 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
         results = await vs_custom_scann_query_option.asimilarity_search(
-            "foo", k=1, filter={'mycontent': 'bar'}
+            "foo", k=1, filter={"mycontent": "bar"}
         )
         assert results == [Document(page_content="bar", id=ids[1])]
 
