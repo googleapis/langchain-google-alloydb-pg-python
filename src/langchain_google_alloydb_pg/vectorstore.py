@@ -20,7 +20,7 @@ from typing import Any, Callable, Iterable, Optional, Sequence
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
-from langchain_postgres.v2.indexes import (
+from langchain_google_alloydb_pg.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     BaseIndex,
     DistanceStrategy,

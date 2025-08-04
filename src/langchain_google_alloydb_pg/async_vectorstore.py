@@ -28,7 +28,7 @@ from google.cloud import storage  # type: ignore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore, utils
-from langchain_postgres.v2.indexes import (
+from langchain_google_alloydb_pg.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DEFAULT_INDEX_NAME_SUFFIX,
     BaseIndex,

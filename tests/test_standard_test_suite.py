@@ -17,12 +17,11 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from langchain_postgres import Column
 from langchain_tests.integration_tests import VectorStoreIntegrationTests
 from langchain_tests.integration_tests.vectorstores import EMBEDDING_SIZE
 from sqlalchemy import text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
 DEFAULT_TABLE = "test_table_standard_test_suite" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync_standard_test_suite" + str(uuid.uuid4())

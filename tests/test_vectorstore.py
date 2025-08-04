@@ -24,13 +24,12 @@ import pytest_asyncio
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
-from langchain_postgres import Column
 from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())

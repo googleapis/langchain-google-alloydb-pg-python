@@ -22,10 +22,9 @@ from unittest import mock
 import pytest
 import pytest_asyncio
 from langchain_core.embeddings import FakeEmbeddings
-from langchain_postgres import Column
 from sqlalchemy import RowMapping, text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.utils.pgvector_migrator import (
     __concurrent_batch_insert,
     aextract_pgvector_collection,

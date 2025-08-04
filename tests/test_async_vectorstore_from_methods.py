@@ -20,11 +20,10 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
-from langchain_postgres import Column
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
-from langchain_google_alloydb_pg import AlloyDBEngine
+from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")

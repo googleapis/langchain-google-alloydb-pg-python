@@ -32,7 +32,7 @@ from create_vector_embeddings import (
     vector_table_name,
 )
 from langchain_google_vertexai import VertexAIEmbeddings
-from langchain_postgres.v2.indexes import (
+from langchain_google_alloydb_pg.indexes import (
     HNSWIndex,
     HNSWQueryOptions,
     IVFFlatIndex,

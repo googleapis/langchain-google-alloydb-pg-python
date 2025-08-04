@@ -18,8 +18,7 @@ import uuid
 import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
-from langchain_postgres import Column
-from langchain_postgres.v2.indexes import DistanceStrategy, HNSWQueryOptions
+from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
 from sqlalchemy import text
 
 from langchain_google_alloydb_pg import (
@@ -27,6 +26,7 @@ from langchain_google_alloydb_pg import (
     AlloyDBEngine,
     AlloyDBModelManager,
     AlloyDBVectorStore,
+    Column
 )
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
