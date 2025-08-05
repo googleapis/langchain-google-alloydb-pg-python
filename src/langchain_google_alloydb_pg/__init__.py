@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from langchain_postgres import Column
+
 from .chat_message_history import AlloyDBChatMessageHistory
 from .checkpoint import AlloyDBSaver
 from .embeddings import AlloyDBEmbeddings
@@ -20,7 +22,6 @@ from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
-from langchain_postgres import Column
 
 __all__ = [
     "AlloyDBEngine",

@@ -28,6 +28,9 @@ from google.cloud import storage  # type: ignore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore, utils
+from sqlalchemy import RowMapping, text
+from sqlalchemy.ext.asyncio import AsyncEngine
+
 from langchain_google_alloydb_pg.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DEFAULT_INDEX_NAME_SUFFIX,
@@ -36,8 +39,6 @@ from langchain_google_alloydb_pg.indexes import (
     ExactNearestNeighbor,
     QueryOptions,
 )
-from sqlalchemy import RowMapping, text
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 from .engine import AlloyDBEngine
 

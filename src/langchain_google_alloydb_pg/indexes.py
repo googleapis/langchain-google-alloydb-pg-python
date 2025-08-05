@@ -16,17 +16,17 @@ import warnings
 from dataclasses import dataclass, field
 
 from langchain_postgres.v2.indexes import (
-  BaseIndex,
-  DistanceStrategy,
-  QueryOptions,
-  StrategyMixin,
-  DEFAULT_DISTANCE_STRATEGY,
-  DEFAULT_INDEX_NAME_SUFFIX,
-  ExactNearestNeighbor,
-  HNSWIndex,
-  HNSWQueryOptions,
-  IVFFlatIndex,
-  IVFFlatQueryOptions,
+    DEFAULT_DISTANCE_STRATEGY,
+    DEFAULT_INDEX_NAME_SUFFIX,
+    BaseIndex,
+    DistanceStrategy,
+    ExactNearestNeighbor,
+    HNSWIndex,
+    HNSWQueryOptions,
+    IVFFlatIndex,
+    IVFFlatQueryOptions,
+    QueryOptions,
+    StrategyMixin,
 )
 
 

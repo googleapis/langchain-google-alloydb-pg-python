@@ -25,7 +25,7 @@ from langchain_google_alloydb_pg import (
     AlloyDBDocumentSaver,
     AlloyDBEngine,
     AlloyDBLoader,
-    Column
+    Column,
 )
 
 project_id = os.environ["PROJECT_ID"]
