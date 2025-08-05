@@ -21,14 +21,15 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 
-from .async_vectorstore import AsyncAlloyDBVectorStore
-from .engine import AlloyDBEngine
-from .indexes import (
+from langchain_google_alloydb_pg.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     BaseIndex,
     DistanceStrategy,
     QueryOptions,
 )
+
+from .async_vectorstore import AsyncAlloyDBVectorStore
+from .engine import AlloyDBEngine
 
 
 class AlloyDBVectorStore(VectorStore):

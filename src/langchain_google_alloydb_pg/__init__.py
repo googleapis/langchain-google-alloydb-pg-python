@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from langchain_postgres import Column
+
 from .chat_message_history import AlloyDBChatMessageHistory
 from .checkpoint import AlloyDBSaver
 from .embeddings import AlloyDBEmbeddings
-from .engine import AlloyDBEngine, Column
+from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
 from .vectorstore import AlloyDBVectorStore

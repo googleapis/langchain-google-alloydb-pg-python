@@ -31,16 +31,16 @@ from langchain_core.vectorstores import VectorStore, utils
 from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from .engine import AlloyDBEngine
-from .indexes import (
+from langchain_google_alloydb_pg.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DEFAULT_INDEX_NAME_SUFFIX,
     BaseIndex,
     DistanceStrategy,
     ExactNearestNeighbor,
     QueryOptions,
-    ScaNNIndex,
 )
+
+from .engine import AlloyDBEngine
 
 COMPARISONS_TO_NATIVE = {
     "$eq": "=",
