@@ -14,6 +14,7 @@
 
 
 import os
+import sys
 import uuid
 
 import pytest
@@ -123,6 +124,43 @@ class TestIndex:
         vs.drop_vector_index()
         yield vs
 
+    async def test_aapply_vector_index(self, vs):
+        index = HNSWIndex()
+        vs.apply_vector_index(index)
+        assert vs.is_valid_index(DEFAULT_INDEX_NAME)
+        vs.drop_vector_index()
+
+    async def test_areindex(self, vs):
+        if not vs.is_valid_index(DEFAULT_INDEX_NAME):
+            index = HNSWIndex()
+            vs.apply_vector_index(index)
+        vs.reindex()
+        vs.reindex(DEFAULT_INDEX_NAME)
+        assert vs.is_valid_index(DEFAULT_INDEX_NAME)
+        vs.drop_vector_index(DEFAULT_INDEX_NAME)
+
+    async def test_dropindex(self, vs):
+        vs.drop_vector_index()
+        result = vs.is_valid_index(DEFAULT_INDEX_NAME)
+        assert not result
+
+    async def test_aapply_vector_index_ivfflat(self, vs):
+        index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        vs.apply_vector_index(index, concurrently=True)
+        assert vs.is_valid_index(DEFAULT_INDEX_NAME)
+        index = IVFFlatIndex(
+            name="secondindex",
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+        )
+        vs.apply_vector_index(index)
+        assert vs.is_valid_index("secondindex")
+        vs.drop_vector_index("secondindex")
+        vs.drop_vector_index()
+
+    async def test_is_valid_index(self, vs):
+        is_valid = vs.is_valid_index("invalid_index")
+        assert is_valid == False
+
     async def test_aapply_vector_index_ivf(self, vs):
         index = IVFIndex(
             name=DEFAULT_INDEX_NAME, distance_strategy=DistanceStrategy.EUCLIDEAN
@@ -225,6 +263,42 @@ class TestAsyncIndex:
             table_name=DEFAULT_TABLE_OMNI,
         )
         yield vs
+
+    async def test_aapply_vector_index(self, vs):
+        index = HNSWIndex()
+        await vs.aapply_vector_index(index)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
+
+    async def test_areindex(self, vs):
+        if not await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC):
+            index = HNSWIndex()
+            await vs.aapply_vector_index(index)
+        await vs.areindex()
+        await vs.areindex(DEFAULT_INDEX_NAME_ASYNC)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
+        await vs.adrop_vector_index(DEFAULT_INDEX_NAME_ASYNC)
+
+    async def test_dropindex(self, vs):
+        await vs.adrop_vector_index()
+        result = await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
+        assert not result
+
+    async def test_aapply_vector_index_ivfflat(self, vs):
+        index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        await vs.aapply_vector_index(index, concurrently=True)
+        assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
+        index = IVFFlatIndex(
+            name="secondindex",
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+        )
+        await vs.aapply_vector_index(index)
+        assert await vs.ais_valid_index("secondindex")
+        await vs.adrop_vector_index("secondindex")
+        await vs.adrop_vector_index()
+
+    async def test_is_valid_index(self, vs):
+        is_valid = await vs.ais_valid_index("invalid_index")
+        assert is_valid == False
 
     async def test_aapply_vector_index_ivf(self, vs):
         index = IVFIndex(

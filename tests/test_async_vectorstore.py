@@ -28,6 +28,9 @@ from sqlalchemy.engine.row import RowMapping
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 
+DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
+DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
+CUSTOM_TABLE = "test-table-custom" + str(uuid.uuid4())
 IMAGE_TABLE = "test_image_table" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 
@@ -106,8 +109,43 @@ class TestVectorStore:
         )
 
         yield engine
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{CUSTOM_TABLE}"')
         await aexecute(engine, f'DROP TABLE IF EXISTS "{IMAGE_TABLE}"')
         await engine.close()
+
+    @pytest_asyncio.fixture(scope="class")
+    async def vs(self, engine):
+        await engine._ainit_vectorstore_table(DEFAULT_TABLE, VECTOR_SIZE)
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=DEFAULT_TABLE,
+        )
+        yield vs
+
+    @pytest_asyncio.fixture(scope="class")
+    async def vs_custom(self, engine):
+        await engine._ainit_vectorstore_table(
+            CUSTOM_TABLE,
+            VECTOR_SIZE,
+            id_column="myid",
+            content_column="mycontent",
+            embedding_column="myembedding",
+            metadata_columns=[Column("page", "TEXT"), Column("source", "TEXT")],
+            metadata_json_column="mymeta",
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=CUSTOM_TABLE,
+            id_column="myid",
+            content_column="mycontent",
+            embedding_column="myembedding",
+            metadata_columns=["page", "source"],
+            metadata_json_column="mymeta",
+        )
+        yield vs
 
     @pytest_asyncio.fixture(scope="class")
     async def image_vs(self, engine):
@@ -149,6 +187,32 @@ class TestVectorStore:
             except FileNotFoundError:
                 pass
 
+    async def test_init_with_constructor(self, engine):
+        with pytest.raises(Exception):
+            AsyncAlloyDBVectorStore(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="noname",
+                embedding_column="myembedding",
+                metadata_columns=["page", "source"],
+                metadata_json_column="mymeta",
+            )
+
+    async def test_post_init(self, engine):
+        with pytest.raises(ValueError):
+            await AsyncAlloyDBVectorStore.create(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="noname",
+                embedding_column="myembedding",
+                metadata_columns=["page", "source"],
+                metadata_json_column="mymeta",
+            )
+
     async def test_id_metadata_column(self, engine):
         table_name = "id_metadata" + str(uuid.uuid4())
         await engine._ainit_vectorstore_table(
@@ -171,6 +235,39 @@ class TestVectorStore:
         assert results[1]["id"] == "1"
         assert results[2]["id"] == "2"
         await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}"')
+
+    async def test_aadd_texts(self, engine, vs):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs.aadd_texts(texts, ids=ids)
+        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 3
+
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs.aadd_texts(texts, metadatas, ids)
+        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 6
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
+
+    async def test_aadd_texts_edge_cases(self, engine, vs):
+        texts = ["Taylor's", '"Swift"', "best-friend"]
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs.aadd_texts(texts, ids=ids)
+        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 3
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
+
+    async def test_aadd_docs(self, engine, vs):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs.aadd_documents(docs, ids=ids)
+        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 3
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
+
+    async def test_aadd_docs_no_ids(self, engine, vs):
+        await vs.aadd_documents(docs)
+        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 3
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
 
     async def test_aadd_images(self, engine, image_vs, image_uris):
         ids = [str(uuid.uuid4()) for i in range(len(image_uris))]
@@ -209,3 +306,170 @@ class TestVectorStore:
             )
 
         await aexecute(engine, (f'TRUNCATE TABLE "{IMAGE_TABLE}"'))
+
+    async def test_adelete(self, engine, vs):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs.aadd_texts(texts, ids=ids)
+        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 3
+        # delete an ID
+        await vs.adelete([ids[0]])
+        results = await afetch(engine, f'SELECT * FROM "{DEFAULT_TABLE}"')
+        assert len(results) == 2
+        # delete with no ids
+        result = await vs.adelete()
+        assert result == False
+        await aexecute(engine, f'TRUNCATE TABLE "{DEFAULT_TABLE}"')
+
+    ##### Custom Vector Store  #####
+    async def test_aadd_embeddings(self, engine, vs_custom):
+        await vs_custom.aadd_embeddings(
+            texts=texts, embeddings=embeddings, metadatas=metadatas
+        )
+        results = await afetch(engine, f'SELECT * FROM "{CUSTOM_TABLE}"')
+        assert len(results) == 3
+        assert results[0]["mycontent"] == "foo"
+        assert results[0]["myembedding"]
+        assert results[0]["page"] == "0"
+        assert results[0]["source"] == "google.com"
+        await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
+
+    async def test_aadd_texts_custom(self, engine, vs_custom):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs_custom.aadd_texts(texts, ids=ids)
+        results = await afetch(engine, f'SELECT * FROM "{CUSTOM_TABLE}"')
+        assert len(results) == 3
+        assert results[0]["mycontent"] == "foo"
+        assert results[0]["myembedding"]
+        assert results[0]["page"] is None
+        assert results[0]["source"] is None
+
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs_custom.aadd_texts(texts, metadatas, ids)
+        results = await afetch(engine, f'SELECT * FROM "{CUSTOM_TABLE}"')
+        assert len(results) == 6
+        await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
+
+    async def test_aadd_docs_custom(self, engine, vs_custom):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        docs = [
+            Document(
+                page_content=texts[i],
+                metadata={"page": str(i), "source": "google.com"},
+            )
+            for i in range(len(texts))
+        ]
+        await vs_custom.aadd_documents(docs, ids=ids)
+
+        results = await afetch(engine, f'SELECT * FROM "{CUSTOM_TABLE}"')
+        assert len(results) == 3
+        assert results[0]["mycontent"] == "foo"
+        assert results[0]["myembedding"]
+        assert results[0]["page"] == "0"
+        assert results[0]["source"] == "google.com"
+        await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
+
+    async def test_adelete_custom(self, engine, vs_custom):
+        ids = [str(uuid.uuid4()) for i in range(len(texts))]
+        await vs_custom.aadd_texts(texts, ids=ids)
+        results = await afetch(engine, f'SELECT * FROM "{CUSTOM_TABLE}"')
+        content = [result["mycontent"] for result in results]
+        assert len(results) == 3
+        assert "foo" in content
+        # delete an ID
+        await vs_custom.adelete([ids[0]])
+        results = await afetch(engine, f'SELECT * FROM "{CUSTOM_TABLE}"')
+        content = [result["mycontent"] for result in results]
+        assert len(results) == 2
+        assert "foo" not in content
+        await aexecute(engine, f'TRUNCATE TABLE "{CUSTOM_TABLE}"')
+
+    async def test_ignore_metadata_columns(self, engine):
+        column_to_ignore = "source"
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=CUSTOM_TABLE,
+            ignore_metadata_columns=[column_to_ignore],
+            id_column="myid",
+            content_column="mycontent",
+            embedding_column="myembedding",
+            metadata_json_column="mymeta",
+        )
+        assert column_to_ignore not in vs.metadata_columns
+
+    async def test_create_vectorstore_with_invalid_parameters_1(self, engine):
+        with pytest.raises(ValueError):
+            await AsyncAlloyDBVectorStore.create(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="myembedding",
+                metadata_columns=["random_column"],  # invalid metadata column
+            )
+
+    async def test_create_vectorstore_with_invalid_parameters_2(self, engine):
+        with pytest.raises(ValueError):
+            await AsyncAlloyDBVectorStore.create(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="langchain_id",  # invalid content column type
+                embedding_column="myembedding",
+                metadata_columns=["random_column"],
+            )
+
+    async def test_create_vectorstore_with_invalid_parameters_3(self, engine):
+        with pytest.raises(ValueError):
+            await AsyncAlloyDBVectorStore.create(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="random_column",  # invalid embedding column
+                metadata_columns=["random_column"],
+            )
+
+    async def test_create_vectorstore_with_invalid_parameters_4(self, engine):
+        with pytest.raises(ValueError):
+            await AsyncAlloyDBVectorStore.create(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="langchain_id",  # invalid embedding column data type
+                metadata_columns=["random_column"],
+            )
+
+    async def test_create_vectorstore_with_invalid_parameters_5(self, engine):
+        with pytest.raises(ValueError):
+            await AsyncAlloyDBVectorStore.create(
+                engine,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="langchain_id",
+                metadata_columns=["random_column"],
+                ignore_metadata_columns=[
+                    "one",
+                    "two",
+                ],  # invalid use of metadata_columns and ignore columns
+            )
+
+    async def test_create_vectorstore_with_init(self, engine):
+        with pytest.raises(Exception):
+            await AsyncAlloyDBVectorStore(
+                engine._pool,
+                embedding_service=embeddings_service,
+                table_name=CUSTOM_TABLE,
+                id_column="myid",
+                content_column="mycontent",
+                embedding_column="myembedding",
+                metadata_columns=["random_column"],  # invalid metadata column
+            )
