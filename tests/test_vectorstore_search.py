@@ -26,13 +26,13 @@ from sqlalchemy import text
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
 
-DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
-CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
-IMAGE_TABLE = "test_image_table" + str(uuid.uuid4()).replace("-", "_")
-IMAGE_TABLE_SYNC = "test_image_table_sync" + str(uuid.uuid4()).replace("-", "_")
-CUSTOM_FILTER_TABLE = "test_table_custom_filter" + str(uuid.uuid4()).replace("-", "_")
-CUSTOM_FILTER_TABLE_SYNC = "test_table_custom_filter_sync" + str(uuid.uuid4()).replace(
+DEFAULT_TABLE = "default" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_SYNC = "default_sync" + str(uuid.uuid4()).replace("-", "_")
+CUSTOM_TABLE = "custom" + str(uuid.uuid4()).replace("-", "_")
+IMAGE_TABLE = "image" + str(uuid.uuid4()).replace("-", "_")
+IMAGE_TABLE_SYNC = "image_sync" + str(uuid.uuid4()).replace("-", "_")
+CUSTOM_FILTER_TABLE = "custom_filter" + str(uuid.uuid4()).replace("-", "_")
+CUSTOM_FILTER_TABLE_SYNC = "custom_filter_sync" + str(uuid.uuid4()).replace(
     "-", "_"
 )
 VECTOR_SIZE = 768
@@ -251,7 +251,7 @@ class TestVectorStoreSearch:
         results = await vs.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
-        results = await vs.asimilarity_search("foo", k=1, filter="content = 'bar'")
+        results = await vs.asimilarity_search("foo", k=1, filter={"content": "bar"})
         assert results == [Document(page_content="bar", id=ids[1])]
 
     async def test_asimilarity_search_image(self, image_vs, image_uris):
@@ -320,7 +320,7 @@ class TestVectorStoreSearch:
         results = await vs.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
         results = await vs.amax_marginal_relevance_search(
-            "bar", filter="content = 'boo'"
+            "bar", filter={"content": "boo"}
         )
         assert results[0] == Document(page_content="boo", id=ids[3])
 
@@ -503,7 +503,7 @@ class TestVectorStoreSearchSync:
         results = vs_custom.similarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
-        results = vs_custom.similarity_search("foo", k=1, filter="mycontent = 'bar'")
+        results = vs_custom.similarity_search("foo", k=1, filter={"mycontent": "bar"})
         assert results == [Document(page_content="bar", id=ids[1])]
 
     def test_similarity_search_image(self, image_vs, image_uris):
@@ -530,7 +530,7 @@ class TestVectorStoreSearchSync:
         results = vs_custom.max_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
         results = vs_custom.max_marginal_relevance_search(
-            "bar", filter="mycontent = 'boo'"
+            "bar", filter={"mycontent": "boo"}
         )
         assert results[0] == Document(page_content="boo", id=ids[3])
 
