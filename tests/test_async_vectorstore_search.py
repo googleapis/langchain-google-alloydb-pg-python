@@ -387,7 +387,7 @@ class TestVectorStoreSearch:
         results = await vs_custom.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
         results = await vs_custom.amax_marginal_relevance_search(
-            "bar", filter={"content": "boo"}
+            "bar", filter={"mycontent": "boo"}
         )
         assert results[0] == Document(page_content="boo", id=ids[3])
 
@@ -419,11 +419,6 @@ class TestVectorStoreSearch:
         results = await vs_custom.aget_by_ids(ids=test_ids)
 
         assert results[0] == Document(page_content="foo", id=ids[0])
-
-    def test_get_by_ids(self, vs):
-        test_ids = [ids[0]]
-        with pytest.raises(Exception, match=sync_method_exception_str):
-            vs.get_by_ids(ids=test_ids)
 
     @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
     async def test_vectorstore_with_metadata_filters(

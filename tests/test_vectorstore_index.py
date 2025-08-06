@@ -106,6 +106,8 @@ class TestIndex:
             instance=db_instance,
             region=db_region,
             database=db_name,
+            user="postgres",
+            password="deo-project"
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")

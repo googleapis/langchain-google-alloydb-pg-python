@@ -388,19 +388,19 @@ class TestVectorStore:
         assert len(results) == len(image_uris)
         for i, result_row in enumerate(results):
             assert (
-                result_row[vs._AlloyDBVectorStore__vs.content_column] == image_uris[i]
+                result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
             )
             uri_embedding = embeddings_service.embed_query(image_uris[i])
             image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
             actual_embedding = json.loads(
-                result_row[vs._AlloyDBVectorStore__vs.embedding_column]
+                result_row[vs._PGVectorStore__vs.embedding_column]
             )
             assert actual_embedding != pytest.approx(uri_embedding)
             assert actual_embedding == pytest.approx(image_embedding)
             assert result_row["image_id"] == str(i)
             assert result_row["source"] == "google.com"
             assert (
-                result_row[vs._AlloyDBVectorStore__vs.metadata_json_column]["image_uri"]
+                result_row[vs._PGVectorStore__vs.metadata_json_column]["image_uri"]
                 == image_uris[i]
             )
         await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{table_name}"')
@@ -476,19 +476,19 @@ class TestVectorStore:
         assert len(results) == len(image_uris)
         for i, result_row in enumerate(results):
             assert (
-                result_row[vs._AlloyDBVectorStore__vs.content_column] == image_uris[i]
+                result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
             )
             uri_embedding = embeddings_service.embed_query(image_uris[i])
             image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
             actual_embedding = json.loads(
-                result_row[vs._AlloyDBVectorStore__vs.embedding_column]
+                result_row[vs._PGVectorStore__vs.embedding_column]
             )
             assert actual_embedding != pytest.approx(uri_embedding)
             assert actual_embedding == pytest.approx(image_embedding)
             assert result_row["image_id"] == str(i)
             assert result_row["source"] == "google.com"
             assert (
-                result_row[vs._AlloyDBVectorStore__vs.metadata_json_column]["image_uri"]
+                result_row[vs._PGVectorStore__vs.metadata_json_column]["image_uri"]
                 == image_uris[i]
             )
         await vs.adelete(ids)
