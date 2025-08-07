@@ -32,9 +32,7 @@ CUSTOM_TABLE = "custom" + str(uuid.uuid4()).replace("-", "_")
 IMAGE_TABLE = "image" + str(uuid.uuid4()).replace("-", "_")
 IMAGE_TABLE_SYNC = "image_sync" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_FILTER_TABLE = "custom_filter" + str(uuid.uuid4()).replace("-", "_")
-CUSTOM_FILTER_TABLE_SYNC = "custom_filter_sync" + str(uuid.uuid4()).replace(
-    "-", "_"
-)
+CUSTOM_FILTER_TABLE_SYNC = "custom_filter_sync" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
