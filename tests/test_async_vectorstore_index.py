@@ -148,7 +148,9 @@ class TestIndex:
         assert not result
 
     async def test_aapply_vector_index_ivfflat(self, vs):
-        index = IVFFlatIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = IVFFlatIndex(
+            name=DEFAULT_INDEX_NAME,
+            distance_strategy=DistanceStrategy.EUCLIDEAN)
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFFlatIndex(
