@@ -33,9 +33,9 @@ from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Colum
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
-CUSTOM_TABLE = "test-table-custom" + str(uuid.uuid4())
-IMAGE_TABLE = "test_image_table" + str(uuid.uuid4())
-IMAGE_TABLE_SYNC = "test_image_table_sync" + str(uuid.uuid4())
+CUSTOM_TABLE = "custom" + str(uuid.uuid4())
+IMAGE_TABLE = "image" + str(uuid.uuid4())
+IMAGE_TABLE_SYNC = "image_sync" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -387,20 +387,18 @@ class TestVectorStore:
         results = await afetch(engine_sync, f'SELECT * FROM "{table_name}"')
         assert len(results) == len(image_uris)
         for i, result_row in enumerate(results):
-            assert (
-                result_row[vs._AlloyDBVectorStore__vs.content_column] == image_uris[i]
-            )
+            assert result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
             uri_embedding = embeddings_service.embed_query(image_uris[i])
             image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
             actual_embedding = json.loads(
-                result_row[vs._AlloyDBVectorStore__vs.embedding_column]
+                result_row[vs._PGVectorStore__vs.embedding_column]
             )
             assert actual_embedding != pytest.approx(uri_embedding)
             assert actual_embedding == pytest.approx(image_embedding)
             assert result_row["image_id"] == str(i)
             assert result_row["source"] == "google.com"
             assert (
-                result_row[vs._AlloyDBVectorStore__vs.metadata_json_column]["image_uri"]
+                result_row[vs._PGVectorStore__vs.metadata_json_column]["image_uri"]
                 == image_uris[i]
             )
         await aexecute(engine_sync, f'DROP TABLE IF EXISTS "{table_name}"')
@@ -475,20 +473,18 @@ class TestVectorStore:
         results = await afetch(engine_sync, (f'SELECT * FROM "{table_name}"'))
         assert len(results) == len(image_uris)
         for i, result_row in enumerate(results):
-            assert (
-                result_row[vs._AlloyDBVectorStore__vs.content_column] == image_uris[i]
-            )
+            assert result_row[vs._PGVectorStore__vs.content_column] == image_uris[i]
             uri_embedding = embeddings_service.embed_query(image_uris[i])
             image_embedding = image_embedding_service.embed_image([image_uris[i]])[0]
             actual_embedding = json.loads(
-                result_row[vs._AlloyDBVectorStore__vs.embedding_column]
+                result_row[vs._PGVectorStore__vs.embedding_column]
             )
             assert actual_embedding != pytest.approx(uri_embedding)
             assert actual_embedding == pytest.approx(image_embedding)
             assert result_row["image_id"] == str(i)
             assert result_row["source"] == "google.com"
             assert (
-                result_row[vs._AlloyDBVectorStore__vs.metadata_json_column]["image_uri"]
+                result_row[vs._PGVectorStore__vs.metadata_json_column]["image_uri"]
                 == image_uris[i]
             )
         await vs.adelete(ids)

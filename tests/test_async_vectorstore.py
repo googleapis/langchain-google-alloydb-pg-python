@@ -30,8 +30,8 @@ from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStor
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
-CUSTOM_TABLE = "test-table-custom" + str(uuid.uuid4())
-IMAGE_TABLE = "test_image_table" + str(uuid.uuid4())
+CUSTOM_TABLE = "custom" + str(uuid.uuid4())
+IMAGE_TABLE = "image" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -111,6 +111,7 @@ class TestVectorStore:
         yield engine
         await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
         await aexecute(engine, f'DROP TABLE IF EXISTS "{CUSTOM_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{IMAGE_TABLE}"')
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")

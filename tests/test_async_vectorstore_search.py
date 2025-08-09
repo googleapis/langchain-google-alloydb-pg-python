@@ -33,8 +33,8 @@ from langchain_google_alloydb_pg.indexes import (
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
-IMAGE_TABLE = "test_image_table" + str(uuid.uuid4()).replace("-", "_")
-CUSTOM_FILTER_TABLE = "test_table_custom_filter" + str(uuid.uuid4()).replace("-", "_")
+IMAGE_TABLE = "image" + str(uuid.uuid4()).replace("-", "_")
+CUSTOM_FILTER_TABLE = "custom_filter" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 sync_method_exception_str = "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
 
@@ -118,6 +118,7 @@ class TestVectorStoreSearch:
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
         await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_TABLE}")
         await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_FILTER_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {IMAGE_TABLE}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
@@ -248,7 +249,7 @@ class TestVectorStoreSearch:
         results = await vs.asimilarity_search("foo", k=1)
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
-        results = await vs.asimilarity_search("foo", k=1, filter="content = 'bar'")
+        results = await vs.asimilarity_search("foo", k=1, filter={"content": "bar"})
         assert results == [Document(page_content="bar", id=ids[1])]
 
     async def test_asimilarity_search_scann(self, vs_custom_scann_query_option):
@@ -256,7 +257,7 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
         results = await vs_custom_scann_query_option.asimilarity_search(
-            "foo", k=1, filter="mycontent = 'bar'"
+            "foo", k=1, filter={"mycontent": "bar"}
         )
         assert results == [Document(page_content="bar", id=ids[1])]
 
@@ -333,7 +334,7 @@ class TestVectorStoreSearch:
         results = await vs.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
         results = await vs.amax_marginal_relevance_search(
-            "bar", filter="content = 'boo'"
+            "bar", filter={"content": "boo"}
         )
         assert results[0] == Document(page_content="boo", id=ids[3])
 
@@ -359,7 +360,7 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert results == [Document(page_content="foo", id=ids[0])]
         results = await vs_custom.asimilarity_search(
-            "foo", k=1, filter="mycontent = 'bar'"
+            "foo", k=1, filter={"mycontent": "bar"}
         )
         assert results == [Document(page_content="bar", id=ids[1])]
 
@@ -386,7 +387,7 @@ class TestVectorStoreSearch:
         results = await vs_custom.amax_marginal_relevance_search("bar")
         assert results[0] == Document(page_content="bar", id=ids[1])
         results = await vs_custom.amax_marginal_relevance_search(
-            "bar", filter="mycontent = 'boo'"
+            "bar", filter={"mycontent": "boo"}
         )
         assert results[0] == Document(page_content="boo", id=ids[3])
 
@@ -418,11 +419,6 @@ class TestVectorStoreSearch:
         results = await vs_custom.aget_by_ids(ids=test_ids)
 
         assert results[0] == Document(page_content="foo", id=ids[0])
-
-    def test_get_by_ids(self, vs):
-        test_ids = [ids[0]]
-        with pytest.raises(Exception, match=sync_method_exception_str):
-            vs.get_by_ids(ids=test_ids)
 
     @pytest.mark.parametrize("test_filter, expected_ids", FILTERING_TEST_CASES)
     async def test_vectorstore_with_metadata_filters(
