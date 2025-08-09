@@ -34,7 +34,7 @@ from langchain_google_alloydb_pg.indexes import (
 )
 
 UUID_STR = str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE = "test_table" + UUID_STR
+DEFAULT_TABLE = "table" + UUID_STR
 DEFAULT_INDEX_NAME = DEFAULT_INDEX_NAME_SUFFIX + UUID_STR
 VECTOR_SIZE = 768
 
@@ -149,8 +149,8 @@ class TestIndex:
 
     async def test_aapply_vector_index_ivfflat(self, vs):
         index = IVFFlatIndex(
-            name=DEFAULT_INDEX_NAME,
-            distance_strategy=DistanceStrategy.EUCLIDEAN)
+            name=DEFAULT_INDEX_NAME, distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.is_valid_index(DEFAULT_INDEX_NAME)
         index = IVFFlatIndex(
