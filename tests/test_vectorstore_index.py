@@ -34,15 +34,13 @@ from langchain_google_alloydb_pg.indexes import (
     ScaNNIndex,
 )
 
-DEFAULT_TABLE_UUID = str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE_ASYNC_UUID = str(uuid.uuid4()).replace("-", "_")
-OMNI_UUID = str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE = "test_table" + DEFAULT_TABLE_UUID
-DEFAULT_TABLE_ASYNC = "test_table" + DEFAULT_TABLE_ASYNC_UUID
-DEFAULT_TABLE_OMNI = "test_table" + OMNI_UUID
-DEFAULT_INDEX_NAME = DEFAULT_INDEX_NAME_SUFFIX + DEFAULT_TABLE_UUID
-DEFAULT_INDEX_NAME_ASYNC = DEFAULT_INDEX_NAME_SUFFIX + DEFAULT_TABLE_ASYNC_UUID
-DEFAULT_INDEX_NAME_OMNI = DEFAULT_INDEX_NAME_SUFFIX + OMNI_UUID
+DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_ASYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_OMNI = "test_table" + str(uuid.uuid4()).replace("-", "_")
+CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
+DEFAULT_INDEX_NAME_ASYNC = DEFAULT_TABLE_ASYNC + DEFAULT_INDEX_NAME_SUFFIX
+DEFAULT_INDEX_NAME_OMNI = DEFAULT_TABLE_OMNI + DEFAULT_INDEX_NAME_SUFFIX
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
@@ -134,7 +132,7 @@ class TestIndex:
         if not vs.is_valid_index(DEFAULT_INDEX_NAME):
             index = HNSWIndex()
             vs.apply_vector_index(index)
-        vs.reindex()
+        vs.reindex(DEFAULT_INDEX_NAME)
         vs.reindex(DEFAULT_INDEX_NAME)
         assert vs.is_valid_index(DEFAULT_INDEX_NAME)
         vs.drop_vector_index(DEFAULT_INDEX_NAME)
@@ -273,7 +271,7 @@ class TestAsyncIndex:
         if not await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC):
             index = HNSWIndex()
             await vs.aapply_vector_index(index)
-        await vs.areindex()
+        await vs.areindex(DEFAULT_INDEX_NAME_ASYNC)
         await vs.areindex(DEFAULT_INDEX_NAME_ASYNC)
         assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         await vs.adrop_vector_index(DEFAULT_INDEX_NAME_ASYNC)
