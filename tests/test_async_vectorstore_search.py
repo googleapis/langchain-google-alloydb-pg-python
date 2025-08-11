@@ -19,6 +19,11 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from langchain_postgres.v2.hybrid_search_config import (
+    HybridSearchConfig,
+    reciprocal_rank_fusion,
+    weighted_sum_ranking,
+)
 from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS
 from PIL import Image
 from sqlalchemy import text
@@ -29,11 +34,6 @@ from langchain_google_alloydb_pg.indexes import (
     DistanceStrategy,
     HNSWQueryOptions,
     ScaNNQueryOptions,
-)
-from langchain_postgres.v2.hybrid_search_config import (
-    HybridSearchConfig,
-    reciprocal_rank_fusion,
-    weighted_sum_ranking,
 )
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
@@ -76,6 +76,7 @@ hybrid_docs = [
     Document(page_content=content, metadata={"doc_id_key": key})
     for key, content in hybrid_docs_content.items()
 ]
+
 
 class FakeImageEmbedding(DeterministicFakeEmbedding):
 
@@ -524,7 +525,9 @@ class TestVectorStoreSearch:
         )
         assert results == [Document(page_content="bar", id=ids[1])]
 
-    async def test_hybrid_search_weighted_sum_default(self, vs_hybrid_search_with_tsv_column):
+    async def test_hybrid_search_weighted_sum_default(
+        self, vs_hybrid_search_with_tsv_column
+    ):
         """Test hybrid search with default weighted sum (0.5 vector, 0.5 FTS)."""
         query = "apple"  # Should match "apple" in FTS and vector
 
@@ -550,7 +553,9 @@ class TestVectorStoreSearch:
         # Check if sorted by score (descending for weighted_sum_ranking with positive scores)
         assert results_with_scores[0][1] >= results_with_scores[1][1]
 
-    async def test_hybrid_search_weighted_sum_vector_bias(self, vs_hybrid_search_with_tsv_column):
+    async def test_hybrid_search_weighted_sum_vector_bias(
+        self, vs_hybrid_search_with_tsv_column
+    ):
         """Test weighted sum with higher weight for vector results."""
         query = "Apple Inc technology"  # More specific for vector similarity
 
@@ -570,7 +575,9 @@ class TestVectorStoreSearch:
         assert len(result_ids) > 0
         assert result_ids[0] == "hs_doc_orange_fruit"
 
-    async def test_hybrid_search_weighted_sum_fts_bias(self, vs_hybrid_search_with_tsv_column):
+    async def test_hybrid_search_weighted_sum_fts_bias(
+        self, vs_hybrid_search_with_tsv_column
+    ):
         """Test weighted sum with higher weight for FTS results."""
         query = "fruit common tasty"  # Strong FTS signal for fruit docs
 
@@ -590,7 +597,9 @@ class TestVectorStoreSearch:
         assert len(result_ids) == 2
         assert "hs_doc_apple_fruit" in result_ids
 
-    async def test_hybrid_search_reciprocal_rank_fusion(self, vs_hybrid_search_with_tsv_column):
+    async def test_hybrid_search_reciprocal_rank_fusion(
+        self, vs_hybrid_search_with_tsv_column
+    ):
         """Test hybrid search with Reciprocal Rank Fusion."""
         query = "technology company"
 
@@ -620,8 +629,9 @@ class TestVectorStoreSearch:
         assert "hs_doc_apple_tech" in result_ids
         assert result_ids[0] == "hs_doc_apple_tech"  # Stronger combined signal
 
-
-    async def test_hybrid_search_explicit_fts_query(self, vs_hybrid_search_with_tsv_column):
+    async def test_hybrid_search_explicit_fts_query(
+        self, vs_hybrid_search_with_tsv_column
+    ):
         """Test hybrid search when fts_query in HybridSearchConfig is different from main query."""
         main_vector_query = "Apple Inc."  # For vector search
         fts_specific_query = "fruit"  # For FTS
@@ -668,7 +678,9 @@ class TestVectorStoreSearch:
         assert len(results) == 1
         assert result_ids[0] == "hs_doc_apple_tech"
 
-    async def test_hybrid_search_fts_empty_results(self, vs_hybrid_search_with_tsv_column):
+    async def test_hybrid_search_fts_empty_results(
+        self, vs_hybrid_search_with_tsv_column
+    ):
         """Test when FTS query yields no results, should fall back to vector search."""
         vector_query = "apple"
         no_match_fts_query = "zzyyxx_gibberish_term_for_fts_nomatch"
@@ -692,7 +704,9 @@ class TestVectorStoreSearch:
         # The top result should be one of the apple documents based on vector search
         assert results[0].metadata["doc_id_key"].startswith("hs_doc_unrelated_cat")
 
-    async def test_hybrid_search_vector_empty_results_effectively(self, vs_hybrid_search_with_tsv_column):
+    async def test_hybrid_search_vector_empty_results_effectively(
+        self, vs_hybrid_search_with_tsv_column
+    ):
         """Test when vector query is very dissimilar to docs, should rely on FTS."""
         # This is hard to guarantee with fake embeddings, but we try.
         # A better way might be to use a filter that excludes all docs for the vector part,

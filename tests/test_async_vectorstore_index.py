@@ -21,11 +21,11 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
+from langchain_postgres.v2.hybrid_search_config import HybridSearchConfig
 from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
-from langchain_postgres.v2.hybrid_search_config import HybridSearchConfig
 from langchain_google_alloydb_pg.indexes import (
     DEFAULT_INDEX_NAME_SUFFIX,
     DistanceStrategy,
@@ -180,7 +180,9 @@ class TestIndex:
         with pytest.raises(ValueError):
             await vs.aapply_hybrid_search_index()
 
-    async def test_aapply_hybrid_search_index_table_without_tsv_column(self, engine, vs):
+    async def test_aapply_hybrid_search_index_table_without_tsv_column(
+        self, engine, vs
+    ):
         # overwriting vs to get a hybrid vs
         tsv_index_name = "tsv_index_on_table_without_tsv_column_" + UUID_STR
         vs = await AsyncAlloyDBVectorStore.create(
