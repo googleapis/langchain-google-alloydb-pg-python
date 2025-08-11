@@ -184,7 +184,7 @@ class TestIndex:
         self, engine, vs
     ):
         # overwriting vs to get a hybrid vs
-        tsv_index_name = "tsv_index_on_table_without_tsv_column_" + UUID_STR
+        tsv_index_name = "index_without_tsv_column_" + UUID_STR
         vs = await AsyncAlloyDBVectorStore.create(
             engine,
             embedding_service=embeddings_service,
@@ -200,7 +200,7 @@ class TestIndex:
         assert is_valid_index == False
 
     async def test_aapply_hybrid_search_index_table_with_tsv_column(self, engine):
-        tsv_index_name = "tsv_index_on_table_without_tsv_column_" + UUID_STR
+        tsv_index_name = "index_without_tsv_column_" + UUID_STR
         config = HybridSearchConfig(
             tsv_column="tsv_column",
             tsv_lang="pg_catalog.english",
