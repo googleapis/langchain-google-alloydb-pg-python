@@ -25,6 +25,7 @@ from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
+from langchain_postgres.v2.hybrid_search_config import HybridSearchConfig
 from langchain_google_alloydb_pg.indexes import (
     DEFAULT_INDEX_NAME_SUFFIX,
     DistanceStrategy,
@@ -35,6 +36,7 @@ from langchain_google_alloydb_pg.indexes import (
 
 UUID_STR = str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE = "table" + UUID_STR
+DEFAULT_HYBRID_TABLE = "hybrid" + UUID_STR
 DEFAULT_INDEX_NAME = DEFAULT_INDEX_NAME_SUFFIX + UUID_STR
 VECTOR_SIZE = 768
 
@@ -96,6 +98,7 @@ class TestIndex:
         )
         yield engine
         await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_HYBRID_TABLE}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
@@ -172,3 +175,52 @@ class TestIndex:
         await vs.aapply_vector_index(index)
         assert await vs.is_valid_index()
         await vs.adrop_vector_index()
+
+    async def test_aapply_vector_index_non_hybrid_search_vs(self, vs):
+        with pytest.raises(ValueError):
+            await vs.aapply_hybrid_search_index()
+
+    async def test_aapply_hybrid_search_index_table_without_tsv_column(self, engine, vs):
+        # overwriting vs to get a hybrid vs
+        tsv_index_name = "tsv_index_on_table_without_tsv_column_" + UUID_STR
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=DEFAULT_TABLE,
+            hybrid_search_config=HybridSearchConfig(index_name=tsv_index_name),
+        )
+        is_valid_index = await vs.is_valid_index(tsv_index_name)
+        assert is_valid_index == False
+        await vs.aapply_hybrid_search_index()
+        assert await vs.is_valid_index(tsv_index_name)
+        await vs.adrop_vector_index(tsv_index_name)
+        is_valid_index = await vs.is_valid_index(tsv_index_name)
+        assert is_valid_index == False
+
+    async def test_aapply_hybrid_search_index_table_with_tsv_column(self, engine):
+        tsv_index_name = "tsv_index_on_table_without_tsv_column_" + UUID_STR
+        config = HybridSearchConfig(
+            tsv_column="tsv_column",
+            tsv_lang="pg_catalog.english",
+            index_name=tsv_index_name,
+        )
+        await engine._ainit_vectorstore_table(
+            DEFAULT_HYBRID_TABLE,
+            VECTOR_SIZE,
+            hybrid_search_config=config,
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=DEFAULT_HYBRID_TABLE,
+            hybrid_search_config=config,
+        )
+        is_valid_index = await vs.is_valid_index(tsv_index_name)
+        assert is_valid_index == False
+        await vs.aapply_hybrid_search_index()
+        assert await vs.is_valid_index(tsv_index_name)
+        await vs.areindex(tsv_index_name)
+        assert await vs.is_valid_index(tsv_index_name)
+        await vs.adrop_vector_index(tsv_index_name)
+        is_valid_index = await vs.is_valid_index(tsv_index_name)
+        assert is_valid_index == False
