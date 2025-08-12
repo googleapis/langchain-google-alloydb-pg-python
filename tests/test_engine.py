@@ -21,7 +21,7 @@ import pytest
 import pytest_asyncio
 from google.cloud.alloydb.connector import AsyncConnector, IPTypes
 from langchain_core.embeddings import DeterministicFakeEmbedding
-from langchain_postgres.v2.hybrid_search_config import HybridSearchConfig
+from langchain_google_alloydb_pg.hybrid_search_config import HybridSearchConfig
 from sqlalchemy import VARCHAR, text
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.row import RowMapping

@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
-from langchain_postgres.v2.hybrid_search_config import (
+from langchain_google_alloydb_pg.hybrid_search_config import (
     HybridSearchConfig,
     reciprocal_rank_fusion,
     weighted_sum_ranking,
