@@ -140,7 +140,7 @@ class TestVectorStoreSearch:
         await aexecute(engine, f"DROP TABLE IF EXISTS {CUSTOM_FILTER_TABLE}")
         await aexecute(engine, f"DROP TABLE IF EXISTS {IMAGE_TABLE}")
         await aexecute(engine, f"DROP TABLE IF EXISTS {HYBRID_SEARCH_TABLE1}")
-        await aexecute(engine, f"DROP TABLE IF EXISTS {HYBRID_SEARCH_TABLE1}")
+        await aexecute(engine, f"DROP TABLE IF EXISTS {HYBRID_SEARCH_TABLE2}")
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
