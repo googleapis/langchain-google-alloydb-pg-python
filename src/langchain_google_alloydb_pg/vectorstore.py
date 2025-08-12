@@ -20,8 +20,8 @@ from typing import Any, Optional
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_postgres import PGVectorStore
-from langchain_google_alloydb_pg.hybrid_search_config import HybridSearchConfig
 
+from langchain_google_alloydb_pg.hybrid_search_config import HybridSearchConfig
 from langchain_google_alloydb_pg.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
     DistanceStrategy,

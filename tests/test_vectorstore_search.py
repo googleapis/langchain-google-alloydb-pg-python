@@ -19,16 +19,16 @@ import pytest
 import pytest_asyncio
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
-from langchain_google_alloydb_pg.hybrid_search_config import (
-    HybridSearchConfig,
-    reciprocal_rank_fusion,
-    weighted_sum_ranking,
-)
 from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS, NEGATIVE_TEST_CASES
 from PIL import Image
 from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg.hybrid_search_config import (
+    HybridSearchConfig,
+    reciprocal_rank_fusion,
+    weighted_sum_ranking,
+)
 from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptions
 
 DEFAULT_TABLE = "default" + str(uuid.uuid4()).replace("-", "_")
