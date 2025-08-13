@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.12.0...v1.0.0) (2025-08-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* Refactor AlloyDBVectorStore and AlloyDBEngine to depend on PGVectorstore and PGEngine respectively ([#434](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/434))
+
+### Code Refactoring
+
+* Refactor AlloyDBVectorStore and AlloyDBEngine to depend on PGVectorstore and PGEngine respectively ([#434](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/434)) ([2293bd7](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2293bd76f294c3e62f08560311621f58a1628cdd))
+
 ## [0.12.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.11.0...v0.12.0) (2025-06-02)
 
 
