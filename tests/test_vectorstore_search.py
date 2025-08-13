@@ -23,8 +23,10 @@ from metadata_filtering_data import FILTERING_TEST_CASES, METADATAS, NEGATIVE_TE
 from PIL import Image
 from sqlalchemy import text
 
-from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
-from langchain_google_alloydb_pg.hybrid_search_config import (
+from langchain_google_alloydb_pg import (
+    AlloyDBEngine,
+    AlloyDBVectorStore,
+    Column,
     HybridSearchConfig,
     reciprocal_rank_fusion,
     weighted_sum_ranking,
