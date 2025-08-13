@@ -13,6 +13,11 @@
 # limitations under the License.
 
 from langchain_postgres import Column
+from langchain_postgres.v2.hybrid_search_config import (
+    HybridSearchConfig,
+    reciprocal_rank_fusion,
+    weighted_sum_ranking,
+)
 
 from .chat_message_history import AlloyDBChatMessageHistory
 from .checkpoint import AlloyDBSaver
@@ -34,5 +39,8 @@ __all__ = [
     "AlloyDBModelManager",
     "AlloyDBModel",
     "AlloyDBSaver",
+    "HybridSearchConfig",
+    "reciprocal_rank_fusion",
+    "weighted_sum_ranking",
     "__version__",
 ]
