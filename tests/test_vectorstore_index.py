@@ -34,10 +34,10 @@ from langchain_google_alloydb_pg.indexes import (
     ScaNNIndex,
 )
 
-DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE_ASYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_TABLE_OMNI = "test_table" + str(uuid.uuid4()).replace("-", "_")
-CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE = "table" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_ASYNC = "table" + str(uuid.uuid4()).replace("-", "_")
+DEFAULT_TABLE_OMNI = "table" + str(uuid.uuid4()).replace("-", "_")
+CUSTOM_TABLE = "custom" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_INDEX_NAME = DEFAULT_TABLE + DEFAULT_INDEX_NAME_SUFFIX
 DEFAULT_INDEX_NAME_ASYNC = DEFAULT_TABLE_ASYNC + DEFAULT_INDEX_NAME_SUFFIX
 DEFAULT_INDEX_NAME_OMNI = DEFAULT_TABLE_OMNI + DEFAULT_INDEX_NAME_SUFFIX
@@ -132,7 +132,7 @@ class TestIndex:
         if not vs.is_valid_index(DEFAULT_INDEX_NAME):
             index = HNSWIndex()
             vs.apply_vector_index(index)
-        vs.reindex()
+        vs.reindex(DEFAULT_INDEX_NAME)
         vs.reindex(DEFAULT_INDEX_NAME)
         assert vs.is_valid_index(DEFAULT_INDEX_NAME)
         vs.drop_vector_index(DEFAULT_INDEX_NAME)
@@ -158,6 +158,21 @@ class TestIndex:
     async def test_is_valid_index(self, vs):
         is_valid = vs.is_valid_index("invalid_index")
         assert is_valid == False
+
+    async def test_aapply_vector_index_ivf(self, vs):
+        index = IVFIndex(
+            name=DEFAULT_INDEX_NAME, distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
+        vs.apply_vector_index(index, concurrently=True)
+        assert vs.is_valid_index(DEFAULT_INDEX_NAME)
+        index = IVFIndex(
+            name="secondindex",
+            distance_strategy=DistanceStrategy.INNER_PRODUCT,
+        )
+        vs.apply_vector_index(index)
+        assert vs.is_valid_index("secondindex")
+        vs.drop_vector_index("secondindex")
+        vs.drop_vector_index(DEFAULT_INDEX_NAME)
 
 
 @pytest.mark.asyncio(loop_scope="class")
@@ -256,7 +271,7 @@ class TestAsyncIndex:
         if not await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC):
             index = HNSWIndex()
             await vs.aapply_vector_index(index)
-        await vs.areindex()
+        await vs.areindex(DEFAULT_INDEX_NAME_ASYNC)
         await vs.areindex(DEFAULT_INDEX_NAME_ASYNC)
         assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         await vs.adrop_vector_index(DEFAULT_INDEX_NAME_ASYNC)
@@ -284,7 +299,9 @@ class TestAsyncIndex:
         assert is_valid == False
 
     async def test_aapply_vector_index_ivf(self, vs):
-        index = IVFIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = IVFIndex(
+            name=DEFAULT_INDEX_NAME_ASYNC, distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
         await vs.aapply_vector_index(index, concurrently=True)
         assert await vs.ais_valid_index(DEFAULT_INDEX_NAME_ASYNC)
         index = IVFIndex(
@@ -294,10 +311,12 @@ class TestAsyncIndex:
         await vs.aapply_vector_index(index)
         assert await vs.ais_valid_index("secondindex")
         await vs.adrop_vector_index("secondindex")
-        await vs.adrop_vector_index()
+        await vs.adrop_vector_index(DEFAULT_INDEX_NAME_ASYNC)
 
     async def test_aapply_alloydb_scann_index_ScaNN(self, omni_vs):
-        index = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        index = ScaNNIndex(
+            name=DEFAULT_INDEX_NAME_OMNI, distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
         await omni_vs.aset_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
         await omni_vs.aapply_vector_index(index, concurrently=True)
         assert await omni_vs.ais_valid_index(DEFAULT_INDEX_NAME_OMNI)
@@ -307,4 +326,4 @@ class TestAsyncIndex:
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.ais_valid_index("secondindex")
         await omni_vs.adrop_vector_index("secondindex")
-        await omni_vs.adrop_vector_index()
+        await omni_vs.adrop_vector_index(DEFAULT_INDEX_NAME_OMNI)

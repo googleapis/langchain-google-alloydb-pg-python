@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from langchain_postgres import Column
+from langchain_postgres.v2.hybrid_search_config import (
+    HybridSearchConfig,
+    reciprocal_rank_fusion,
+    weighted_sum_ranking,
+)
+
 from .chat_message_history import AlloyDBChatMessageHistory
 from .checkpoint import AlloyDBSaver
 from .embeddings import AlloyDBEmbeddings
-from .engine import AlloyDBEngine, Column
+from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
 from .vectorstore import AlloyDBVectorStore
@@ -32,5 +39,8 @@ __all__ = [
     "AlloyDBModelManager",
     "AlloyDBModel",
     "AlloyDBSaver",
+    "HybridSearchConfig",
+    "reciprocal_rank_fusion",
+    "weighted_sum_ranking",
     "__version__",
 ]
