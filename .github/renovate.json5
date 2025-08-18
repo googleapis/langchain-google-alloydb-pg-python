@@ -19,8 +19,16 @@
   ],
   packageRules: [
     {
-      matchFileNames: ["samples/**"],
-      groupName: "Samples",
+      matchFileNames: ["samples/index_tuning_sample/**"],
+      groupName: "samples-index_tuning_sample",
+    },
+    {
+      matchFileNames: ["samples/langchain_on_vertexai/**"],
+      groupName: "samples-langchain_on_vertexai",
+    },
+    {
+      matchFileNames: ["samples/migrations/**"],
+      groupName: "samples-migrations",
     },
     {
       groupName: 'GitHub Actions',
@@ -39,19 +47,11 @@
       ],
     },
     {
-      groupName: 'python-nonmajor',
-      ignorePaths: ["samples/**"],
-      matchCategories: [
-        'python',
-      ],
-      matchUpdateTypes: [
-        'minor',
-        'patch',
-      ],
-    },
-    {
-      matchPackageNames: ["numpy"],
-      matchUpdateTypes: ["major"]
+      "description": "Disable numpy updates for Python <= 3.10 by matching the python_version marker.",
+      "matchFileNames": ["pyproject.toml", "requirements.txt"],
+      "matchPackageNames": ["numpy"],
+      "matchDepVersions": ["/(python_version == '3\\.10|python_version <= '3\\.9)/"],
+      "enabled": false
     }
   ],
 }
