@@ -46,5 +46,12 @@
         'major',
       ],
     },
+    {
+      "description": "Disable numpy updates for Python <= 3.10 by matching the python_version marker.",
+      "matchFileNames": ["pyproject.toml", "requirements.txt"],
+      "matchPackageNames": ["numpy"],
+      "matchDepVersions": ["/(python_version == '3\\.10|python_version <= '3\\.9)/"],
+      "enabled": false
+    }
   ],
 }
