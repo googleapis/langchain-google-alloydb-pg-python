@@ -101,6 +101,7 @@ Use a vector store to store embedded data and perform vector search.
    )
 
 Hybrid Search with AlloyDBVectorStore
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 With AlloyDBVectorStore you can use hybrid search for more comprehensive and relevant search results.
 
