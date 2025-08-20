@@ -100,12 +100,14 @@ Use a vector store to store embedded data and perform vector search.
        embedding_service=embeddings_service
    )
 
-Hybrid Search with AlloyDBVectorStore
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Hybrid Search
+~~~~~~~~~~~~~
 
-With AlloyDBVectorStore you can use hybrid search for more comprehensive and relevant search results.
+The `AlloyDBVectorStore` supports hybrid search (dense vectors + full text) for more comprehensive and relevant search results.
 
 .. code-block:: python
+
+  from langchain_google_alloydb_pg import HybridSearchConfig, reciprocal_rank_fusion
 
   vs = AlloyDBVectorStore.create_sync(
       engine=engine,
