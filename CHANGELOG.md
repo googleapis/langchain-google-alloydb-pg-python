@@ -11,12 +11,6 @@
 
 * Add hybrid search documentation ([#457](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/457)) ([185b5b8](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/185b5b898c489e38b82c76462cad00ebfcd51414))
 
-
-### Miscellaneous Chores
-
-* Release 0.13.0 ([#463](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/463)) ([9e60b1f](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9e60b1f5145682e3ed761b7d64d3f98d3d244329))
-
-
 ### Code Refactoring
 
 * Refactor AlloyDBVectorStore and AlloyDBEngine to depend on PGVectorstore and PGEngine respectively ([#434](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/434)) ([2293bd7](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/2293bd76f294c3e62f08560311621f58a1628cdd))
