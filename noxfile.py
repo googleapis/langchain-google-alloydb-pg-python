@@ -54,7 +54,6 @@ def docs(session):
         "sphinx==4.5.0",
         "alabaster",
         "recommonmark",
-        "aiohttp",
     )
 
     shutil.rmtree(os.path.join("docs", "_build"), ignore_errors=True)
@@ -90,7 +89,6 @@ def docfx(session):
         "gcp-sphinx-docfx-yaml",
         "alabaster",
         "recommonmark",
-        "aiohttp",
     )
 
     shutil.rmtree(os.path.join("docs", "_build"), ignore_errors=True)
