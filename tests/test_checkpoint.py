@@ -60,6 +60,7 @@ checkpoint: Checkpoint = {
         "__start__": {"__start__": 1},
         "node": {"start:node": 2},
     },
+    "updated_channels": [],
 }
 
 
@@ -240,6 +241,7 @@ def test_data() -> dict[str, Any]:
             "__start__": {"__start__": 1},
             "node": {"start:node": 2},
         },
+        "updated_channels": [],
     }
     chkpnt_1: Checkpoint = empty_checkpoint()
     chkpnt_2: Checkpoint = create_checkpoint(chkpnt_1, {}, 1)
