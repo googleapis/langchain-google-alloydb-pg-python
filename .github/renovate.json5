@@ -77,6 +77,20 @@
       "matchPackageNames": ["langchain-postgres"],
       "semanticCommitType": "feat",
       "groupName": "langchain-postgres"
+    },
+    {
+      "description": "Disable pillow updates for python <=3.9 in pyproject.toml",
+      "matchFileNames": ["pyproject.toml"],
+      "matchPackageNames": ["Pillow"],
+      "matchCurrentValue": "==11.3.0",
+      "enabled": false
+    },
+    {
+      "description": "Disable isort updates for python <=3.9 in pyproject.toml",
+      "matchFileNames": ["pyproject.toml"],
+      "matchPackageNames": ["isort"],
+      "matchCurrentValue": "==6.1.0",
+      "enabled": false
     }
   ],
 }
