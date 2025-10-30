@@ -31,6 +31,7 @@ cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
 table_name = "test-table" + str(uuid.uuid4())
+embedding_model = "text-embedding-005" + str(uuid.uuid4()).replace("-", "_")
 
 
 @pytest.mark.asyncio
@@ -66,7 +67,7 @@ class TestAlloyDBEmbeddings:
 
     @pytest.fixture(scope="module")
     def model_id(self) -> str:
-        return "text-embedding-005"
+        return embedding_model
 
     @pytest_asyncio.fixture
     async def embeddings(self, engine, model_id):
