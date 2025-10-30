@@ -310,7 +310,7 @@ class TestVectorStoreEmbeddingsSync:
 
     @pytest_asyncio.fixture(scope="class")
     def embeddings_service(self, engine_sync):
-        model_manager = await AlloyDBModelManager.create_sync(engine=engine_sync)
+        model_manager = AlloyDBModelManager.create_sync(engine=engine_sync)
         model = model_manager.get_model(model_id=DEFAULT_EMBEDDING_MODEL)
         if not model:
             # create model if not exists
