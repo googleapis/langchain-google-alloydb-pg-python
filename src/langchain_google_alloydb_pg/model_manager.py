@@ -35,7 +35,6 @@ class AlloyDBModel:
         model_auth_id: Optional[str],
         input_transform_fn: Optional[str],
         output_transform_fn: Optional[str],
-        generate_headers_fn: Optional[str] = None,
         **kwargs: Any,
     ):
         self.model_id = model_id
@@ -47,8 +46,6 @@ class AlloyDBModel:
         self.model_auth_id = model_auth_id
         self.input_transform_fn = input_transform_fn
         self.output_transform_fn = output_transform_fn
-        # List models is returning column name "header_gen_fn"
-        self.generate_headers_fn = generate_headers_fn or kwargs.get("header_gen_fn")
 
 
 class AlloyDBModelManager:
@@ -214,7 +211,6 @@ class AlloyDBModelManager:
                 model_qualified_name VARCHAR,
                 model_auth_type google_ml.auth_type,
                 model_auth_id VARCHAR,
-                generate_headers_fn VARCHAR,
                 input_transform_fn VARCHAR,
                 output_transform_fn VARCHAR)"""
 
