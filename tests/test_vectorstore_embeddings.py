@@ -114,7 +114,7 @@ class TestVectorStoreEmbeddings:
             await model_manager.acreate_model(
                 model_id=DEFAULT_EMBEDDING_MODEL,
                 model_provider="google",
-                model_qualified_name=DEFAULT_EMBEDDING_MODEL,  # assuming model is built-in
+                model_qualified_name="text-embedding-005",  # assuming model is built-in
                 model_type="text_embedding",
             )
         yield await AlloyDBEmbeddings.create(engine, DEFAULT_EMBEDDING_MODEL)
@@ -317,7 +317,7 @@ class TestVectorStoreEmbeddingsSync:
             await model_manager.acreate_model(
                 model_id=DEFAULT_EMBEDDING_MODEL,
                 model_provider="google",
-                model_qualified_name=DEFAULT_EMBEDDING_MODEL,  # assuming model is built-in
+                model_qualified_name="text-embedding-005",  # assuming model is built-in
                 model_type="text_embedding",
             )
         return AlloyDBEmbeddings.create_sync(engine_sync, DEFAULT_EMBEDDING_MODEL)
