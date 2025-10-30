@@ -32,7 +32,7 @@ from langchain_google_alloydb_pg.indexes import DistanceStrategy, HNSWQueryOptio
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4()).replace("-", "_")
 DEFAULT_TABLE_SYNC = "test_table" + str(uuid.uuid4()).replace("-", "_")
 CUSTOM_TABLE = "test_table_custom" + str(uuid.uuid4()).replace("-", "_")
-DEFAULT_EMBEDDING_MODEL = "text-embedding-005"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-005" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
 
@@ -117,7 +117,8 @@ class TestVectorStoreEmbeddings:
                 model_qualified_name=DEFAULT_EMBEDDING_MODEL,  # assuming model is built-in
                 model_type="text_embedding",
             )
-        return await AlloyDBEmbeddings.create(engine, DEFAULT_EMBEDDING_MODEL)
+        yield await AlloyDBEmbeddings.create(engine, DEFAULT_EMBEDDING_MODEL)
+        await model_manager.adrop_model(DEFAULT_EMBEDDING_MODEL)
 
     @pytest_asyncio.fixture(scope="class")
     async def vs(self, engine, embeddings_service):
@@ -309,7 +310,18 @@ class TestVectorStoreEmbeddingsSync:
 
     @pytest_asyncio.fixture(scope="class")
     def embeddings_service(self, engine_sync):
+        model_manager = await AlloyDBModelManager.create(engine=engine_sync)
+        model = await model_manager.get_model(model_id=DEFAULT_EMBEDDING_MODEL)
+        if not model:
+            # create model if not exists
+            await model_manager.create_model(
+                model_id=DEFAULT_EMBEDDING_MODEL,
+                model_provider="google",
+                model_qualified_name=DEFAULT_EMBEDDING_MODEL,  # assuming model is built-in
+                model_type="text_embedding",
+            )
         return AlloyDBEmbeddings.create_sync(engine_sync, DEFAULT_EMBEDDING_MODEL)
+        await model_manager.adrop_model(DEFAULT_EMBEDDING_MODEL)
 
     @pytest_asyncio.fixture(scope="class")
     async def vs_custom(self, engine_sync, embeddings_service):
