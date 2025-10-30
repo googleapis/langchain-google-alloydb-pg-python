@@ -78,7 +78,7 @@ class TestAlloyDBEmbeddings:
             await model_manager.acreate_model(
                 model_id=model_id,
                 model_provider="google",
-                model_qualified_name=model_id,  # assuming model is built-in
+                model_qualified_name="text-embedding-005",  # assuming model is built-in
                 model_type="text_embedding",
             )
         return AlloyDBEmbeddings.create_sync(engine=engine, model_id=model_id)
