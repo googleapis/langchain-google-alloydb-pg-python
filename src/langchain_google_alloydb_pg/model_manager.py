@@ -222,7 +222,7 @@ class AlloyDBModelManager:
                 input_transform_fn VARCHAR,
                 output_transform_fn VARCHAR,
                 input_batch_transform_fn VARCHAR,
-                output_batch_transform_fn VARCHAR"""
+                output_batch_transform_fn VARCHAR)"""
 
         try:
             result = await self.__query_db(query)
