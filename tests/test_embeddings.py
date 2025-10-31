@@ -31,6 +31,7 @@ cluster_id = os.environ["CLUSTER_ID"]
 instance_id = os.environ["INSTANCE_ID"]
 db_name = os.environ["DATABASE_ID"]
 table_name = "test-table" + str(uuid.uuid4())
+embedding_model = "text-embedding-005" + str(uuid.uuid4()).replace("-", "_")
 
 
 @pytest.mark.asyncio
@@ -66,7 +67,7 @@ class TestAlloyDBEmbeddings:
 
     @pytest.fixture(scope="module")
     def model_id(self) -> str:
-        return "text-embedding-005"
+        return embedding_model
 
     @pytest_asyncio.fixture
     async def embeddings(self, engine, model_id):
@@ -77,7 +78,7 @@ class TestAlloyDBEmbeddings:
             await model_manager.acreate_model(
                 model_id=model_id,
                 model_provider="google",
-                model_qualified_name=model_id,  # assuming model is built-in
+                model_qualified_name="text-embedding-005",  # assuming model is built-in
                 model_type="text_embedding",
             )
         return AlloyDBEmbeddings.create_sync(engine=engine, model_id=model_id)
