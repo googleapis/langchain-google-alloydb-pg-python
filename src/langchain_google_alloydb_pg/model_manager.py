@@ -35,6 +35,9 @@ class AlloyDBModel:
         model_auth_id: Optional[str],
         input_transform_fn: Optional[str],
         output_transform_fn: Optional[str],
+        generate_headers_fn: Optional[str] = None,
+        input_batch_transform_fn: Optional[str] = None,
+        output_batch_transform_fn: Optional[str] = None,
         **kwargs: Any,
     ):
         self.model_id = model_id
@@ -46,6 +49,10 @@ class AlloyDBModel:
         self.model_auth_id = model_auth_id
         self.input_transform_fn = input_transform_fn
         self.output_transform_fn = output_transform_fn
+        # List models is returning column name "header_gen_fn"
+        self.generate_headers_fn = generate_headers_fn or kwargs.get("header_gen_fn")
+        self.input_batch_transform_fn = input_batch_transform_fn,
+        self.output_batch_transform_fn = output_batch_transform_fn
 
 
 class AlloyDBModelManager:
@@ -172,7 +179,7 @@ class AlloyDBModelManager:
         """
         extension_version = await self.__fetch_google_ml_extension()
         db_flag = await self.__fetch_db_flag()
-        if extension_version < "1.3":
+        if extension_version < "1.5.2":
             raise Exception(
                 "Please upgrade google_ml_integration EXTENSION to version 1.3 or above."
             )
@@ -211,13 +218,15 @@ class AlloyDBModelManager:
                 model_qualified_name VARCHAR,
                 model_auth_type google_ml.auth_type,
                 model_auth_id VARCHAR,
+                header_gen_fn VARCHAR,
                 input_transform_fn VARCHAR,
-                output_transform_fn VARCHAR)"""
+                output_transform_fn VARCHAR,
+                input_batch_transform_fn VARCHAR,
+                output_batch_transform_fn VARCHAR"""
 
         try:
             result = await self.__query_db(query)
         except Exception as e:
-            print(e)
             return None
         data_class = self.__convert_dict_to_dataclass(result)[0]
         return data_class
@@ -288,7 +297,7 @@ class AlloyDBModelManager:
         BEGIN
         IF NOT EXISTS (
           SELECT 1 FROM pg_extension WHERE extname = 'google_ml_integration' )
-          THEN CREATE EXTENSION google_ml_integration VERSION '1.3' CASCADE;
+          THEN CREATE EXTENSION google_ml_integration VERSION '1.5.2' CASCADE;
         END IF;
         END
         $$;
