@@ -51,7 +51,7 @@ class AlloyDBModel:
         self.output_transform_fn = output_transform_fn
         # List models is returning column name "header_gen_fn"
         self.generate_headers_fn = generate_headers_fn or kwargs.get("header_gen_fn")
-        self.input_batch_transform_fn = input_batch_transform_fn,
+        self.input_batch_transform_fn = input_batch_transform_fn
         self.output_batch_transform_fn = output_batch_transform_fn
 
 
