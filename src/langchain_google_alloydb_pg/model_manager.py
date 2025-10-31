@@ -174,14 +174,14 @@ class AlloyDBModelManager:
         """Private async function to validate prerequisites.
 
         Raises:
-            Exception if google_ml_integration EXTENSION is not 1.3.
+            Exception if google_ml_integration EXTENSION is not 1.5.2.
             Exception if google_ml_integration.enable_model_support DB Flag not set.
         """
         extension_version = await self.__fetch_google_ml_extension()
         db_flag = await self.__fetch_db_flag()
         if extension_version < "1.5.2":
             raise Exception(
-                "Please upgrade google_ml_integration EXTENSION to version 1.3 or above."
+                "Please upgrade google_ml_integration EXTENSION to version 1.5.2 or above."
             )
         if db_flag != "on":
             raise Exception(
