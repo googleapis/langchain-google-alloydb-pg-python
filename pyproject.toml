@@ -15,7 +15,7 @@ dependencies = [
     "numpy>=1.24.4, <=2.2.6; python_version == '3.10'",
     "numpy>=1.24.4, <=2.0.2; python_version <= '3.9'",
     "langchain-postgres>=0.0.15",
-    "langgraph-checkpoint>=2.0.9, <3.0.0",
+    "langgraph-checkpoint>=3.0.0, <3.0.1",
     "aiohttp>=3.12.15, <4.0.0",
 ]
 
@@ -41,7 +41,7 @@ Changelog = "https://github.com/googleapis/langchain-google-alloydb-pg-python/bl
 
 [project.optional-dependencies]
 langgraph = [
-    "langgraph-checkpoint>=2.0.9, <3.0.0"
+    "langgraph-checkpoint>=3.0.0, <3.0.1"
 ]
 test = [
     "black[jupyter]==25.9.0",
