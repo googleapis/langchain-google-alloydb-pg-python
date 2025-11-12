@@ -50,7 +50,7 @@ test = [
     "langgraph==0.6.10",
     "mypy==1.18.2",
     "pytest-asyncio==0.26.0",
-    "pytest==8.4.2",
+    "pytest==9.0.1",
     "pytest-cov==7.0.0",
     "pytest-depends==1.0.1",
     "Pillow==11.3.0; python_version == '3.9'",
