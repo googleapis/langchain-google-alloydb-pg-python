@@ -9,5 +9,5 @@ pinecone-client==6.0.0
 pymilvus==2.6.3
 pytest-asyncio==1.2.0
 pytest==8.4.2
-qdrant-client==1.16.0
+qdrant-client==1.15.1
 weaviate-client==4.18.0
