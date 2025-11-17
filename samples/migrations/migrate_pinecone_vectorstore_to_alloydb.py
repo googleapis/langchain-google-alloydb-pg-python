@@ -46,7 +46,7 @@ PINECONE_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
 MAX_CONCURRENCY = 100
 
-from pinecone import Index, Pinecone  # type: ignore
+from pinecone.db_data.index import Index  # type: ignore
 
 
 def get_ids_batch(
