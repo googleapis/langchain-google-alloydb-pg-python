@@ -104,7 +104,7 @@ def get_data_batch(
         metadatas = []
 
         # Process each vector in the current batch
-        for doc in all_data["vectors"].values():
+        for doc in all_data.vectors.values():
             # You might need to update this data translation logic according to one or more of your field names
             if pinecone_id_column_name in doc:
                 # pinecone_id_column_name stores the unqiue identifier for the content
