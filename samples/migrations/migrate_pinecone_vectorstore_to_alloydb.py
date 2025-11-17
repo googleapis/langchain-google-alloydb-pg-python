@@ -97,7 +97,7 @@ def get_data_batch(
 
     # Iterate through the IDs and download their contents
     for ids_batch in id_iterator:
-        all_data = pinecone_index.fetch(ids=ids, namespace=pinecone_namespace)
+        all_data = pinecone_index.fetch(ids=ids_batch, namespace=pinecone_namespace)
         ids = []
         embeddings = []
         contents = []
