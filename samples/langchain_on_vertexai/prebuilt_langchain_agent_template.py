@@ -26,6 +26,7 @@ from config import (
     USER,
 )
 from langchain_core.documents import Document
+from langchain_core.tools import tool
 from langchain_google_vertexai import VertexAIEmbeddings
 from vertexai.preview import reasoning_engines  # type: ignore
 
@@ -37,7 +38,7 @@ from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
 engine = None  # Use global variable to share connection pooling
 
-
+@tool
 def similarity_search(query: str) -> list[Document]:
     """Searches and returns movies.
 
@@ -103,6 +104,6 @@ remote_app = reasoning_engines.ReasoningEngine.create(
     display_name="PrebuiltAgent",
     sys_version="3.11",
     extra_packages=["config.py"],
-)
+) # type: ignore[arg-type]
 
-print(remote_app.query(input="movies about engineers"))
+print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
