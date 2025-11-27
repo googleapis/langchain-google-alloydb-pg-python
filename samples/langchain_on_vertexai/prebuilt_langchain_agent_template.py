@@ -38,6 +38,7 @@ from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
 engine = None  # Use global variable to share connection pooling
 
+
 @tool
 def similarity_search(query: str) -> list[Document]:
     """Searches and returns movies.
@@ -104,6 +105,6 @@ remote_app = reasoning_engines.ReasoningEngine.create(
     display_name="PrebuiltAgent",
     sys_version="3.11",
     extra_packages=["config.py"],
-) # type: ignore[arg-type]
+)  # type: ignore[arg-type]
 
 print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
