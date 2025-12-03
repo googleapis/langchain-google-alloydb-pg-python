@@ -54,11 +54,11 @@ These tests are registered as required tests in `.github/sync-repo-settings.yaml
 
 #### Trigger Setup
 
-Cloud Build triggers (for Python versions 3.9 to 3.11) were created with the following specs:
+Cloud Build triggers (for Python versions 3.10 to 3.13) were created with the following specs:
 
 ```YAML
 name: integration-test-pr-py39
-description: Run integration tests on PR for Python 3.9
+description: Run integration tests on PR for Python 3.10
 filename: integration.cloudbuild.yaml
 github:
   name: langchain-google-alloydb-pg-python
@@ -76,7 +76,7 @@ substitutions:
   _DATABASE_ID: <ADD_VALUE>
   _INSTANCE_ID: <ADD_VALUE>
   _REGION: us-central1
-  _VERSION: "3.9"
+  _VERSION: "3.10"
 ```
 
 Use `gcloud builds triggers import --source=trigger.yaml` to create triggers via the command line

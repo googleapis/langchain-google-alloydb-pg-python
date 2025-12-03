@@ -74,7 +74,7 @@ availableSecrets:
       env: "IAM_ACCOUNT"
 
 substitutions:
-  _VERSION: "3.9"
+  _VERSION: "3.10"
   _INSTANCE_CONNECTION_NAME: projects/${PROJECT_ID}/locations/${_REGION}/clusters/${_CLUSTER_ID}/instances/${_INSTANCE_ID}
   _DATABASE_PORT: "5432"
   _IP_ADDRESS: "127.0.0.1"
