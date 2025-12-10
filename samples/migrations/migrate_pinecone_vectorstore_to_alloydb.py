@@ -46,7 +46,7 @@ PINECONE_BATCH_SIZE = 10
 ALLOYDB_TABLE_NAME = "alloydb_table"
 MAX_CONCURRENCY = 100
 
-from pinecone import Index  # type: ignore
+from pinecone.db_data.index import Index  # type: ignore
 
 
 def get_ids_batch(
@@ -96,24 +96,24 @@ def get_data_batch(
     import uuid
 
     # Iterate through the IDs and download their contents
-    for ids in id_iterator:
-        all_data = pinecone_index.fetch(ids=ids, namespace=pinecone_namespace)
+    for ids_batch in id_iterator:
+        all_data = pinecone_index.fetch(ids=ids_batch, namespace=pinecone_namespace)
         ids = []
         embeddings = []
         contents = []
         metadatas = []
 
         # Process each vector in the current batch
-        for doc in all_data["vectors"].values():
+        for doc in all_data.vectors.values():
             # You might need to update this data translation logic according to one or more of your field names
-            if pinecone_id_column_name in doc:
+            if pinecone_id_column_name in doc.metadata:
                 # pinecone_id_column_name stores the unqiue identifier for the content
                 ids.append(doc[pinecone_id_column_name])
             else:
                 # Generate a uuid if pinecone_id_column_name is missing in source
                 ids.append(str(uuid.uuid4()))
             # values is the vector embedding of the content
-            embeddings.append(doc["values"])
+            embeddings.append(doc.values)
             # Check if pinecone_content_column_name exists in metadata before accessing
             if pinecone_content_column_name in doc.metadata:
                 # pinecone_content_column_name stores the content which was encoded
@@ -124,7 +124,7 @@ def get_data_batch(
                 # Handle the missing pinecone_content_column_name field appropriately
                 contents.append("")
             # metadata is the additional context
-            metadatas.append(doc["metadata"])
+            metadatas.append(doc.metadata)
 
         # Yield the current batch of results
         yield ids, contents, embeddings, metadatas
