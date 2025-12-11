@@ -1,7 +1,6 @@
 [project]
 name = "langchain-google-alloydb-pg"
 dynamic = ["version"]
-
 description = "LangChain integrations for Google Cloud AlloyDB for PostgreSQL"
 readme = "README.rst"
 license = {file = "LICENSE"}
