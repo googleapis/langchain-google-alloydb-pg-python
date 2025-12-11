@@ -94,7 +94,7 @@ DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
 remote_app = reasoning_engines.ReasoningEngine.create(
     reasoning_engines.LangchainAgent(
         model="gemini-2.0-flash-001",
-        tools=[similarity_search],
+        tools=[similarity_search],  # type: ignore[list-item]
         model_kwargs={
             "temperature": 0.1,
         },
@@ -103,6 +103,6 @@ remote_app = reasoning_engines.ReasoningEngine.create(
     display_name="PrebuiltAgent",
     sys_version="3.11",
     extra_packages=["config.py"],
-)
+)  # type: ignore[arg-type]
 
-print(remote_app.query(input="movies about engineers"))
+print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
