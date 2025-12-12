@@ -227,7 +227,7 @@ class AlloyDBModelManager:
         try:
             result = await self.__query_db(query)
         except Exception as e:
-            return None
+            return e
         data_class = self.__convert_dict_to_dataclass(result)[0]
         return data_class
 
