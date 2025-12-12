@@ -70,34 +70,45 @@ class TestAlloyDBModelManager:
         model_manager = await AlloyDBModelManager.create(engine)
         yield model_manager
 
-    async def test_model_manager_constructor(self, engine):
-        with pytest.raises(Exception):
-            AlloyDBModelManager(engine=engine)
-
-    async def test_acreate_model(self, model_manager):
+    @pytest_asyncio.fixture(scope="function")
+    async def model(self, model_manager):
+        model_id = "text-embedding-005" + str(uuid.uuid4()).replace("-", "_")
         await model_manager.acreate_model(
-            model_id=EMBEDDING_MODEL_NAME,
+            model_id=model_id,
             model_provider="google",
             model_qualified_name="text-embedding-005",
             model_type="text_embedding",
         )
+        try:
+            yield model_manager, model_id
+        finally:
+            await model_manager.adrop_model(model_id=model_id)
 
-    @pytest.mark.depends(on=["test_acreate_model"])
-    async def test_aget_model(self, model_manager):
-        model_info = await model_manager.aget_model(model_id=EMBEDDING_MODEL_NAME)
-        assert model_info.model_id == EMBEDDING_MODEL_NAME
+    async def test_model_manager_constructor(self, engine):
+        with pytest.raises(Exception):
+            AlloyDBModelManager(engine=engine)
+
+    async def test_acreate_model(self, model):
+        pass
+
+    async def test_aget_model(self, model):
+        model_manager, model_id = model
+        model_info = await model_manager.aget_model(model_id=model_id)
+        assert model_info.model_id == model_id
 
     async def test_non_existent_model(self, model_manager):
         model_info = await model_manager.aget_model(model_id="Non_existent_model")
         assert model_info is None
 
-    @pytest.mark.depends(on=["test_aget_model"])
-    async def test_alist_models(self, model_manager):
+    async def test_alist_models(self, model):
+        model_manager, model_id = model
         models_list = await model_manager.alist_models()
-        assert len(models_list) >= 3
+        assert len(models_list) >= 1
         model_ids = [model_info.model_id for model_info in models_list]
-        assert EMBEDDING_MODEL_NAME in model_ids
+        assert model_id in model_ids
 
-    @pytest.mark.depends(on=["test_alist_models"])
-    async def test_adrop_model(self, model_manager):
-        await model_manager.adrop_model(model_id=EMBEDDING_MODEL_NAME)
+    async def test_adrop_model(self, model):
+        model_manager, model_id = model
+        await model_manager.adrop_model(model_id=model_id)
+        model_info = await model_manager.aget_model(model_id=model_id)
+        assert model_info is None
