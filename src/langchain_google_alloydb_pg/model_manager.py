@@ -38,6 +38,7 @@ class AlloyDBModel:
         generate_headers_fn: Optional[str] = None,
         input_batch_transform_fn: Optional[str] = None,
         output_batch_transform_fn: Optional[str] = None,
+        model_availability: Optional[str] = None,
         **kwargs: Any,
     ):
         self.model_id = model_id
@@ -53,6 +54,7 @@ class AlloyDBModel:
         self.generate_headers_fn = generate_headers_fn or kwargs.get("header_gen_fn")
         self.input_batch_transform_fn = input_batch_transform_fn
         self.output_batch_transform_fn = output_batch_transform_fn
+        self.model_availability = model_availability
 
 
 class AlloyDBModelManager:
@@ -212,7 +214,7 @@ class AlloyDBModelManager:
         query = f"""SELECT * FROM
                 google_ml.list_model('{model_id}')
                 AS t(model_id VARCHAR,
-                model_source VARCHAR,
+                model_availability VARCHAR,
                 model_request_url VARCHAR,
                 model_provider google_ml.model_provider,
                 model_type google_ml.model_type,
