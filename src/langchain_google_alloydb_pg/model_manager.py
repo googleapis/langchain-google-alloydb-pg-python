@@ -212,6 +212,7 @@ class AlloyDBModelManager:
         query = f"""SELECT * FROM
                 google_ml.list_model('{model_id}')
                 AS t(model_id VARCHAR,
+                model_source VARCHAR,
                 model_request_url VARCHAR,
                 model_provider google_ml.model_provider,
                 model_type google_ml.model_type,
@@ -227,7 +228,7 @@ class AlloyDBModelManager:
         try:
             result = await self.__query_db(query)
         except Exception as e:
-            return e
+            return None
         data_class = self.__convert_dict_to_dataclass(result)[0]
         return data_class
 
