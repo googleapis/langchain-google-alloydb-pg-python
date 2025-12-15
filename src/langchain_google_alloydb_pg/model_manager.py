@@ -176,14 +176,14 @@ class AlloyDBModelManager:
         """Private async function to validate prerequisites.
 
         Raises:
-            Exception if google_ml_integration EXTENSION is not 1.5.2.
+            Exception if google_ml_integration EXTENSION is not 1.5.3.
             Exception if google_ml_integration.enable_model_support DB Flag not set.
         """
         extension_version = await self.__fetch_google_ml_extension()
         db_flag = await self.__fetch_db_flag()
-        if extension_version < "1.5.2":
+        if extension_version < "1.5.3":
             raise Exception(
-                "Please upgrade google_ml_integration EXTENSION to version 1.5.2 or above."
+                "Please upgrade google_ml_integration EXTENSION to version 1.5.3 or above."
             )
         if db_flag != "on":
             raise Exception(
@@ -294,13 +294,13 @@ class AlloyDBModelManager:
             await conn.commit()
 
     async def __fetch_google_ml_extension(self) -> str:
-        """Creates the Google ML Extension if it does not exist and returns the version number (Default creates version 1.5.2)."""
+        """Creates the Google ML Extension if it does not exist and returns the version number (Default creates version 1.5.3)."""
         create_extension_query = """
         DO $$
         BEGIN
         IF NOT EXISTS (
           SELECT 1 FROM pg_extension WHERE extname = 'google_ml_integration' )
-          THEN CREATE EXTENSION google_ml_integration VERSION '1.5.2' CASCADE;
+          THEN CREATE EXTENSION google_ml_integration VERSION '1.5.3' CASCADE;
         END IF;
         END
         $$;
