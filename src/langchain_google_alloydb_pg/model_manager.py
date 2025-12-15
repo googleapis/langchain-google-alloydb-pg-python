@@ -214,7 +214,7 @@ class AlloyDBModelManager:
         query = f"""SELECT * FROM
                 google_ml.list_model('{model_id}')
                 AS t(model_id VARCHAR,
-                model_availability VARCHAR,
+                model_availability text,
                 model_request_url VARCHAR,
                 model_provider google_ml.model_provider,
                 model_type google_ml.model_type,
