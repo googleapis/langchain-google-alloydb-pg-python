@@ -1,7 +1,10 @@
-google-cloud-alloydb-connector[asyncpg]==1.9.1
-google-cloud-storage==3.4.1
+google-cloud-alloydb-connector[asyncpg]>=1.0.0,<1.11.0; python_version == "3.9"
+google-cloud-alloydb-connector[asyncpg]>=1.11.0,<2.0.0; python_version >= "3.10"
+google-cloud-storage>=2.18.2,<4.0.0
 numpy==2.3.4; python_version >= "3.11"
 numpy==2.2.6; python_version == "3.10"
 numpy==2.0.2; python_version <= "3.9"
-langgraph==0.6.10
-langchain-postgres==0.0.16
+langchain-postgres>=0.0.16
+langgraph-checkpoint>=2.1.2,<3.0.0; python_version == "3.9"
+langgraph-checkpoint>=3.0.1,<4.0.0; python_version >= "3.10"
+aiohttp>=3.13.2,<4.0.0
