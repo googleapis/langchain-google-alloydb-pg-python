@@ -282,7 +282,9 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
 
         async with self.pool.connect() as conn:
             type_, serialized_checkpoint = self.serde.dumps_typed(checkpoint)
-            serialized_metadata = json.dumps(metadata, ensure_ascii=False).encode("utf-8", "ignore")
+            serialized_metadata = json.dumps(metadata, ensure_ascii=False).encode(
+                "utf-8", "ignore"
+            )
             await conn.execute(
                 text(query),
                 {
