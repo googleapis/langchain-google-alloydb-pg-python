@@ -282,7 +282,9 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
 
         async with self.pool.connect() as conn:
             type_, serialized_checkpoint = self.serde.dumps_typed(checkpoint)
-            serialized_metadata = self.jsonplus_serde.dumps(metadata)
+            serialized_metadata = json.dumps(metadata, ensure_ascii=False).encode(
+                "utf-8", "ignore"
+            )
             await conn.execute(
                 text(query),
                 {
@@ -415,7 +417,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                         (value["type"], value["checkpoint"])
                     ),
                     metadata=(
-                        self.jsonplus_serde.loads(value["metadata"])  # type: ignore
+                        json.loads(value["metadata"])  # type: ignore
                         if value["metadata"] is not None
                         else {}
                     ),
@@ -500,7 +502,7 @@ class AsyncAlloyDBSaver(BaseCheckpointSaver[str]):
                 },
                 checkpoint=self.serde.loads_typed((value["type"], value["checkpoint"])),
                 metadata=(
-                    self.jsonplus_serde.loads(value["metadata"])  # type: ignore
+                    json.loads(value["metadata"])  # type: ignore
                     if value["metadata"] is not None
                     else {}
                 ),
