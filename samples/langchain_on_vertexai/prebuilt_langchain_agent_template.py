@@ -91,7 +91,7 @@ client = vertexai.Client(project=PROJECT_ID, location="us-central1")
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
 
 remote_app = client.agent_engines.create(
-    agent_engines.LangchainAgent(
+    agent=agent_engines.LangchainAgent(
         model="gemini-2.0-flash-001",
         tools=[similarity_search],  # type: ignore[list-item]
         model_kwargs={
