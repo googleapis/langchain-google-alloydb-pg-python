@@ -98,10 +98,12 @@ remote_app = client.agent_engines.create(
             "temperature": 0.1,
         },
     ),
-    requirements="requirements.txt",
+    config={
+        requirements="requirements.txt",
+        extra_packages=["config.py"],
+    },
     display_name="PrebuiltAgent",
-    sys_version="3.11",
-    extra_packages=["config.py"],
+    sys_version="3.11"
 )  # type: ignore[arg-type]
 
 print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
