@@ -101,9 +101,9 @@ remote_app = client.agent_engines.create(
     config={
         "requirements": "requirements.txt",
         "extra_packages": ["config.py"],
-    },
-    display_name="PrebuiltAgent",
-    sys_version="3.11",
+        "display_name": "PrebuiltAgent",
+        "sys_version": "3.11"
+    }
 )  # type: ignore[arg-type]
 
 print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
