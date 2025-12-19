@@ -26,9 +26,9 @@ from config import (
 )
 from langchain_core.documents import Document
 from langchain_google_vertexai import VertexAIEmbeddings
+from vertexai import agent_engines
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
-from vertexai import agent_engines
 
 # This sample requires a vector store table
 # Create these tables using `AlloyDBEngine` method `init_vectorstore_table()`
@@ -99,11 +99,11 @@ remote_app = client.agent_engines.create(
         },
     ),
     config={
-        requirements="requirements.txt",
-        extra_packages=["config.py"],
+        "requirements": "requirements.txt",
+        "extra_packages": ["config.py"],
     },
     display_name="PrebuiltAgent",
-    sys_version="3.11"
+    sys_version="3.11",
 )  # type: ignore[arg-type]
 
 print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
