@@ -21,7 +21,6 @@ from config import (
     PASSWORD,
     PROJECT_ID,
     REGION,
-    STAGING_BUCKET,
     TABLE_NAME,
     USER,
 )
@@ -85,7 +84,7 @@ def similarity_search(query: str) -> list[Document]:
 # print(app.query(input="movies about engineers"))
 
 # Initialize VertexAI
-client = vertexai.Client(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
+client = vertexai.Client(project=PROJECT_ID, location="us-central1")
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
