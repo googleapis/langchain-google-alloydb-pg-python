@@ -21,6 +21,7 @@ from config import (
     PASSWORD,
     PROJECT_ID,
     REGION,
+    STAGING_BUCKET,
     TABLE_NAME,
     USER,
 )
@@ -98,6 +99,7 @@ remote_app = client.agent_engines.create(
             "temperature": 0.1,
         },
     ),
+    staging_bucket=STAGING_BUCKET,
     config={
         "requirements": "requirements.txt",
         "extra_packages": ["config.py"],
