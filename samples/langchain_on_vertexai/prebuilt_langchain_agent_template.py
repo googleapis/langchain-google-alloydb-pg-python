@@ -28,6 +28,7 @@ from langchain_core.documents import Document
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
+from vertexai import agent_engines
 
 # This sample requires a vector store table
 # Create these tables using `AlloyDBEngine` method `init_vectorstore_table()`
@@ -73,7 +74,7 @@ def similarity_search(query: str) -> list[Document]:
 
 # Uncomment to test locally
 
-# app = client.agent_engines.LangchainAgent(
+# app = agent_engines.LangchainAgent(
 #     model="gemini-2.0-flash-001",
 #     tools=[similarity_search],
 #     model_kwargs={
@@ -90,7 +91,7 @@ client = vertexai.Client(project=PROJECT_ID, location="us-central1")
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
 
 remote_app = client.agent_engines.create(
-    client.agent_engines.LangchainAgent(
+    agent_engines.LangchainAgent(
         model="gemini-2.0-flash-001",
         tools=[similarity_search],  # type: ignore[list-item]
         model_kwargs={
