@@ -135,16 +135,19 @@ class AlloyDBAgent(reasoning_engines.Queryable):
             history_messages_key="chat_history",
         )
 
-    def query(self, input: str, session_id: str, **kwargs: Any) -> str:
+    def query(self, **kwargs: Any) -> str:
         """Query the application.
 
         Args:
-            input: The user query.
-            session_id: The user's session id.
+            **kwargs: Keyword arguments. Expects "input" and "session_id".
 
         Returns:
             The LLM response dictionary.
         """
+        input = kwargs.get("input")
+        session_id = kwargs.get("session_id")
+        if not input or not session_id:
+            return "Please provide an input and a session_id."
         response = self.agent.invoke(
             {"input": input},
             config={"configurable": {"session_id": session_id}},
