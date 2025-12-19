@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from typing import Any, Mapping
 
 import vertexai  # type: ignore
 from config import (
@@ -74,27 +73,9 @@ def similarity_search(query: str) -> list[Document]:
     return retriever.invoke(query)
 
 
-class LangchainAgent(reasoning_engines.Queryable):
-    def __init__(self, model: str, model_kwargs: dict, tools: list):
-        self.model = model
-        self.model_kwargs = model_kwargs
-        self.tools = tools
-
-    def set_up(self):
-        self.agent = reasoning_engines.LangchainAgent(
-            model=self.model,
-            tools=self.tools,
-            model_kwargs=self.model_kwargs,
-        )
-        self.agent.set_up()
-
-    def query(self, **kwargs: Any) -> dict[str, Any]:
-        return self.agent.query(**kwargs)
-
-
 # Uncomment to test locally
 
-# app = LangchainAgent(
+# app = reasoning_engines.LangchainAgent(
 #     model="gemini-2.0-flash-001",
 #     tools=[similarity_search],
 #     model_kwargs={
@@ -111,7 +92,7 @@ vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
 
 remote_app = reasoning_engines.ReasoningEngine.create(
-    LangchainAgent(
+    reasoning_engines.LangchainAgent(
         model="gemini-2.0-flash-001",
         tools=[similarity_search],  # type: ignore[list-item]
         model_kwargs={
@@ -122,6 +103,6 @@ remote_app = reasoning_engines.ReasoningEngine.create(
     display_name="PrebuiltAgent",
     sys_version="3.11",
     extra_packages=["config.py"],
-)
+)  # type: ignore[arg-type]
 
 print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
