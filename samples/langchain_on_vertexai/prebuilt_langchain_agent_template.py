@@ -86,6 +86,7 @@ def similarity_search(query: str) -> list[Document]:
 # print(app.query(input="movies about engineers"))
 
 # Initialize VertexAI
+vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
 client = vertexai.Client(project=PROJECT_ID, location="us-central1")
 
 # Deploy to VertexAI
@@ -99,7 +100,6 @@ remote_app = client.agent_engines.create(
             "temperature": 0.1,
         },
     ),
-    staging_bucket=STAGING_BUCKET,
     config={
         "requirements": "requirements.txt",
         "extra_packages": ["config.py"],
