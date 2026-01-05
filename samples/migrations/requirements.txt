@@ -1,7 +1,7 @@
 langchain-chroma==1.1.0
 langchain-core==1.2.6
 langchain-google-alloydb-pg==0.13.0
-langchain-milvus==0.3.2
+langchain-milvus==0.3.3
 langchain-pinecone==0.2.13
 langchain-qdrant==1.1.0
 langchain-weaviate==0.0.6
