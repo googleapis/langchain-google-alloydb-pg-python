@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.0.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.13.0...v1.0.0) (2026-01-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update AlloyDBModel based on ml extension v1.5.2 ([#500](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/500))
+
+### Features
+
+* **deps:** Update langchain-postgres to v0.0.16 ([#499](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/499)) ([fc75b67](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/fc75b67e8ef36f681757524a0fc38421d65833d3))
+* Disable support for python 3.9 and enable support for python3.13 ([#517](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/517)) ([fbf086d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/fbf086d84059ae46ac9e36339201235d9e43174b))
+* Update AlloyDBModel to support google_ml_extension v1.5.3 ([#523](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/523)) ([cd81d33](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/cd81d33893a421db24593546525f6730b19759c7))
+* Update Langgraph deps to new major ([#531](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/531)) ([671ccaf](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/671ccaff2d9f785634afb734f88755fde4b123c8))
+
+
+### Bug Fixes
+
+* **deps:** Update dependencies ([#473](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/473)) ([58b58eb](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/58b58ebd4f5ea141d72f793c4c06735e7a733e31))
+* Update AlloyDBModel based on ml extension v1.5.2 ([#500](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/500)) ([ca31df6](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/ca31df6a6f3c7ed003a2014f6209b337ad7414d8))
+
+
+### Documentation
+
+* Update docs/vector_store.ipynb ([#472](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/472)) ([df70976](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/df7097602ddc590a556f2fdc44a6cda20c6fbf3e))
+
 ## [0.13.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.12.0...v0.13.0) (2025-08-21)
 
 
