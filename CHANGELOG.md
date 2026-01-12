@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.13.0...v1.0.0) (2026-01-12)
+## [0.14.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.13.0...v0.14.0) (2026-01-12)
 
 
 ### ⚠ BREAKING CHANGES
@@ -18,7 +18,6 @@
 ### Bug Fixes
 
 * **deps:** Update dependencies ([#473](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/473)) ([58b58eb](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/58b58ebd4f5ea141d72f793c4c06735e7a733e31))
-* Update AlloyDBModel based on ml extension v1.5.2 ([#500](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/500)) ([ca31df6](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/ca31df6a6f3c7ed003a2014f6209b337ad7414d8))
 
 
 ### Documentation
