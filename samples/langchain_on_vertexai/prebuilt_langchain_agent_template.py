@@ -27,7 +27,7 @@ from config import (
 )
 from langchain_core.documents import Document
 from langchain_google_vertexai import VertexAIEmbeddings
-from vertexai.preview import reasoning_engines  # type: ignore
+from vertexai import agent_engines
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
@@ -75,7 +75,7 @@ def similarity_search(query: str) -> list[Document]:
 
 # Uncomment to test locally
 
-# app = reasoning_engines.LangchainAgent(
+# app = agent_engines.LangchainAgent(
 #     model="gemini-2.0-flash-001",
 #     tools=[similarity_search],
 #     model_kwargs={
@@ -87,22 +87,24 @@ def similarity_search(query: str) -> list[Document]:
 
 # Initialize VertexAI
 vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
+client = vertexai.Client(project=PROJECT_ID, location="us-central1")
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
 
-remote_app = reasoning_engines.ReasoningEngine.create(
-    reasoning_engines.LangchainAgent(
+remote_app = client.agent_engines.create(
+    agent=agent_engines.LangchainAgent(
         model="gemini-2.0-flash-001",
         tools=[similarity_search],  # type: ignore[list-item]
         model_kwargs={
             "temperature": 0.1,
         },
     ),
-    requirements="requirements.txt",
-    display_name="PrebuiltAgent",
-    sys_version="3.11",
-    extra_packages=["config.py"],
+    config={
+        "requirements": "requirements.txt",
+        "extra_packages": ["config.py"],
+        "display_name": "PrebuiltAgent"
+    }
 )  # type: ignore[arg-type]
 
 print(remote_app.query(input="movies about engineers"))  # type: ignore[attr-defined]
