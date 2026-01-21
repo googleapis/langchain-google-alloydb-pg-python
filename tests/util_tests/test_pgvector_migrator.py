@@ -35,8 +35,8 @@ from langchain_google_alloydb_pg.utils.pgvector_migrator import (
     migrate_pgvector_collection,
 )
 
-COLLECTIONS_TABLE = "langchain_pg_collection"
-EMBEDDINGS_TABLE = "langchain_pg_embedding"
+COLLECTIONS_TABLE = "langchain_pg_collection" + str(uuid.uuid4())
+EMBEDDINGS_TABLE = "langchain_pg_embedding" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 COLLECTION_NAME_SUFFIX = str(uuid.uuid4()).replace("-", "_")
 EMBEDDINGS_TABLE_COUNT_QUERY = (
