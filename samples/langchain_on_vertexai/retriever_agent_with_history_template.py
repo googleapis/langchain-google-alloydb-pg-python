@@ -31,7 +31,8 @@ from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools.retriever import create_retriever_tool
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
+from langchain_google_vertexai import ChatVertexAI
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import (
@@ -93,9 +94,12 @@ class AlloyDBAgent(reasoning_engines.Queryable):
         vector_store = AlloyDBVectorStore.create_sync(
             engine,
             table_name=self.table,
-            embedding_service=VertexAIEmbeddings(
-                model_name="textembedding-gecko@latest", project=self.project
-            ),
+            embedding_service = GoogleGenerativeAIEmbeddings(
+                model="textembedding-gecko@latest",
+                project=PROJECT_ID,
+                vertexai=True
+            )
+            
         )
         retriever = vector_store.as_retriever()
 
