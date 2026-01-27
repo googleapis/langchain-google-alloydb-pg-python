@@ -3,3 +3,4 @@ google-cloud-resource-manager==1.15.0
 langchain-community==0.4.1
 langchain-google-alloydb-pg==0.14.0
 langchain-google-vertexai==3.2.1
+langchain-google-genai>=2.0.0
