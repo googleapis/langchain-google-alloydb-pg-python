@@ -29,7 +29,8 @@ from config import (
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_vertexai import VertexAI, VertexAIEmbeddings
+from langchain_google_vertexai import VertexAI
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
@@ -99,9 +100,11 @@ class AlloyDBRetriever(reasoning_engines.Queryable):
         vector_store = AlloyDBVectorStore.create_sync(
             engine,
             table_name=self.table,
-            embedding_service=VertexAIEmbeddings(
-                model_name="textembedding-gecko@latest", project=self.project
-            ),
+            embedding_service = GoogleGenerativeAIEmbeddings(
+                model="textembedding-gecko@latest",
+                project=PROJECT_ID,
+                vertexai=True
+            )
         )
         retriever = vector_store.as_retriever()
 
