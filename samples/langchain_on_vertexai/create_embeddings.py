@@ -27,7 +27,7 @@ from config import (
 )
 from google.cloud import resourcemanager_v3  # type: ignore
 from langchain_community.document_loaders.csv_loader import CSVLoader
-from langchain_google_vertexai import VertexAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from sqlalchemy import text
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
@@ -99,9 +99,11 @@ async def create_vectorstore():
     vector_store = await AlloyDBVectorStore.create(
         engine,
         table_name=TABLE_NAME,
-        embedding_service=VertexAIEmbeddings(
-            model_name="textembedding-gecko@latest", project=PROJECT_ID
-        ),
+        embedding_service = GoogleGenerativeAIEmbeddings(
+            model="textembedding-gecko@latest",
+            project=PROJECT_ID,
+            vertexai=True
+        )
     )
 
     ids = [str(uuid.uuid4()) for i in range(len(docs))]
