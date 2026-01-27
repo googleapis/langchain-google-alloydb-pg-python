@@ -29,8 +29,7 @@ from config import (
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_vertexai import VertexAI
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, GoogleGenerativeAI
 from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
@@ -84,7 +83,11 @@ class AlloyDBRetriever(reasoning_engines.Queryable):
                 ("human", "{input}"),
             ]
         )
-        llm = VertexAI(model_name=self.model_name, project=self.project)
+        llm = GoogleGenerativeAI(
+            model=self.model_name,
+            project=self.project,
+            vertexai=True,
+        )
         combine_docs_chain = create_stuff_documents_chain(llm, prompt)
 
         # Initialize the vector store and retriever
