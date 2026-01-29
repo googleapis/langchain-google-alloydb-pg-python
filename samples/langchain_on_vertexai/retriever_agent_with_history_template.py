@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from typing import Any, Optional
+from typing import Any
 
-import vertexai  # type: ignore
+import vertexai
 from config import (
     CHAT_TABLE_NAME,
     CLUSTER,
@@ -27,12 +27,12 @@ from config import (
     TABLE_NAME,
     USER,
 )
-from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools.retriever import create_retriever_tool
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
-from vertexai.preview import reasoning_engines  # type: ignore
+from vertexai import agent_engines
 
 from langchain_google_alloydb_pg import (
     AlloyDBChatMessageHistory,
@@ -45,156 +45,117 @@ from langchain_google_alloydb_pg import (
 # `init_vectorstore_table()` and `init_chat_history_table()`
 # or create and load the tables using `create_embeddings.py`
 
+engine = None  # Use global variable to share connection pooling
 
-class AlloyDBAgent(reasoning_engines.Queryable):
-    def __init__(
-        self,
-        model: str,
-        project: str,
-        region: str,
-        cluster: str,
-        instance: str,
-        database: str,
-        table: str,
-        chat_table: str,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-        tool_name: str = "search_movies",
-        tool_description: str = "Searches and returns movies.",
-    ):
-        self.model_name = model
-        self.project = project
-        self.region = region
-        self.cluster = cluster
-        self.instance = instance
-        self.database = database
-        self.table = table
-        self.chat_table = chat_table
-        self.user = user
-        self.password = password
-        self.tool_name = tool_name
-        self.tool_description = tool_description
 
-    def set_up(self):
-        """All unpickle-able logic should go here.
-        In general, add any logic that requires a network or database
-        connection.
-        """
-        # Initialize the vector store
+def get_session_history(session_id: str) -> AlloyDBChatMessageHistory:
+    """fetches chat history from an AlloyDB table
+    Args:
+        session_id: The user's session id.
+    Returns:
+        A AlloyDBChatMessageHistory object.
+    """
+    global engine
+    if not engine:  # Reuse connection pool
         engine = AlloyDBEngine.from_instance(
-            self.project,
-            self.region,
-            self.cluster,
-            self.instance,
-            self.database,
-            user=self.user,
-            password=self.password,
+            PROJECT_ID,
+            REGION,
+            CLUSTER,
+            INSTANCE,
+            DATABASE,
+            user=USER,
+            password=PASSWORD,
         )
-        vector_store = AlloyDBVectorStore.create_sync(
-            engine,
-            table_name=self.table,
-            embedding_service=VertexAIEmbeddings(
-                model_name="textembedding-gecko@latest", project=self.project
-            ),
-        )
-        retriever = vector_store.as_retriever()
+    return AlloyDBChatMessageHistory.create_sync(
+        engine=engine, session_id=session_id, table_name=CHAT_TABLE_NAME
+    )
 
-        # Create a tool to do retrieval of documents
-        tool = create_retriever_tool(
-            retriever,
-            self.tool_name,
-            self.tool_description,
-        )
-        tools = [tool]
 
-        # Initialize the LLM and prompt
-        llm = ChatVertexAI(model_name=self.model_name, project=self.project)
-        base_prompt = hub.pull("langchain-ai/react-agent-template")
-        instructions = (
-            "You are an assistant for question-answering tasks. "
-            "Use the following pieces of retrieved context to answer "
-            "the question. If you don't know the answer, say that you "
-            "don't know. Use three sentences maximum and keep the "
-            "answer concise."
-        )
-        prompt = base_prompt.partial(instructions=instructions)
-
-        # Create an agent
-        agent = create_react_agent(llm, tools, prompt)
-        agent_executor = AgentExecutor(
-            agent=agent, tools=tools, handle_parsing_errors=True
+def runnable_builder(model: ChatVertexAI, **kwargs: Any) -> RunnableWithMessageHistory:
+    """Builds a runnable with message history.
+    Args:
+        model: The LLM model to use.
+    Returns:
+        A RunnableWithMessageHistory object.
+    """
+    global engine
+    if not engine:  # Reuse connection pool
+        engine = AlloyDBEngine.from_instance(
+            PROJECT_ID,
+            REGION,
+            CLUSTER,
+            INSTANCE,
+            DATABASE,
+            user=USER,
+            password=PASSWORD,
         )
 
-        # Initialize a Runnable that manages chat message history for the agent
-        self.agent = RunnableWithMessageHistory(
-            agent_executor,
-            lambda session_id: AlloyDBChatMessageHistory.create_sync(
-                engine=engine, session_id=session_id, table_name=self.chat_table
-            ),
-            input_messages_key="input",
-            history_messages_key="chat_history",
-        )
+    # Create a retriever tool
+    vector_store = AlloyDBVectorStore.create_sync(
+        engine,
+        table_name=TABLE_NAME,
+        embedding_service=VertexAIEmbeddings(
+            model_name="textembedding-gecko@latest", project=PROJECT_ID
+        ),
+    )
+    retriever = vector_store.as_retriever()
+    tool = create_retriever_tool(
+        retriever, "search_movies", "Searches and returns movies."
+    )
+    tools = [tool]
 
-    def query(self, input: str, session_id: str, **kwargs: Any) -> str:
-        """Query the application.
+    # Create the agent
+    instructions = (
+        "You are an assistant for question-answering tasks. "
+        "Use the following pieces of retrieved context to answer "
+        "the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the "
+        "answer concise."
+    )
+    base_prompt = ChatPromptTemplate.from_template(instructions)
+    prompt = base_prompt.partial(instructions=instructions)
+    agent = create_react_agent(model, tools, prompt)
+    agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True)
 
-        Args:
-            input: The user query.
-            session_id: The user's session id.
+    # Create a runnable that manages chat message history for the agent
+    return RunnableWithMessageHistory(
+        agent_executor,
+        get_session_history,
+        input_messages_key="input",
+        history_messages_key="chat_history",
+    )
 
-        Returns:
-            The LLM response dictionary.
-        """
-        response = self.agent.invoke(
-            {"input": input},
-            config={"configurable": {"session_id": session_id}},
-        )
-        return response["output"]
-
-
-# Uncomment to test locally
-# app = AlloyDBAgent(
-#     model="gemini-2.0-flash-001",
-#     project=PROJECT_ID,
-#     region=REGION,
-#     cluster=CLUSTER,
-#     instance=INSTANCE,
-#     database=DATABASE,
-#     table=TABLE_NAME,
-#     chat_table=CHAT_TABLE_NAME,
-#     user=USER,
-#     password=PASSWORD
-# )
-
-# app.set_up()
-# print(app.query(input="What movies are about engineers?", session_id="abc123"))
 
 # Initialize VertexAI
-vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
+client = vertexai.Client(
+    project=PROJECT_ID, location=REGION, staging_bucket=STAGING_BUCKET
+)
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBAgent"
 
-remote_app = reasoning_engines.ReasoningEngine.create(
-    AlloyDBAgent(
-        model="gemini-2.0-flash-001",
-        project=PROJECT_ID,
-        region=REGION,
-        cluster=CLUSTER,
-        instance=INSTANCE,
-        database=DATABASE,
-        table=TABLE_NAME,
-        chat_table=CHAT_TABLE_NAME,
-        # To use IAM authentication, remove user and password and ensure
-        # the Reasoning Engine Agent service account is a database user
-        # with access to vector store and chat tables
-        user=USER,
-        password=PASSWORD,
-    ),
-    requirements="requirements.txt",
-    display_name=DISPLAY_NAME,
-    sys_version="3.11",
-    extra_packages=["config.py"],
+agent = agent_engines.LangchainAgent(
+    model="gemini-2.0-flash-001",
+    runnable_builder=runnable_builder,
+)
+remote_app = client.agent_engines.create(
+    agent=agent,
+    config={
+        "display_name": "AlloyDBAgent",
+        "sys_version": "3.11",
+        "requirements": [
+            "langchain_google_alloydb_pg",
+            "langchain",
+            "langchain-google-vertexai",
+            "google-cloud-aiplatform",
+        ],
+        "extra_packages": ["config.py"],
+    },
 )
 
-print(remote_app.query(input="movies about engineers", session_id="abc123"))  # type: ignore
+print(
+    remote_app.query(
+        input="What movies are about engineers?",
+        config={"configurable": {"session_id": "abc123"}},
+    )["output"]
+)

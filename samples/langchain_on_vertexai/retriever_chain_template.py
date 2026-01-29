@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from typing import Any, Optional
+from typing import Any
 
-import vertexai  # type: ignore
+import vertexai
 from config import (
     CLUSTER,
     DATABASE,
@@ -29,8 +29,9 @@ from config import (
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_vertexai import VertexAI, VertexAIEmbeddings
-from vertexai.preview import reasoning_engines  # type: ignore
+from langchain_core.runnables import Runnable
+from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
+from vertexai import agent_engines
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
@@ -39,132 +40,80 @@ from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 # or create and load the table using `create_embeddings.py`
 
 
-class AlloyDBRetriever(reasoning_engines.Queryable):
-    def __init__(
-        self,
-        model: str,
-        project: str,
-        region: str,
-        cluster: str,
-        instance: str,
-        database: str,
-        table: str,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-    ):
-        self.model_name = model
-        self.project = project
-        self.region = region
-        self.cluster = cluster
-        self.instance = instance
-        self.database = database
-        self.table = table
-        self.user = user
-        self.password = password
+engine = None  # Use global variable to share connection pooling
 
-    def set_up(self):
-        """All unpickle-able logic should go here.
-        In general, add any logic that requires a network or database
-        connection.
-        """
-        # Create a chain to handle the processing of relevant documents
-        system_prompt = (
-            "You are an assistant for question-answering tasks. "
-            "Use the following pieces of retrieved context to answer "
-            "the question. If you don't know the answer, say that you "
-            "don't know. Use three sentences maximum and keep the "
-            "answer concise."
-            "\n\n"
-            "{context}"
-        )
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", system_prompt),
-                ("human", "{input}"),
-            ]
-        )
-        llm = VertexAI(model_name=self.model_name, project=self.project)
-        combine_docs_chain = create_stuff_documents_chain(llm, prompt)
 
-        # Initialize the vector store and retriever
+def runnable_builder(model: ChatVertexAI, **kwargs: Any) -> Runnable:
+    """Builds a runnable.
+    Args:
+        model: The LLM model to use.
+    Returns:
+        A Runnable object.
+    """
+    global engine
+    if not engine:  # Reuse connection pool
         engine = AlloyDBEngine.from_instance(
-            self.project,
-            self.region,
-            self.cluster,
-            self.instance,
-            self.database,
-            user=self.user,
-            password=self.password,
+            PROJECT_ID,
+            REGION,
+            CLUSTER,
+            INSTANCE,
+            DATABASE,
+            user=USER,
+            password=PASSWORD,
         )
-        vector_store = AlloyDBVectorStore.create_sync(
-            engine,
-            table_name=self.table,
-            embedding_service=VertexAIEmbeddings(
-                model_name="textembedding-gecko@latest", project=self.project
-            ),
-        )
-        retriever = vector_store.as_retriever()
 
-        # Create a retrieval chain to fetch relevant documents and pass them to
-        # an LLM to generate a response
-        self.chain = create_retrieval_chain(retriever, combine_docs_chain)
+    # Create a retriever tool
+    vector_store = AlloyDBVectorStore.create_sync(
+        engine,
+        table_name=TABLE_NAME,
+        embedding_service=VertexAIEmbeddings(
+            model_name="textembedding-gecko@latest", project=PROJECT_ID
+        ),
+    )
+    retriever = vector_store.as_retriever()
+    system_prompt = (
+        "You are an assistant for question-answering tasks. "
+        "Use the following pieces of retrieved context to answer "
+        "the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the "
+        "answer concise."
+        "\n\n"
+        "{context}"
+    )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("human", "{input}"),
+        ]
+    )
+    combine_docs_chain = create_stuff_documents_chain(model, prompt)
+    return create_retrieval_chain(retriever, combine_docs_chain)
 
-    def query(self, input: str, **kwargs: Any) -> str:
-        """Query the application.
-
-        Args:
-            input: The user query.
-            **kwargs: Additional arguments for Protocol compliance.
-
-        Returns:
-            The LLM response dictionary.
-        """
-        # Define the runtime logic that serves user queries
-        response = self.chain.invoke({"input": input})
-        return response["answer"]
-
-
-# Uncomment to test locally
-
-# app = AlloyDBRetriever(
-#     model="gemini-2.0-flash-001",
-#     project=PROJECT_ID,
-#     region=REGION,
-#     cluster=CLUSTER,
-#     instance=INSTANCE,
-#     database=DATABASE,
-#     table=TABLE_NAME,
-#     user=USER,
-#     password=PASSWORD,
-# )
-# app.set_up()
-# print(app.query(input="movies about engineers"))
 
 # Initialize VertexAI
-vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
+client = vertexai.Client(
+    project=PROJECT_ID, location=REGION, staging_bucket=STAGING_BUCKET
+)
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBRetriever"
 
-remote_app = reasoning_engines.ReasoningEngine.create(
-    AlloyDBRetriever(
-        model="gemini-2.0-flash-001",
-        project=PROJECT_ID,
-        region=REGION,
-        cluster=CLUSTER,
-        instance=INSTANCE,
-        database=DATABASE,
-        table=TABLE_NAME,
-        # To use IAM authentication, remove user and password and ensure
-        # the Reasoning Engine Agent service account is a database user
-        # with access to the vector store table
-        user=USER,
-        password=PASSWORD,
-    ),
-    requirements="requirements.txt",
-    display_name=DISPLAY_NAME,
-    sys_version="3.11",
-    extra_packages=["config.py"],
+agent = agent_engines.LangchainAgent(
+    model="gemini-2.0-flash-001",
+    runnable_builder=runnable_builder,
 )
-
-print(remote_app.query(input="movies about engineers"))  # type: ignore
+remote_app = client.agent_engines.create(
+    agent=agent,
+    config={
+        "display_name": "AlloyDBRetriever",
+        "sys_version": "3.11",
+        "requirements": [
+            "langchain_google_alloydb_pg",
+            "langchain",
+            "langchain-google-vertexai",
+            "google-cloud-aiplatform",
+        ],
+        "extra_packages": ["config.py"],
+    },
+)
+print(remote_app.query(input={"input": "movies about engineers"})["answer"])
