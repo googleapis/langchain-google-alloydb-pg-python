@@ -91,6 +91,7 @@ agent = agent_engines.LangchainAgent(
 
 remote_app = client.agent_engines.create(
     agent=agent,
+    staging_bucket=STAGING_BUCKET,
     config={
         "display_name": "PrebuiltAgent",
         "requirements": ["langchain_google_alloydb_pg"],
