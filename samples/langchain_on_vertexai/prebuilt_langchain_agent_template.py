@@ -93,7 +93,6 @@ remote_app = client.agent_engines.create(
     agent=agent,
     config={
         "display_name": "PrebuiltAgent",
-        "sys_version": "3.11",
         "requirements": ["langchain_google_alloydb_pg"],
         "extra_packages": ["config.py"],
     },
