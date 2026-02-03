@@ -74,9 +74,10 @@ def similarity_search(query: str) -> list[Document]:
 
 
 # Initialize VertexAI
-client = vertexai.Client(
+vertexai.init(
     project=PROJECT_ID, location=REGION, staging_bucket=STAGING_BUCKET
 )
+client = vertexai.Client()
 
 # Deploy to VertexAI
 DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "PrebuiltAgent"
