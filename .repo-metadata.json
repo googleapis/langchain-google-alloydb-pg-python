@@ -9,5 +9,5 @@
     "repo": "googleapis/langchain-google-alloydb-pg-python",
     "distribution_name": "langchain-google-alloydb-pg",
     "requires_billing": true,
-    "codeowner_team": "@googleapis/senseai-eco"
+    "codeowner_team": "@googleapis/senseai-eco-team"
 }
