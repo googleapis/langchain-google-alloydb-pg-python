@@ -1,4 +1,4 @@
 assign_issues:
-  - googleapis/langchain-alloydb
+  - googleapis/langchain-alloydb-team
 assign_prs:
-  - googleapis/langchain-alloydb
+  - googleapis/langchain-alloydb-team

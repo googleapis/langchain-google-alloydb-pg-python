@@ -42,6 +42,6 @@ branchProtectionRules:
 # Set team access
 permissionRules:
   - team: senseai-eco
-    permission: admin
+    permission: push
   - team: langchain-alloydb
     permission: push
