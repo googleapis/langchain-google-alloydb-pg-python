@@ -43,16 +43,16 @@ langgraph = [
     "langgraph-checkpoint>=4.0.0, <4.1.0"
 ]
 test = [
-    "black[jupyter]==26.1.0",
+    "black[jupyter]==26.3.0",
     "isort==8.0.1",
-    "langgraph==1.0.6",
+    "langgraph==1.0.10",
     "mypy==1.19.1",
     "pytest-asyncio==0.26.0",
     "pytest==8.4.2",
     "pytest-cov==7.0.0",
     "pytest-depends==1.0.1",
-    "Pillow==12.0.0",
-    "langchain-tests==1.1.0"
+    "Pillow==12.1.1",
+    "langchain-tests==1.1.5"
 ]
 
 
