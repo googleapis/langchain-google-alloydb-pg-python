@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.14.0...v0.15.0) (2026-03-06)
+
+
+### Features
+
+* **deps:** Update dependency langchain-postgres to v0.0.17 ([#566](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/566)) ([ed4f924](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/ed4f924a6854feb14f77a7115cf637feb08762ed))
+
 ## [0.14.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.13.0...v0.14.0) (2026-01-12)
 
 
