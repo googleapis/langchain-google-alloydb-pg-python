@@ -5,13 +5,13 @@ is a managed service that helps you to build and deploy LangChain apps to a mana
 
 ## Templates
 
-Use the following templates to deploy Retrieval Augmented Generation (RAG) applications with an AlloyDB database.
+Use the following templates to deploy Retrieval Augmented Generation (RAG) applications with a vector store.
 
 Description | Sample
 ----------- | ------
-Deploy a pre-built `LangchainAgent` with custom RAG tool | [prebuilt_langchain_agent_template.py](prebuilt_langchain_agent_template.py)
+Deploy a pre-built `LangchainAgent` with a custom RAG tool | [prebuilt_langchain_agent_template.py](prebuilt_langchain_agent_template.py)
 Build and deploy a question-answering RAG application | [retriever_chain_template.py](retriever_chain_template.py)
-Build and deploy an Agent with RAG tool and Memory | [retriever_agent_with_history_template.py](retriever_agent_with_history_template.py)
+Build and deploy an Agent with a RAG tool and Memory | [retriever_agent_with_history_template.py](retriever_agent_with_history_template.py)
 
 ## Before you begin
 
@@ -19,7 +19,6 @@ Build and deploy an Agent with RAG tool and Memory | [retriever_agent_with_histo
 1. [Make sure that billing is enabled for your Google Cloud project](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled#console).
 1. [Create a Cloud Storage bucket](https://cloud.google.com/storage/docs/creating-buckets).
 1. Enable [AI Platform, AlloyDB, and Service Networking APIs](https://console.cloud.google.com/flows/enableapi?apiid=aiplatform.googleapis.com,alloydb.googleapis.com,servicenetworking.googleapis.com&_ga=2.92928541.1293093187.1719511698-1945987529.1719351858)
-
 1. [Create a AlloyDB cluster and instance.](https://cloud.google.com/alloydb/docs/cluster-create)
 1. [Configure Public IP.](https://cloud.google.com/alloydb/docs/connect-public-ip)
 1. [Create a AlloyDB database.](https://cloud.google.com/alloydb/docs/quickstart/create-and-connect)
@@ -28,6 +27,5 @@ Build and deploy an Agent with RAG tool and Memory | [retriever_agent_with_histo
 1. (Optional) [Add an IAM user or service account to a database instance](https://cloud.google.com/alloydb/docs/manage-iam-authn#create-user) and
 [grant database privileges to the IAM user](https://cloud.google.com/alloydb/docs/manage-iam-authn#grant-privileges).
 1. Add your project's values to [`config.py`](config.py).
-1. Use `create_embeddings.py` to add data to your vector store.
 
 Learn more at [Deploying a RAG Application with AlloyDB to LangChain on Vertex AI](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/reasoning-engine/tutorial_alloydb_rag_agent.ipynb).
