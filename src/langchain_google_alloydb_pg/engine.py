@@ -436,8 +436,9 @@ class AlloyDBEngine(PGEngine):
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of langchain documents.
-        If table already exists, a DuplicateTableError error is thrown.
+        Initializes a table for storing documents in AlloyDB.
+        This method creates the required schema for storing text data
+        and associated metadata used by LangChain.
 
         Args:
             table_name (str): The PgSQL database table name.
