@@ -431,13 +431,12 @@ class AlloyDBEngine(PGEngine):
         table_name: str,
         schema_name: str = "public",
         content_column: str = "page_content",
-        metadata_columns: list[Column] = [],
+        metadata_columns: Optional[list[Column]] = None,
         metadata_json_column: str = "langchain_metadata",
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of langchain documents.
-        If table already exists, a DuplicateTableError error is thrown.
+        Creates a table for storing LangChain documents.
 
         Args:
             table_name (str): The PgSQL database table name.
@@ -445,13 +444,15 @@ class AlloyDBEngine(PGEngine):
                 Default: "public".
             content_column (str): Name of the column to store document content.
                 Default: "page_content".
-            metadata_columns (list[Column]): A list of Columns
+            metadata_columns (Optional[list[Column]]): A list of Columns
                 to create for custom metadata. Optional.
             metadata_json_column (str): The column to store extra metadata in JSON format.
                 Default: "langchain_metadata". Optional.
             store_metadata (bool): Whether to store extra metadata in a metadata column
                 if not described in 'metadata' field list (Default: True).
         """
+        if metadata_columns is None:
+            metadata_columns = []
         query = f"""CREATE TABLE "{schema_name}"."{table_name}"(
             {content_column} TEXT NOT NULL
             """
@@ -472,12 +473,12 @@ class AlloyDBEngine(PGEngine):
         table_name: str,
         schema_name: str = "public",
         content_column: str = "page_content",
-        metadata_columns: list[Column] = [],
+        metadata_columns: Optional[list[Column]] = None,
         metadata_json_column: str = "langchain_metadata",
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of langchain documents.
+        Creates a table for storing LangChain documents.
 
         Args:
             table_name (str): The PgSQL database table name.
@@ -485,7 +486,7 @@ class AlloyDBEngine(PGEngine):
                 Default: "public".
             content_column (str): Name of the column to store document content.
                 Default: "page_content".
-            metadata_columns (list[sqlalchemy.Column]): A list of SQLAlchemy Columns
+            metadata_columns (Optional[list[Column]]): A list of SQLAlchemy Columns
                 to create for custom metadata. Optional.
             metadata_json_column (str): The column to store extra metadata in JSON format.
                 Default: "langchain_metadata". Optional.
@@ -511,12 +512,12 @@ class AlloyDBEngine(PGEngine):
         table_name: str,
         schema_name: str = "public",
         content_column: str = "page_content",
-        metadata_columns: list[Column] = [],
+        metadata_columns: Optional[list[Column]] = None,
         metadata_json_column: str = "langchain_metadata",
         store_metadata: bool = True,
     ) -> None:
         """
-        Create a table for saving of langchain documents.
+        Creates a table for storing LangChain documents.
 
         Args:
             table_name (str): The PgSQL database table name.
@@ -524,7 +525,7 @@ class AlloyDBEngine(PGEngine):
                 Default: "public".
             content_column (str): Name of the column to store document content.
                 Default: "page_content".
-            metadata_columns (list[sqlalchemy.Column]): A list of SQLAlchemy Columns
+            metadata_columns (Optional[list[Column]]): A list of SQLAlchemy Columns
                 to create for custom metadata. Optional.
             metadata_json_column (str): The column to store extra metadata in JSON format.
                 Default: "langchain_metadata". Optional.
