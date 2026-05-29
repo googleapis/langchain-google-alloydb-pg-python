@@ -16,7 +16,6 @@ from typing import Any, Optional
 
 import vertexai  # type: ignore
 from config import (
-    CHAT_TABLE_NAME,
     CLUSTER,
     DATABASE,
     INSTANCE,
@@ -27,26 +26,20 @@ from config import (
     TABLE_NAME,
     USER,
 )
-from langchain import hub
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.tools.retriever import create_retriever_tool
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.retrieval import create_retrieval_chain
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_vertexai import VertexAI, VertexAIEmbeddings
 from vertexai.preview import reasoning_engines  # type: ignore
 
-from langchain_google_alloydb_pg import (
-    AlloyDBChatMessageHistory,
-    AlloyDBEngine,
-    AlloyDBVectorStore,
-)
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore
 
-# This sample requires a vector store table and a chat message table
-# Create these tables using `AlloyDBEngine` methods
-# `init_vectorstore_table()` and `init_chat_history_table()`
-# or create and load the tables using `create_embeddings.py`
+# This sample requires a vector store table
+# Create these tables using `AlloyDBEngine` method `init_vectorstore_table()`
+# or create and load the table using `create_embeddings.py`
 
 
-class AlloyDBAgent(reasoning_engines.Queryable):
+class AlloyDBRetriever(reasoning_engines.Queryable):
     def __init__(
         self,
         model: str,
@@ -56,11 +49,8 @@ class AlloyDBAgent(reasoning_engines.Queryable):
         instance: str,
         database: str,
         table: str,
-        chat_table: str,
         user: Optional[str] = None,
         password: Optional[str] = None,
-        tool_name: str = "search_movies",
-        tool_description: str = "Searches and returns movies.",
     ):
         self.model_name = model
         self.project = project
@@ -69,18 +59,34 @@ class AlloyDBAgent(reasoning_engines.Queryable):
         self.instance = instance
         self.database = database
         self.table = table
-        self.chat_table = chat_table
         self.user = user
         self.password = password
-        self.tool_name = tool_name
-        self.tool_description = tool_description
 
     def set_up(self):
         """All unpickle-able logic should go here.
         In general, add any logic that requires a network or database
         connection.
         """
-        # Initialize the vector store
+        # Create a chain to handle the processing of relevant documents
+        system_prompt = (
+            "You are an assistant for question-answering tasks. "
+            "Use the following pieces of retrieved context to answer "
+            "the question. If you don't know the answer, say that you "
+            "don't know. Use three sentences maximum and keep the "
+            "answer concise."
+            "\n\n"
+            "{context}"
+        )
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_prompt),
+                ("human", "{input}"),
+            ]
+        )
+        llm = VertexAI(model_name=self.model_name, project=self.project)
+        combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+
+        # Initialize the vector store and retriever
         engine = AlloyDBEngine.from_instance(
             self.project,
             self.region,
@@ -99,62 +105,28 @@ class AlloyDBAgent(reasoning_engines.Queryable):
         )
         retriever = vector_store.as_retriever()
 
-        # Create a tool to do retrieval of documents
-        tool = create_retriever_tool(
-            retriever,
-            self.tool_name,
-            self.tool_description,
-        )
-        tools = [tool]
-
-        # Initialize the LLM and prompt
-        llm = ChatVertexAI(model_name=self.model_name, project=self.project)
-        base_prompt = hub.pull("langchain-ai/react-agent-template")
-        instructions = (
-            "You are an assistant for question-answering tasks. "
-            "Use the following pieces of retrieved context to answer "
-            "the question. If you don't know the answer, say that you "
-            "don't know. Use three sentences maximum and keep the "
-            "answer concise."
-        )
-        prompt = base_prompt.partial(instructions=instructions)
-
-        # Create an agent
-        agent = create_react_agent(llm, tools, prompt)
-        agent_executor = AgentExecutor(
-            agent=agent, tools=tools, handle_parsing_errors=True
-        )
-
-        # Initialize a Runnable that manages chat message history for the agent
-        self.agent = RunnableWithMessageHistory(
-            agent_executor,
-            lambda session_id: AlloyDBChatMessageHistory.create_sync(
-                engine=engine, session_id=session_id, table_name=self.chat_table
-            ),
-            input_messages_key="input",
-            history_messages_key="chat_history",
-        )
+        # Create a retrieval chain to fetch relevant documents and pass them to
+        # an LLM to generate a response
+        self.chain = create_retrieval_chain(retriever, combine_docs_chain)
 
     def query(self, **kwargs: Any) -> Any:
         """Query the application.
 
         Args:
             **kwargs: Keyword arguments forwarded from the reasoning engine.
-                Expects ``input`` (the user query) and ``session_id``
-                (the user's session id).
+                Expects an ``input`` key containing the user query.
 
         Returns:
             The LLM response.
         """
-        response = self.agent.invoke(
-            {"input": kwargs["input"]},
-            config={"configurable": {"session_id": kwargs["session_id"]}},
-        )
-        return response["output"]
+        # Define the runtime logic that serves user queries
+        response = self.chain.invoke({"input": kwargs["input"]})
+        return response["answer"]
 
 
 # Uncomment to test locally
-# app = AlloyDBAgent(
+
+# app = AlloyDBRetriever(
 #     model="gemini-2.0-flash-001",
 #     project=PROJECT_ID,
 #     region=REGION,
@@ -162,22 +134,20 @@ class AlloyDBAgent(reasoning_engines.Queryable):
 #     instance=INSTANCE,
 #     database=DATABASE,
 #     table=TABLE_NAME,
-#     chat_table=CHAT_TABLE_NAME,
 #     user=USER,
-#     password=PASSWORD
+#     password=PASSWORD,
 # )
-
 # app.set_up()
-# print(app.query(input="What movies are about engineers?", session_id="abc123"))
+# print(app.query(input="movies about engineers"))
 
 # Initialize VertexAI
 vertexai.init(project=PROJECT_ID, location="us-central1", staging_bucket=STAGING_BUCKET)
 
 # Deploy to VertexAI
-DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBAgent"
+DISPLAY_NAME = os.getenv("DISPLAY_NAME") or "AlloyDBRetriever"
 
 remote_app = reasoning_engines.ReasoningEngine.create(
-    AlloyDBAgent(
+    AlloyDBRetriever(
         model="gemini-2.0-flash-001",
         project=PROJECT_ID,
         region=REGION,
@@ -185,10 +155,9 @@ remote_app = reasoning_engines.ReasoningEngine.create(
         instance=INSTANCE,
         database=DATABASE,
         table=TABLE_NAME,
-        chat_table=CHAT_TABLE_NAME,
         # To use IAM authentication, remove user and password and ensure
         # the Reasoning Engine Agent service account is a database user
-        # with access to vector store and chat tables
+        # with access to the vector store table
         user=USER,
         password=PASSWORD,
     ),
@@ -198,4 +167,4 @@ remote_app = reasoning_engines.ReasoningEngine.create(
     extra_packages=["config.py"],
 )
 
-print(remote_app.query(input="movies about engineers", session_id="abc123"))  # type: ignore
+print(remote_app.query(input="movies about engineers"))  # type: ignore
