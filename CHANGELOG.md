@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.15.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.14.0...v0.15.0) (2026-05-27)
+
+
+### Features
+
+* **deps:** Update dependency langchain-postgres to v0.0.17 ([#566](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/566)) ([ed4f924](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/ed4f924a6854feb14f77a7115cf637feb08762ed))
+* Update deps ([5556024](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/5556024fd44cee81c2d1348b633b428d47d93c76))
+
+
+### Bug Fixes
+
+* Avoid mutable default argument for metadata_columns ([#588](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/588)) ([c270aba](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/c270aba21e6e4c9a60887959410416ad7658b856))
+
 ## [0.14.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.13.0...v0.14.0) (2026-01-12)
 
 
