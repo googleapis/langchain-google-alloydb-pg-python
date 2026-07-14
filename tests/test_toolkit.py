@@ -39,7 +39,11 @@ class TestAlloyDBToolkit:
         tool = AlloyDBNL2SQLTool(engine=mock_engine)
         result = await tool._arun("Show me all users")
         assert result == "mocked_sql_query"
-        
+        # Verify the exact SQL query
+        conn_mock = mock_engine._pool.connect.return_value.__aenter__.return_value
+        executed_query = conn_mock.execute.call_args[0][0].text
+        assert "SELECT google_ml.generate_sql" in executed_query
+
     def test_nl2sql_tool_run(self, mock_engine):
         """Test that AlloyDBNL2SQLTool._run executes the NL2SQL generation synchronously."""
         tool = AlloyDBNL2SQLTool(engine=mock_engine)
