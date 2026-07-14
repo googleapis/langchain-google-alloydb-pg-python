@@ -745,3 +745,45 @@ class TestVectorStore:
 
     def test_get_table_name(self, vs):
         assert vs.get_table_name() == DEFAULT_TABLE
+
+    def test_enable_columnar_engine(self, vs):
+        from unittest.mock import patch
+        with patch.object(vs._engine, "_run_as_sync") as mock_run:
+            vs.enable_columnar_engine(["content"])
+            mock_run.assert_called_once()
+
+    def test_enable_auto_columnarization(self, vs):
+        from unittest.mock import patch
+        with patch.object(vs._engine, "_run_as_sync") as mock_run:
+            vs.enable_auto_columnarization()
+            mock_run.assert_called_once()
+
+    def test_define_vector_assist_spec(self, vs):
+        from unittest.mock import patch
+        with patch.object(vs._engine, "_run_as_sync") as mock_run:
+            mock_run.return_value = [{"spec": "ok"}]
+            res = vs.define_vector_assist_spec()
+            assert res == [{"spec": "ok"}]
+
+    def test_apply_vector_assist_spec(self, vs):
+        from unittest.mock import patch
+        with patch.object(vs._engine, "_run_as_sync") as mock_run:
+            mock_run.return_value = [{"apply": "ok"}]
+            res = vs.apply_vector_assist_spec()
+            assert res == [{"apply": "ok"}]
+
+    def test_get_vector_assist_recommendations(self, vs):
+        from unittest.mock import patch
+        with patch.object(vs._engine, "_run_as_sync") as mock_run:
+            mock_run.return_value = [{"rec": "ok"}]
+            res = vs.get_vector_assist_recommendations()
+            assert res == [{"rec": "ok"}]
+
+    def test_initialize_auto_vector_embeddings(self, vs):
+        from unittest.mock import patch
+        with patch.object(vs._engine, "_run_as_sync") as mock_run:
+            vs.initialize_auto_vector_embeddings(
+                model_id="test-model",
+                table_name="test_table",
+            )
+            mock_run.assert_called_once()

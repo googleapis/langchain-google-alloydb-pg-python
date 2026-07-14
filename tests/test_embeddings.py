@@ -122,3 +122,14 @@ class TestAlloyDBEmbeddings:
         for embedding_field in embedding:
             assert isinstance(embedding_field, float)
             assert -1 <= embedding_field <= 1
+
+    async def test_embed_image(self, embeddings):
+        # We assume the image returns an embedding list similar to embed_query
+        # when running against a live integration.
+        embedding = embeddings.embed_image("gs://bucket/test_image.jpg")
+        assert isinstance(embedding, list)
+
+    async def test_aembed_image(self, embeddings):
+        embedding = await embeddings.aembed_image("gs://bucket/test_image.jpg")
+        assert isinstance(embedding, list)
+

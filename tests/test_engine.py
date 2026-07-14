@@ -617,3 +617,33 @@ class TestEngineSync:
         ]
         for row in results:
             assert row in expected
+
+    async def test_aforecast(self, engine):
+        from unittest.mock import AsyncMock, patch
+        with patch.object(engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_conn.fetch.return_value = [{"prediction": 1.0}, {"prediction": 2.0}]
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            
+            results = await engine.aforecast(
+                model_id="test_model",
+                source_table="test_table",
+                source_query=None,
+                data_column="data",
+                timestamp_column="ts"
+            )
+            assert len(results) == 2
+            assert results[0]["prediction"] == 1.0
+
+    async def test_forecast(self, engine):
+        from unittest.mock import patch
+        with patch.object(engine, "_run_as_sync", return_value=[{"prediction": 1.0}]):
+            results = engine.forecast(
+                model_id="test_model",
+                source_table="test_table",
+                source_query=None,
+                data_column="data",
+                timestamp_column="ts"
+            )
+            assert len(results) == 1
+            assert results[0]["prediction"] == 1.0
