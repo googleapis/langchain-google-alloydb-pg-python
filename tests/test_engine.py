@@ -619,6 +619,7 @@ class TestEngineSync:
             assert row in expected
 
     async def test_aforecast(self, engine):
+        """Test that aforecast calls the underlying google_ml.forecast table function asynchronously."""
         from unittest.mock import AsyncMock, patch
         with patch.object(engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
@@ -636,6 +637,7 @@ class TestEngineSync:
             assert results[0]["prediction"] == 1.0
 
     async def test_forecast(self, engine):
+        """Test that forecast evaluates via _run_as_sync to proxy the google_ml.forecast."""
         from unittest.mock import patch
         with patch.object(engine, "_run_as_sync", return_value=[{"prediction": 1.0}]):
             results = engine.forecast(

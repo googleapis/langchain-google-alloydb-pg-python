@@ -124,12 +124,14 @@ class TestAlloyDBEmbeddings:
             assert -1 <= embedding_field <= 1
 
     async def test_embed_image(self, embeddings):
+        """Test image embedding generation via synchronous wrapper."""
         # We assume the image returns an embedding list similar to embed_query
         # when running against a live integration.
         embedding = embeddings.embed_image("gs://bucket/test_image.jpg")
         assert isinstance(embedding, list)
 
     async def test_aembed_image(self, embeddings):
+        """Test image embedding generation asynchronously."""
         embedding = await embeddings.aembed_image("gs://bucket/test_image.jpg")
         assert isinstance(embedding, list)
 
