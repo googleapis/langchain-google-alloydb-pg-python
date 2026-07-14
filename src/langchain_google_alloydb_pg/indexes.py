@@ -101,3 +101,13 @@ class ScaNNQueryOptions(QueryOptions):
             DeprecationWarning,
         )
         return f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
+
+
+@dataclass
+class RUMIndex(BaseIndex):
+    index_type: str = "rum"
+    extension_name: str = "rum"
+
+    def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
+        return ""

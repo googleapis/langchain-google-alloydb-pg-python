@@ -25,6 +25,8 @@ from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
+from .toolkit import AlloyDBNL2SQLTool, AlloyDBToolkit
+from .tools import AlloyDBSentimentTool, AlloyDBSummaryTool
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
@@ -42,5 +44,9 @@ __all__ = [
     "HybridSearchConfig",
     "reciprocal_rank_fusion",
     "weighted_sum_ranking",
+    "AlloyDBSentimentTool",
+    "AlloyDBSummaryTool",
+    "AlloyDBNL2SQLTool",
+    "AlloyDBToolkit",
     "__version__",
 ]

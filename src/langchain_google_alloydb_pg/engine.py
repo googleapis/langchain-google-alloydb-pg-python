@@ -621,6 +621,77 @@ class AlloyDBEngine(PGEngine):
         """
         self._run_as_sync(self._ainit_checkpoint_table(table_name, schema_name))
 
+    async def aforecast(
+        self,
+        model_id: str,
+        source_table: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        """Asynchronously get forecasting from AlloyDB AI.
+
+        Args:
+            model_id: The ID of the time series forecasting model.
+            source_table: The table to read historical time series data from.
+            timestamp_col: The column containing the timestamp.
+            data_col: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast.
+            source_query: Optional query to filter historical data.
+            conf_level: Optional confidence level for prediction intervals.
+
+        Returns:
+            A list of dictionaries with forecast_timestamp, forecast_value, and intervals.
+        """
+        query = """
+        SELECT * FROM google_ml.forecast(
+            model_id => :model_id,
+            source_table => :source_table,
+            source_query => :source_query,
+            data_col => :data_col,
+            timestamp_col => :timestamp_col,
+            horizon => :horizon,
+            conf_level => :conf_level
+        )
+        """
+        params = {
+            "model_id": model_id,
+            "source_table": source_table,
+            "source_query": source_query,
+            "data_col": data_col,
+            "timestamp_col": timestamp_col,
+            "horizon": horizon,
+            "conf_level": conf_level,
+        }
+        async with self._pool.connect() as conn:
+            result = await conn.execute(text(query), params)
+            return [dict(row._mapping) for row in result.fetchall()]
+
+    def forecast(
+        self,
+        model_id: str,
+        source_table: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        """Synchronously get forecasting from AlloyDB AI."""
+        return self._run_as_sync(
+            self.aforecast(
+                model_id,
+                source_table,
+                timestamp_col,
+                data_col,
+                horizon,
+                source_query,
+                conf_level,
+            )
+        )
+
     async def _aload_table_schema(
         self, table_name: str, schema_name: str = "public"
     ) -> Table:
