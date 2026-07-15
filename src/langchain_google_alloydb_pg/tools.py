@@ -14,7 +14,10 @@
 
 from typing import Any, Optional, Type
 
-from langchain_core.callbacks import CallbackManagerForToolRun
+from langchain_core.callbacks import (
+    AsyncCallbackManagerForToolRun,
+    CallbackManagerForToolRun,
+)
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -84,3 +87,39 @@ class AlloyDBSummaryTool(BaseTool):
         async with self.engine._pool.connect() as conn:
             result = await conn.execute(text(query), {"content": content})
             return str(result.scalar())
+
+
+class AlloyDBIfInput(BaseModel):
+    """Input for AlloyDBIfTool."""
+    condition: str = Field(description="The semantic condition to evaluate (e.g. 'Is the text positive?')")
+
+
+class AlloyDBIfTool(BaseTool):
+    """Tool that evaluates a semantic condition using AlloyDB AI google_ml.if function."""
+
+    name: str = "alloydb_if"
+    description: str = (
+        "A tool that uses AlloyDB AI to evaluate a semantic condition and returns True or False. "
+        "Useful for semantic routing, classification, or filtering."
+    )
+    args_schema: Type[BaseModel] = AlloyDBIfInput
+    engine: AlloyDBEngine
+
+    def _run(
+        self,
+        condition: str,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> Any:
+        """Evaluate the condition synchronously."""
+        return self.engine._run_as_sync(self._arun(condition, run_manager))
+
+    async def _arun(
+        self,
+        condition: str,
+        run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
+    ) -> Any:
+        """Evaluate the condition asynchronously."""
+        query = "SELECT google_ml.if(:condition)"
+        async with self.engine._pool.connect() as conn:
+            result = await conn.execute(text(query), {"condition": condition})
+            return bool(result.scalar())
