@@ -146,6 +146,93 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             await conn.execute(text(query))
             await conn.commit()
 
+    async def ainitialize_auto_vector_embeddings(
+        self,
+        model_id: str,
+        content_column: str,
+        embedding_column: str,
+    ) -> None:
+        """Asynchronously initialize auto vector embeddings.
+
+        Args:
+            model_id: The ID of the model to use for embeddings.
+            content_column: The name of the content column.
+            embedding_column: The name of the embedding column.
+        """
+        query = "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+        async with self.engine.connect() as conn:
+            await conn.execute(
+                text(query),
+                {
+                    "model_id": model_id,
+                    "table_name": self.table_name,
+                    "content_column": content_column,
+                    "embedding_column": embedding_column,
+                },
+            )
+            await conn.commit()
+
+    async def aenable_columnar_engine(
+        self,
+        columns: Optional[list[str]] = None,
+    ) -> None:
+        """Asynchronously add the table and its columns to the columnar engine.
+
+        Args:
+            columns: Optional list of column names to add to the columnar engine.
+        """
+        if columns:
+            columns_str = ",".join(columns)
+            query = "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            params = {"table_name": self.table_name, "columns": columns_str}
+        else:
+            query = "SELECT google_columnar_engine_add(:table_name)"
+            params = {"table_name": self.table_name}
+
+        async with self.engine.connect() as conn:
+            await conn.execute(text(query), params)
+            await conn.commit()
+
+    async def aenable_auto_columnarization(self) -> None:
+        """Asynchronously trigger auto-columnarization recommendations."""
+        query = "SELECT google_columnar_engine_recommend('AUTO_COLUMNARIZATION')"
+        async with self.engine.connect() as conn:
+            await conn.execute(text(query))
+            await conn.commit()
+
+    async def adefine_vector_assist_spec(self) -> list[dict]:
+        """Asynchronously define a Vector Assist spec for the current table."""
+        query = "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+        params = {"table_name": self.table_name, "embedding_column": self.embedding_column}
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), params)
+            return [dict(row._mapping) for row in result.fetchall()]
+
+    async def aapply_vector_assist_spec(self) -> list[dict]:
+        """Asynchronously apply the Vector Assist spec for the current table."""
+        query = "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
+        params = {"table_name": self.table_name, "embedding_column": self.embedding_column}
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), params)
+            return [dict(row._mapping) for row in result.fetchall()]
+
+    async def aget_vector_assist_recommendations(self) -> list[dict]:
+        """Asynchronously get Vector Assist recommendations for the current table."""
+        # First we need to get the spec ID for the current table
+        specs = await self.adefine_vector_assist_spec()
+        if not specs:
+            return []
+        
+        spec_id = specs[0].get("vector_spec_id")
+        if not spec_id:
+            return []
+            
+        query = "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), {"spec_id": spec_id})
+            return [dict(row._mapping) for row in result.fetchall()]
+        
+
     def add_images(
         self,
         uris: list[str],

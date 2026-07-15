@@ -14,6 +14,7 @@
 
 import warnings
 from dataclasses import dataclass, field
+from typing import Optional
 
 from langchain_postgres.v2.indexes import (
     DEFAULT_DISTANCE_STRATEGY,
@@ -63,7 +64,8 @@ class IVFQueryOptions(QueryOptions):
 @dataclass
 class ScaNNIndex(BaseIndex):
     index_type: str = "ScaNN"
-    num_leaves: int = 5
+    mode: Optional[str] = None
+    num_leaves: Optional[int] = 5
     quantizer: str = field(
         default="sq8", init=False
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
@@ -71,6 +73,8 @@ class ScaNNIndex(BaseIndex):
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
+        if self.mode and self.mode.upper() == "AUTO":
+            return f"(mode = 'AUTO')"
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
 
     def get_index_function(self) -> str:
@@ -86,13 +90,17 @@ class ScaNNIndex(BaseIndex):
 class ScaNNQueryOptions(QueryOptions):
     num_leaves_to_search: int = 1
     pre_reordering_num_neighbors: int = -1
+    pct_leaves_to_search: Optional[float] = None
 
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
-        return [
+        params = [
             f"scann.num_leaves_to_search = {self.num_leaves_to_search}",
             f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
         ]
+        if self.pct_leaves_to_search is not None:
+            params.append(f"scann.pct_leaves_to_search = {self.pct_leaves_to_search}")
+        return params
 
     def to_string(self) -> str:
         """Convert index attributes to string."""
@@ -100,4 +108,17 @@ class ScaNNQueryOptions(QueryOptions):
             "to_string is deprecated, use to_parameter instead.",
             DeprecationWarning,
         )
-        return f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
+        base = f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
+        if self.pct_leaves_to_search is not None:
+            base += f", scann.pct_leaves_to_search = {self.pct_leaves_to_search}"
+        return base
+
+
+@dataclass
+class RUMIndex(BaseIndex):
+    index_type: str = "rum"
+    extension_name: str = "rum"
+
+    def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
+        return ""

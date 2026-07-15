@@ -24,6 +24,7 @@ from langchain_google_alloydb_pg.indexes import (  # type: ignore
     IVFQueryOptions,
     ScaNNIndex,
     ScaNNQueryOptions,
+    RUMIndex,
 )
 
 
@@ -124,3 +125,10 @@ class TestAlloyDBIndex:
             assert "to_string is deprecated, use to_parameter instead." in str(
                 w[-1].message
             )
+
+    def test_rum_index(self):
+        index = RUMIndex(name="test_index")
+        assert index.index_type == "rum"
+        assert index.extension_name == "rum"
+        assert index.index_options() == ""
+

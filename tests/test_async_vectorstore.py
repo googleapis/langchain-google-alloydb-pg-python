@@ -473,3 +473,51 @@ class TestVectorStore:
                 embedding_column="myembedding",
                 metadata_columns=["random_column"],  # invalid metadata column
             )
+
+    async def test_aenable_columnar_engine(self, vs):
+        """Test enabling the columnar engine triggers the appropriate async method on the underlying store."""
+        from unittest.mock import AsyncMock, patch
+        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+            await vs.aenable_columnar_engine(["content"])
+            mock_run.assert_called_once()
+
+    async def test_aenable_auto_columnarization(self, vs):
+        """Test enabling auto columnarization triggers the async engine wrapper."""
+        from unittest.mock import AsyncMock, patch
+        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+            await vs.aenable_auto_columnarization()
+            mock_run.assert_called_once()
+
+    async def test_adefine_vector_assist_spec(self, vs):
+        """Test definition of vector assist specification via async execution."""
+        from unittest.mock import AsyncMock, patch
+        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+            mock_run.return_value = [{"spec": "ok"}]
+            res = await vs.adefine_vector_assist_spec()
+            assert res == [{"spec": "ok"}]
+
+    async def test_aapply_vector_assist_spec(self, vs):
+        """Test applying vector assist specifications via async execution."""
+        from unittest.mock import AsyncMock, patch
+        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+            mock_run.return_value = [{"apply": "ok"}]
+            res = await vs.aapply_vector_assist_spec()
+            assert res == [{"apply": "ok"}]
+
+    async def test_aget_vector_assist_recommendations(self, vs):
+        """Test retrieving vector assist recommendations via async execution."""
+        from unittest.mock import AsyncMock, patch
+        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+            mock_run.return_value = [{"rec": "ok"}]
+            res = await vs.aget_vector_assist_recommendations()
+            assert res == [{"rec": "ok"}]
+
+    async def test_ainitialize_auto_vector_embeddings(self, vs):
+        """Test initializing auto vector embeddings asynchronously."""
+        from unittest.mock import AsyncMock, patch
+        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+            await vs.ainitialize_auto_vector_embeddings(
+                model_id="test-model",
+                table_name="test_table",
+            )
+            mock_run.assert_called_once()
