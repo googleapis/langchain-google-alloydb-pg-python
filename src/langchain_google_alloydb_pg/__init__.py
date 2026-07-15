@@ -26,6 +26,7 @@ from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
 from .vectorstore import AlloyDBVectorStore
+from .toolkit import AlloyDBNL2SQLTool, AlloyDBToolkit
 from .version import __version__
 
 __all__ = [
@@ -43,4 +44,6 @@ __all__ = [
     "reciprocal_rank_fusion",
     "weighted_sum_ranking",
     "__version__",
+    "AlloyDBNL2SQLTool",
+    "AlloyDBToolkit",
 ]
