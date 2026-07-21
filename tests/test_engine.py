@@ -620,18 +620,19 @@ class TestEngineSync:
 
     async def test_aforecast(self, engine):
         """Test that aforecast calls the underlying google_ml.forecast table function asynchronously."""
-        from unittest.mock import AsyncMock, patch
-        with patch.object(engine._pool, "connect") as mock_connect:
+        from unittest.mock import AsyncMock, patch, MagicMock
+        with patch("sqlalchemy.ext.asyncio.AsyncEngine.connect") as mock_connect:
             mock_conn = AsyncMock()
-            mock_conn.fetch.return_value = [{"prediction": 1.0}, {"prediction": 2.0}]
+            mock_conn.execute.return_value = MagicMock(mappings=MagicMock(return_value=[{"prediction": 1.0}, {"prediction": 2.0}]))
             mock_connect.return_value.__aenter__.return_value = mock_conn
             
             results = await engine.aforecast(
                 model_id="test_model",
                 source_table="test_table",
                 source_query=None,
-                data_column="data",
-                timestamp_column="ts"
+                data_col="data",
+                timestamp_col="ts",
+                horizon=5
             )
             assert len(results) == 2
             assert results[0]["prediction"] == 1.0
@@ -644,8 +645,9 @@ class TestEngineSync:
                 model_id="test_model",
                 source_table="test_table",
                 source_query=None,
-                data_column="data",
-                timestamp_column="ts"
+                data_col="data",
+                timestamp_col="ts",
+                horizon=5
             )
             assert len(results) == 1
             assert results[0]["prediction"] == 1.0
