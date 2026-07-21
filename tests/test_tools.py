@@ -14,12 +14,16 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from langchain_google_alloydb_pg.tools import AlloyDBSentimentTool, AlloyDBSummaryTool
+from langchain_google_alloydb_pg.tools import AlloyDBIfTool, AlloyDBSentimentTool, AlloyDBSummaryTool
+from langchain_google_alloydb_pg.engine import AlloyDBEngine
 
 @pytest.fixture
 def mock_engine():
-    engine = MagicMock()
-    # Mock synchronous run mapping
+    class DummyEngine(AlloyDBEngine):
+        def __init__(self):
+            pass
+        
+    engine = DummyEngine()
     engine._run_as_sync = MagicMock(side_effect=lambda coro: "mocked_result")
     
     # Mock pool and connection for async runs
@@ -42,7 +46,7 @@ class TestAlloyDBTools:
         # Verify the exact SQL query
         conn_mock = mock_engine._pool.connect.return_value.__aenter__.return_value
         executed_query = conn_mock.execute.call_args[0][0].text
-        assert "SELECT google_ml.sentiment_analysis" in executed_query
+        assert "SELECT google_ml.analyze_sentiment" in executed_query
 
     def test_sentiment_tool_run(self, mock_engine):
         """Test that AlloyDBSentimentTool._run executes the sentiment analysis SQL synchronously."""
@@ -58,7 +62,7 @@ class TestAlloyDBTools:
         # Verify the exact SQL query
         conn_mock = mock_engine._pool.connect.return_value.__aenter__.return_value
         executed_query = conn_mock.execute.call_args[0][0].text
-        assert "SELECT google_ml.summarize_content" in executed_query
+        assert "SELECT google_ml.summarize" in executed_query
         
     def test_summary_tool_run(self, mock_engine):
         """Test that AlloyDBSummaryTool._run executes the text summarization SQL synchronously."""

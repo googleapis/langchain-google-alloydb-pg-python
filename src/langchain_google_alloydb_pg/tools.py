@@ -51,7 +51,7 @@ class AlloyDBSentimentTool(BaseTool):
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         """Run the tool asynchronously."""
-        query = "SELECT google_ml.sentiment_analysis(:content)"
+        query = "SELECT google_ml.analyze_sentiment(:content)"
         async with self.engine._pool.connect() as conn:
             result = await conn.execute(text(query), {"content": content})
             return str(result.scalar())
@@ -83,7 +83,7 @@ class AlloyDBSummaryTool(BaseTool):
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         """Run the tool asynchronously."""
-        query = "SELECT google_ml.summarize_content(:content)"
+        query = "SELECT google_ml.summarize(:content)"
         async with self.engine._pool.connect() as conn:
             result = await conn.execute(text(query), {"content": content})
             return str(result.scalar())
