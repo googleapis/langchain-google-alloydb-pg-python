@@ -15,11 +15,15 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from langchain_google_alloydb_pg.toolkit import AlloyDBToolkit, AlloyDBNL2SQLTool
+from langchain_google_alloydb_pg.engine import AlloyDBEngine
 
 @pytest.fixture
 def mock_engine():
-    engine = MagicMock()
-    # Mock synchronous run mapping
+    class DummyEngine(AlloyDBEngine):
+        def __init__(self):
+            pass
+            
+    engine = DummyEngine()
     engine._run_as_sync = MagicMock(side_effect=lambda coro: "mocked_sql_query")
     
     # Mock pool and connection for async runs
