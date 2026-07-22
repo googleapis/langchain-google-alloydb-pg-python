@@ -35,9 +35,9 @@ def mock_engine():
     
     return engine
 
-@pytest.mark.asyncio
 class TestAlloyDBToolkit:
     
+    @pytest.mark.asyncio
     async def test_nl2sql_tool_arun(self, mock_engine):
         """Test that AlloyDBNL2SQLTool._arun executes the NL2SQL generation asynchronously."""
         tool = AlloyDBNL2SQLTool(engine=mock_engine)
