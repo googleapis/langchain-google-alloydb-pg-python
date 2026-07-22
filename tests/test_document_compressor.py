@@ -15,7 +15,21 @@
 import pytest
 from langchain_core.documents import Document
 
-from langchain_google_alloydb_pg import AlloyDBDocumentCompressor
+from unittest.mock import AsyncMock, MagicMock
+from langchain_google_alloydb_pg.document_compressor import AlloyDBDocumentCompressor
+from langchain_google_alloydb_pg.engine import AlloyDBEngine
+
+@pytest.fixture
+def mock_engine():
+    class DummyEngine(AlloyDBEngine):
+        def __init__(self):
+            pass
+        _pool = MagicMock()
+        _run_as_sync = MagicMock()
+
+    engine = DummyEngine()
+    engine._pool = MagicMock()
+    return engine
 
 @pytest.fixture
 def mock_documents():
@@ -29,7 +43,9 @@ async def test_compressor_arun(mock_engine, mock_documents):
     """Test that AlloyDBDocumentCompressor executes the google_ml.rank function asynchronously."""
     # We must configure our mock to return a row with a score
     conn_mock = mock_engine._pool.connect.return_value.__aenter__.return_value
-    conn_mock.execute.return_value.fetchall.return_value = [[0.9], [0.1]]
+    exec_result = MagicMock()
+    exec_result.fetchall.return_value = [[0.9], [0.1]]
+    conn_mock.execute.return_value = exec_result
 
     compressor = AlloyDBDocumentCompressor(engine=mock_engine, model_id="semantic-ranker-512@latest", top_n=2)
     result = await compressor.acompress_documents(mock_documents, "query about a fox")

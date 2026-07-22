@@ -35,9 +35,9 @@ def mock_engine():
     
     return engine
 
-@pytest.mark.asyncio
 class TestAlloyDBTools:
     
+    @pytest.mark.asyncio
     async def test_sentiment_tool_arun(self, mock_engine):
         """Test that AlloyDBSentimentTool._arun executes the sentiment analysis SQL asynchronously."""
         tool = AlloyDBSentimentTool(engine=mock_engine)
@@ -54,6 +54,7 @@ class TestAlloyDBTools:
         result = tool._run("I love this!")
         assert result == "mocked_result"
 
+    @pytest.mark.asyncio
     async def test_summary_tool_arun(self, mock_engine):
         """Test that AlloyDBSummaryTool._arun executes the text summarization SQL asynchronously."""
         tool = AlloyDBSummaryTool(engine=mock_engine)
@@ -70,6 +71,7 @@ class TestAlloyDBTools:
         result = tool._run("A very long article goes here.")
         assert result == "mocked_result"
 
+    @pytest.mark.asyncio
     async def test_if_tool_arun(self, mock_engine):
         """Test that AlloyDBIfTool._arun executes the boolean condition SQL asynchronously."""
         # We must configure our mock to return a boolean for this test
