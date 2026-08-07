@@ -480,6 +480,24 @@ class TestVectorStore:
                 metadata_columns=["random_column"],  # invalid metadata column
             )
 
+    async def test_live_columnar_engine(self, vs):
+        """Test enabling columnar engine against live AlloyDB instance."""
+        await vs.aenable_columnar_engine(["content"])
+        await vs.aenable_columnar_engine()
+
+    async def test_live_auto_columnarization(self, vs):
+        """Test triggering auto columnarization recommendations against live AlloyDB instance."""
+        await vs.aenable_auto_columnarization()
+
+    async def test_live_vector_assist(self, vs):
+        """Test vector assist spec definition, application, and recommendations against live AlloyDB instance."""
+        specs = await vs.adefine_vector_assist_spec()
+        assert isinstance(specs, list)
+        apply_res = await vs.aapply_vector_assist_spec()
+        assert isinstance(apply_res, list)
+        recs = await vs.aget_vector_assist_recommendations()
+        assert isinstance(recs, list)
+
 
 @pytest.mark.asyncio
 class TestAsyncVectorStoreUnit:

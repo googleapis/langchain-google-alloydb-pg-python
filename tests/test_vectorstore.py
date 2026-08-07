@@ -752,6 +752,24 @@ class TestVectorStore:
     def test_get_table_name(self, vs):
         assert vs.get_table_name() == DEFAULT_TABLE
 
+    def test_live_columnar_engine(self, vs):
+        """Test enabling columnar engine against live AlloyDB instance."""
+        vs.enable_columnar_engine(["content"])
+        vs.enable_columnar_engine()
+
+    def test_live_auto_columnarization(self, vs):
+        """Test triggering auto columnarization recommendations against live AlloyDB instance."""
+        vs.enable_auto_columnarization()
+
+    def test_live_vector_assist(self, vs):
+        """Test vector assist spec definition, application, and recommendations against live AlloyDB instance."""
+        specs = vs.define_vector_assist_spec()
+        assert isinstance(specs, list)
+        apply_res = vs.apply_vector_assist_spec()
+        assert isinstance(apply_res, list)
+        recs = vs.get_vector_assist_recommendations()
+        assert isinstance(recs, list)
+
 
 class TestVectorStoreUnit:
     @pytest.fixture
