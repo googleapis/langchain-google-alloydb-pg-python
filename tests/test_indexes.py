@@ -22,9 +22,9 @@ from langchain_google_alloydb_pg.indexes import (  # type: ignore
     IVFFlatQueryOptions,
     IVFIndex,
     IVFQueryOptions,
+    RUMIndex,
     ScaNNIndex,
     ScaNNQueryOptions,
-    RUMIndex,
 )
 
 
@@ -110,6 +110,12 @@ class TestAlloyDBIndex:
         assert index.quantizer == "sq8"  # Check default value
         assert index.index_options() == "(num_leaves = 10, quantizer = sq8)"
 
+    def test_scann_index_auto_mode(self):
+        index = ScaNNIndex(name="test_index", mode="AUTO")
+        assert index.index_type == "ScaNN"
+        assert index.mode == "AUTO"
+        assert index.index_options() == "(mode = 'AUTO')"
+
     def test_scann_query_options(self):
         options = ScaNNQueryOptions(
             num_leaves_to_search=2, pre_reordering_num_neighbors=10
@@ -126,9 +132,23 @@ class TestAlloyDBIndex:
                 w[-1].message
             )
 
+    def test_scann_query_options_pct_leaves(self):
+        options = ScaNNQueryOptions(
+            num_leaves_to_search=2,
+            pre_reordering_num_neighbors=10,
+            pct_leaves_to_search=0.2,
+        )
+        assert options.to_parameter() == [
+            "scann.num_leaves_to_search = 2",
+            "scann.pre_reordering_num_neighbors = 10",
+            "scann.pct_leaves_to_search = 0.2",
+        ]
+        with warnings.catch_warnings(record=True) as w:
+            to_str = options.to_string()
+            assert "scann.pct_leaves_to_search = 0.2" in to_str
+
     def test_rum_index(self):
         index = RUMIndex(name="test_index")
         assert index.index_type == "rum"
         assert index.extension_name == "rum"
         assert index.index_options() == ""
-

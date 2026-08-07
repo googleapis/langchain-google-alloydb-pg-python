@@ -16,6 +16,7 @@ import json
 import os
 import uuid
 from typing import Sequence
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -27,6 +28,11 @@ from sqlalchemy.engine.row import RowMapping
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
+from langchain_google_alloydb_pg.indexes import (
+    DistanceStrategy,
+    RUMIndex,
+    ScaNNIndex,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -474,50 +480,151 @@ class TestVectorStore:
                 metadata_columns=["random_column"],  # invalid metadata column
             )
 
+
+@pytest.mark.asyncio
+class TestAsyncVectorStoreUnit:
+    @pytest.fixture
+    def vs(self):
+        vs = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        vs.engine = MagicMock()
+        vs.schema_name = "public"
+        vs.table_name = "test_table"
+        vs.content_column = "content"
+        vs.embedding_column = "embedding"
+        return vs
+
     async def test_aenable_columnar_engine(self, vs):
-        """Test enabling the columnar engine triggers the appropriate async method on the underlying store."""
-        from unittest.mock import AsyncMock, patch
-        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+        """Test enabling the columnar engine executes queries on engine."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
             await vs.aenable_columnar_engine(["content"])
-            mock_run.assert_called_once()
+            assert mock_conn.execute.called
+
+    async def test_aenable_columnar_engine_without_columns(self, vs):
+        """Test enabling columnar engine without specifying columns."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aenable_columnar_engine()
+            assert mock_conn.execute.called
 
     async def test_aenable_auto_columnarization(self, vs):
-        """Test enabling auto columnarization triggers the async engine wrapper."""
-        from unittest.mock import AsyncMock, patch
-        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+        """Test enabling auto columnarization executes queries on engine."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
             await vs.aenable_auto_columnarization()
-            mock_run.assert_called_once()
+            assert mock_conn.execute.called
 
     async def test_adefine_vector_assist_spec(self, vs):
-        """Test definition of vector assist specification via async execution."""
-        from unittest.mock import AsyncMock, patch
-        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
-            mock_run.return_value = [{"spec": "ok"}]
+        """Test definition of vector assist specification."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value.fetchall.return_value = [{"spec": "ok"}]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
             res = await vs.adefine_vector_assist_spec()
             assert res == [{"spec": "ok"}]
 
     async def test_aapply_vector_assist_spec(self, vs):
-        """Test applying vector assist specifications via async execution."""
-        from unittest.mock import AsyncMock, patch
-        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
-            mock_run.return_value = [{"apply": "ok"}]
+        """Test applying vector assist specifications."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value.fetchall.return_value = [{"apply": "ok"}]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
             res = await vs.aapply_vector_assist_spec()
             assert res == [{"apply": "ok"}]
 
     async def test_aget_vector_assist_recommendations(self, vs):
-        """Test retrieving vector assist recommendations via async execution."""
-        from unittest.mock import AsyncMock, patch
-        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
-            mock_run.return_value = [{"rec": "ok"}]
+        """Test retrieving vector assist recommendations."""
+        with patch.object(
+            vs,
+            "adefine_vector_assist_spec",
+            return_value=[{"vector_spec_id": "spec123"}],
+        ):
+            with patch.object(vs.engine, "connect") as mock_connect:
+                mock_conn = AsyncMock()
+                mock_result = MagicMock()
+                mock_result.mappings.return_value.fetchall.return_value = [
+                    {"rec": "ok"}
+                ]
+                mock_conn.execute.return_value = mock_result
+                mock_connect.return_value.__aenter__.return_value = mock_conn
+                res = await vs.aget_vector_assist_recommendations()
+                assert res == [{"rec": "ok"}]
+
+    async def test_aget_vector_assist_recommendations_empty_specs(self, vs):
+        """Test retrieving vector assist recommendations when no specs exist."""
+        with patch.object(vs, "adefine_vector_assist_spec", return_value=[]):
             res = await vs.aget_vector_assist_recommendations()
-            assert res == [{"rec": "ok"}]
+            assert res == []
+
+    async def test_aget_vector_assist_recommendations_no_spec_id(self, vs):
+        """Test retrieving vector assist recommendations when spec has no ID."""
+        with patch.object(
+            vs, "adefine_vector_assist_spec", return_value=[{"other_key": "val"}]
+        ):
+            res = await vs.aget_vector_assist_recommendations()
+            assert res == []
 
     async def test_ainitialize_auto_vector_embeddings(self, vs):
         """Test initializing auto vector embeddings asynchronously."""
-        from unittest.mock import AsyncMock, patch
-        with patch.object(vs._engine, "_run_as_async", new_callable=AsyncMock) as mock_run:
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
             await vs.ainitialize_auto_vector_embeddings(
                 model_id="test-model",
-                table_name="test_table",
             )
-            mock_run.assert_called_once()
+            assert mock_conn.execute.called
+
+    async def test_ainitialize_auto_vector_embeddings_custom_columns(self, vs):
+        """Test initializing auto vector embeddings with custom columns."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.ainitialize_auto_vector_embeddings(
+                model_id="test-model",
+                content_column="custom_content",
+                embedding_column="custom_embedding",
+            )
+            assert mock_conn.execute.called
+
+    async def test_aset_maintenance_work_mem_none(self, vs):
+        """Test setting maintenance work mem with None returns without executing SQL."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            await vs.aset_maintenance_work_mem(None, 768)
+            assert not mock_connect.called
+
+    async def test_aset_maintenance_work_mem_valid(self, vs):
+        """Test setting maintenance work mem with valid num_leaves executes SQL."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aset_maintenance_work_mem(10, 768)
+            assert mock_conn.execute.called
+
+    async def test_aapply_vector_index_scann_auto(self, vs):
+        """Test applying ScaNN index in AUTO mode without live DB."""
+        index = ScaNNIndex(
+            name="scann_auto",
+            mode="AUTO",
+            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+        )
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aapply_vector_index(index)
+            assert mock_conn.execute.called
+
+    async def test_aapply_vector_index_rum(self, vs):
+        """Test applying RUM index without live DB."""
+        index = RUMIndex(name="rum_idx")
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aapply_vector_index(index)
+            assert mock_conn.execute.called

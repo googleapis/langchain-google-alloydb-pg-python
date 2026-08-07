@@ -134,8 +134,12 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             embedding=embedding, k=k, filter=filter, **kwargs
         )
 
-    async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
+    async def aset_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
+        if not num_leaves:
+            return
         # Required index memory in MB
         buffer = 1
         index_memory_required = (
@@ -146,19 +150,23 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             await conn.execute(text(query))
             await conn.commit()
 
+    set_maintenance_work_mem = aset_maintenance_work_mem
+
     async def ainitialize_auto_vector_embeddings(
         self,
         model_id: str,
-        content_column: str,
-        embedding_column: str,
+        content_column: Optional[str] = None,
+        embedding_column: Optional[str] = None,
     ) -> None:
         """Asynchronously initialize auto vector embeddings.
 
         Args:
             model_id: The ID of the model to use for embeddings.
-            content_column: The name of the content column.
-            embedding_column: The name of the embedding column.
+            content_column: Optional name of the content column. Defaults to self.content_column.
+            embedding_column: Optional name of the embedding column. Defaults to self.embedding_column.
         """
+        content_col = content_column or self.content_column
+        embedding_col = embedding_column or self.embedding_column
         query = "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
         async with self.engine.connect() as conn:
             await conn.execute(
@@ -166,8 +174,8 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
                 {
                     "model_id": model_id,
                     "table_name": self.table_name,
-                    "content_column": content_column,
-                    "embedding_column": embedding_column,
+                    "content_column": content_col,
+                    "embedding_column": embedding_col,
                 },
             )
             await conn.commit()
@@ -203,18 +211,28 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     async def adefine_vector_assist_spec(self) -> list[dict]:
         """Asynchronously define a Vector Assist spec for the current table."""
         query = "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
-        params = {"table_name": self.table_name, "embedding_column": self.embedding_column}
+        params = {
+            "table_name": self.table_name,
+            "embedding_column": self.embedding_column,
+        }
         async with self.engine.connect() as conn:
             result = await conn.execute(text(query), params)
-            return [dict(row._mapping) for row in result.fetchall()]
+            result_map = result.mappings()
+            results = result_map.fetchall()
+            return [dict(row) for row in results]
 
     async def aapply_vector_assist_spec(self) -> list[dict]:
         """Asynchronously apply the Vector Assist spec for the current table."""
         query = "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
-        params = {"table_name": self.table_name, "embedding_column": self.embedding_column}
+        params = {
+            "table_name": self.table_name,
+            "embedding_column": self.embedding_column,
+        }
         async with self.engine.connect() as conn:
             result = await conn.execute(text(query), params)
-            return [dict(row._mapping) for row in result.fetchall()]
+            result_map = result.mappings()
+            results = result_map.fetchall()
+            return [dict(row) for row in results]
 
     async def aget_vector_assist_recommendations(self) -> list[dict]:
         """Asynchronously get Vector Assist recommendations for the current table."""
@@ -222,16 +240,17 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         specs = await self.adefine_vector_assist_spec()
         if not specs:
             return []
-        
+
         spec_id = specs[0].get("vector_spec_id")
         if not spec_id:
             return []
-            
+
         query = "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
         async with self.engine.connect() as conn:
             result = await conn.execute(text(query), {"spec_id": spec_id})
-            return [dict(row._mapping) for row in result.fetchall()]
-        
+            result_map = result.mappings()
+            results = result_map.fetchall()
+            return [dict(row) for row in results]
 
     def add_images(
         self,
