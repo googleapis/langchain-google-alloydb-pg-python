@@ -31,7 +31,6 @@ from langchain_google_alloydb_pg.indexes import (
     HNSWIndex,
     IVFFlatIndex,
     IVFIndex,
-    RUMIndex,
     ScaNNIndex,
 )
 
@@ -338,9 +337,3 @@ class TestAsyncIndex:
         await omni_vs.aapply_vector_index(index)
         assert await omni_vs.ais_valid_index("auto_scann_index")
         await omni_vs.adrop_vector_index("auto_scann_index")
-
-    async def test_aapply_alloydb_rum_index(self, omni_vs):
-        index = RUMIndex(name="rum_index")
-        await omni_vs.aapply_vector_index(index)
-        assert await omni_vs.ais_valid_index("rum_index")
-        await omni_vs.adrop_vector_index("rum_index")

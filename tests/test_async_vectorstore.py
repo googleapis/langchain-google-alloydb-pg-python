@@ -30,7 +30,6 @@ from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
 from langchain_google_alloydb_pg.indexes import (
     DistanceStrategy,
-    RUMIndex,
     ScaNNIndex,
 )
 
@@ -632,15 +631,6 @@ class TestAsyncVectorStoreUnit:
             mode="AUTO",
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
-        with patch.object(vs.engine, "connect") as mock_connect:
-            mock_conn = AsyncMock()
-            mock_connect.return_value.__aenter__.return_value = mock_conn
-            await vs.aapply_vector_index(index)
-            assert mock_conn.execute.called
-
-    async def test_aapply_vector_index_rum(self, vs):
-        """Test applying RUM index without live DB."""
-        index = RUMIndex(name="rum_idx")
         with patch.object(vs.engine, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_connect.return_value.__aenter__.return_value = mock_conn

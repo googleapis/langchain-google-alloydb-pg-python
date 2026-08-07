@@ -22,7 +22,6 @@ from langchain_google_alloydb_pg.indexes import (  # type: ignore
     IVFFlatQueryOptions,
     IVFIndex,
     IVFQueryOptions,
-    RUMIndex,
     ScaNNIndex,
     ScaNNQueryOptions,
 )
@@ -154,9 +153,3 @@ class TestAlloyDBIndex:
                 to_str
                 == "scann.pct_leaves_to_search = 0.2, scann.pre_reordering_num_neighbors = 10"
             )
-
-    def test_rum_index(self):
-        index = RUMIndex(name="test_index")
-        assert index.index_type == "rum"
-        assert index.extension_name == "rum"
-        assert index.index_options() == ""

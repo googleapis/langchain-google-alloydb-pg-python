@@ -33,7 +33,6 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.indexes import (
     DistanceStrategy,
-    RUMIndex,
     ScaNNIndex,
 )
 
@@ -943,23 +942,6 @@ class TestVectorStoreUnit:
     async def test_aapply_vector_index_scann_auto(self, vs):
         """Test applying ScaNN index in AUTO mode asynchronously without live DB."""
         index = ScaNNIndex(name="scann_auto", mode="AUTO")
-        with patch.object(
-            vs._engine, "_run_as_async", new_callable=AsyncMock
-        ) as mock_run:
-            await vs.aapply_vector_index(index)
-            mock_run.assert_called_once()
-
-    def test_apply_vector_index_rum(self, vs):
-        """Test applying RUM index synchronously without live DB."""
-        index = RUMIndex(name="rum_idx")
-        with patch.object(vs._engine, "_run_as_sync") as mock_run:
-            vs.apply_vector_index(index)
-            mock_run.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_aapply_vector_index_rum(self, vs):
-        """Test applying RUM index asynchronously without live DB."""
-        index = RUMIndex(name="rum_idx")
         with patch.object(
             vs._engine, "_run_as_async", new_callable=AsyncMock
         ) as mock_run:

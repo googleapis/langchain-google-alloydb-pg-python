@@ -113,13 +113,3 @@ class ScaNNQueryOptions(QueryOptions):
             DeprecationWarning,
         )
         return ", ".join(self.to_parameter())
-
-
-@dataclass
-class RUMIndex(BaseIndex):
-    index_type: str = "rum"
-    extension_name: str = "rum"
-
-    def index_options(self) -> str:
-        """Set index query options for vector store initialization."""
-        return ""
