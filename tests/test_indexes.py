@@ -116,6 +116,13 @@ class TestAlloyDBIndex:
         assert index.mode == "AUTO"
         assert index.index_options() == "(mode = 'AUTO')"
 
+    def test_scann_query_options_default(self):
+        options = ScaNNQueryOptions()
+        assert options.to_parameter() == [
+            "scann.pct_leaves_to_search = 1",
+            "scann.pre_reordering_num_neighbors = -1",
+        ]
+
     def test_scann_query_options(self):
         options = ScaNNQueryOptions(
             num_leaves_to_search=2, pre_reordering_num_neighbors=10
@@ -134,18 +141,19 @@ class TestAlloyDBIndex:
 
     def test_scann_query_options_pct_leaves(self):
         options = ScaNNQueryOptions(
-            num_leaves_to_search=2,
             pre_reordering_num_neighbors=10,
             pct_leaves_to_search=0.2,
         )
         assert options.to_parameter() == [
-            "scann.num_leaves_to_search = 2",
-            "scann.pre_reordering_num_neighbors = 10",
             "scann.pct_leaves_to_search = 0.2",
+            "scann.pre_reordering_num_neighbors = 10",
         ]
         with warnings.catch_warnings(record=True) as w:
             to_str = options.to_string()
-            assert "scann.pct_leaves_to_search = 0.2" in to_str
+            assert (
+                to_str
+                == "scann.pct_leaves_to_search = 0.2, scann.pre_reordering_num_neighbors = 10"
+            )
 
     def test_rum_index(self):
         index = RUMIndex(name="test_index")

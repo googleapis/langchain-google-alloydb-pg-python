@@ -88,18 +88,22 @@ class ScaNNIndex(BaseIndex):
 
 @dataclass
 class ScaNNQueryOptions(QueryOptions):
-    num_leaves_to_search: int = 1
+    num_leaves_to_search: Optional[int] = None
     pre_reordering_num_neighbors: int = -1
     pct_leaves_to_search: Optional[float] = None
 
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
-        params = [
-            f"scann.num_leaves_to_search = {self.num_leaves_to_search}",
-            f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
-        ]
+        params = []
         if self.pct_leaves_to_search is not None:
             params.append(f"scann.pct_leaves_to_search = {self.pct_leaves_to_search}")
+        if self.num_leaves_to_search is not None:
+            params.append(f"scann.num_leaves_to_search = {self.num_leaves_to_search}")
+        if not params:
+            params.append("scann.pct_leaves_to_search = 1")
+        params.append(
+            f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
+        )
         return params
 
     def to_string(self) -> str:
@@ -108,10 +112,7 @@ class ScaNNQueryOptions(QueryOptions):
             "to_string is deprecated, use to_parameter instead.",
             DeprecationWarning,
         )
-        base = f"scann.num_leaves_to_search = {self.num_leaves_to_search}, scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
-        if self.pct_leaves_to_search is not None:
-            base += f", scann.pct_leaves_to_search = {self.pct_leaves_to_search}"
-        return base
+        return ", ".join(self.to_parameter())
 
 
 @dataclass
