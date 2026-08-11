@@ -625,7 +625,15 @@ class TestEngineUnit:
     def engine(self):
         eng = AlloyDBEngine.__new__(AlloyDBEngine)
         eng._pool = MagicMock()
-        eng._run_as_sync = MagicMock()
+
+        def mock_run_sync(coro):
+            coro.close()
+            ret = eng._run_as_sync.return_value
+            if isinstance(ret, MagicMock):
+                return [{"prediction": 1.0}]
+            return ret
+
+        eng._run_as_sync = MagicMock(side_effect=mock_run_sync)
 
         async def mock_run_async(coro):
             return await coro
@@ -639,7 +647,7 @@ class TestEngineUnit:
         with patch.object(engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_result = MagicMock()
-            mock_result.mappings.return_value.fetchall.return_value = [
+            mock_result.mappings.return_value = [
                 {"prediction": 1.0},
                 {"prediction": 2.0},
             ]
@@ -656,6 +664,17 @@ class TestEngineUnit:
             )
             assert len(results) == 2
             assert results[0]["prediction"] == 1.0
+            call_args = mock_conn.execute.call_args
+            assert "SELECT * FROM google_ml.forecast" in str(call_args[0][0])
+            assert "source_query" not in str(call_args[0][0])
+            assert "conf_level" not in str(call_args[0][0])
+            assert call_args[0][1] == {
+                "model_id": "test_model",
+                "source_table": "test_table",
+                "timestamp_col": "ts",
+                "data_col": "data",
+                "horizon": 5,
+            }
 
     @pytest.mark.asyncio
     async def test_aforecast_with_optional_params(self, engine):
@@ -721,7 +740,7 @@ class TestEngineUnit:
         with patch.object(engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_result = MagicMock()
-            mock_result.mappings.return_value.fetchall.return_value = [
+            mock_result.mappings.return_value = [
                 {"forecast_timestamp": "2026-08-07", "forecast_value": 100.0}
             ]
             mock_conn.execute.return_value = mock_result
@@ -738,4 +757,69 @@ class TestEngineUnit:
             )
             assert len(results) == 1
             assert results[0]["forecast_value"] == 100.0
-            assert mock_conn.execute.called
+            call_args = mock_conn.execute.call_args
+            assert "SELECT * FROM google_ml.forecast" in str(call_args[0][0])
+            assert "source_query => :source_query" in str(call_args[0][0])
+            assert "conf_level => :conf_level" in str(call_args[0][0])
+            assert call_args[0][1] == {
+                "model_id": "model_1",
+                "source_table": "sales",
+                "timestamp_col": "date",
+                "data_col": "revenue",
+                "horizon": 3,
+                "source_query": "SELECT * FROM sales WHERE active = true",
+                "conf_level": 0.9,
+            }
+
+    @pytest.mark.asyncio
+    async def test_aforecast_validation_errors(self, engine):
+        """Test validation errors for invalid input parameters in _aforecast."""
+        with pytest.raises(ValueError, match="model_id must be provided"):
+            await engine._aforecast(
+                model_id="",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="source_table must be provided"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="timestamp_col must be provided"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="data_col must be provided"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="horizon must be a positive integer"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=0,
+            )
+        with pytest.raises(ValueError, match="conf_level must be between 0 and 1"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+                conf_level=1.5,
+            )

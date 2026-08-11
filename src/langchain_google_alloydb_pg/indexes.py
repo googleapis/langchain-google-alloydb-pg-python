@@ -63,6 +63,15 @@ class IVFQueryOptions(QueryOptions):
 
 @dataclass
 class ScaNNIndex(BaseIndex):
+    """ScaNN index configuration for AlloyDB.
+
+    Args:
+        mode (Optional[str]): Index mode (e.g. 'AUTO' for auto-tuned indexing). Defaults to None.
+        num_leaves (Optional[int]): Number of leaves in index clusters. Defaults to 5.
+        quantizer (str): Quantizer type. Defaults to 'sq8'.
+        extension_name (str): Extension name. Defaults to 'alloydb_scann'.
+    """
+
     index_type: str = "ScaNN"
     mode: Optional[str] = None
     num_leaves: Optional[int] = 5
@@ -73,8 +82,12 @@ class ScaNNIndex(BaseIndex):
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
-        if self.mode and self.mode.upper() == "AUTO":
-            return f"(mode = 'AUTO')"
+        if self.mode is not None:
+            if self.mode.upper() != "AUTO":
+                raise ValueError(
+                    f"Invalid mode '{self.mode}'. Only mode='AUTO' is currently supported."
+                )
+            return "(mode = 'AUTO')"
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
 
     def get_index_function(self) -> str:
@@ -88,7 +101,16 @@ class ScaNNIndex(BaseIndex):
 
 @dataclass
 class ScaNNQueryOptions(QueryOptions):
-    num_leaves_to_search: Optional[int] = None
+    """Query options for ScaNN index.
+
+    Args:
+        num_leaves_to_search (Optional[int]): Absolute number of leaves to search. Defaults to 1.
+        pre_reordering_num_neighbors (int): Number of neighbors to consider before reordering. Defaults to -1.
+        pct_leaves_to_search (Optional[float]): Percentage of leaves to search (0.0 to 1.0 or proportion).
+            When specified, this takes precedence over `num_leaves_to_search`.
+    """
+
+    num_leaves_to_search: Optional[int] = 1
     pre_reordering_num_neighbors: int = -1
     pct_leaves_to_search: Optional[float] = None
 
@@ -96,11 +118,15 @@ class ScaNNQueryOptions(QueryOptions):
         """Convert index attributes to list of configurations."""
         params = []
         if self.pct_leaves_to_search is not None:
+            if self.num_leaves_to_search is not None and self.num_leaves_to_search != 1:
+                warnings.warn(
+                    "Both 'pct_leaves_to_search' and 'num_leaves_to_search' were provided. "
+                    "'pct_leaves_to_search' takes precedence.",
+                    UserWarning,
+                )
             params.append(f"scann.pct_leaves_to_search = {self.pct_leaves_to_search}")
-        if self.num_leaves_to_search is not None:
+        elif self.num_leaves_to_search is not None:
             params.append(f"scann.num_leaves_to_search = {self.num_leaves_to_search}")
-        if not params:
-            params.append("scann.pct_leaves_to_search = 1")
         params.append(
             f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
         )

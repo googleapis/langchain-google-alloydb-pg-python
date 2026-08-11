@@ -631,31 +631,44 @@ class AlloyDBEngine(PGEngine):
         source_query: Optional[str] = None,
         conf_level: Optional[float] = None,
     ) -> list[dict]:
-        query = """
-        SELECT * FROM google_ml.forecast(
-            model_id => :model_id,
-            source_table => :source_table,
-            source_query => :source_query,
-            data_col => :data_col,
-            timestamp_col => :timestamp_col,
-            horizon => :horizon,
-            conf_level => :conf_level
-        )
-        """
-        params = {
+        if not model_id:
+            raise ValueError("model_id must be provided.")
+        if not source_table:
+            raise ValueError("source_table must be provided.")
+        if not timestamp_col:
+            raise ValueError("timestamp_col must be provided.")
+        if not data_col:
+            raise ValueError("data_col must be provided.")
+        if horizon <= 0:
+            raise ValueError("horizon must be a positive integer.")
+        if conf_level is not None and not (0 < conf_level < 1):
+            raise ValueError("conf_level must be between 0 and 1.")
+
+        args = [
+            "model_id => :model_id",
+            "source_table => :source_table",
+            "timestamp_col => :timestamp_col",
+            "data_col => :data_col",
+            "horizon => :horizon",
+        ]
+        params: dict[str, Any] = {
             "model_id": model_id,
             "source_table": source_table,
-            "source_query": source_query,
-            "data_col": data_col,
             "timestamp_col": timestamp_col,
+            "data_col": data_col,
             "horizon": horizon,
-            "conf_level": conf_level,
         }
+        if source_query is not None:
+            args.append("source_query => :source_query")
+            params["source_query"] = source_query
+        if conf_level is not None:
+            args.append("conf_level => :conf_level")
+            params["conf_level"] = conf_level
+
+        query = f"SELECT * FROM google_ml.forecast({', '.join(args)})"
         async with self._pool.connect() as conn:
             result = await conn.execute(text(query), params)
-            result_map = result.mappings()
-            results = result_map.fetchall()
-            return [dict(row) for row in results]
+            return [dict(row) for row in result.mappings()]
 
     async def aforecast(
         self,

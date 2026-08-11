@@ -172,6 +172,7 @@ class AlloyDBVectorStore(PGVectorStore):
         model_id: str,
         content_column: Optional[str] = None,
         embedding_column: Optional[str] = None,
+        schema_name: Optional[str] = None,
     ) -> None:
         """Generate and manage auto vector embeddings for large tables.
 
@@ -179,10 +180,11 @@ class AlloyDBVectorStore(PGVectorStore):
             model_id (str): The model id used for generating embeddings.
             content_column (Optional[str]): Name of the content column.
             embedding_column (Optional[str]): Name of the embedding column.
+            schema_name (Optional[str]): Name of the database schema.
         """
         await self._engine._run_as_async(
             self._PGVectorStore__vs.ainitialize_auto_vector_embeddings(  # type: ignore
-                model_id, content_column, embedding_column
+                model_id, content_column, embedding_column, schema_name
             )
         )
 
@@ -191,6 +193,7 @@ class AlloyDBVectorStore(PGVectorStore):
         model_id: str,
         content_column: Optional[str] = None,
         embedding_column: Optional[str] = None,
+        schema_name: Optional[str] = None,
     ) -> None:
         """Generate and manage auto vector embeddings for large tables.
 
@@ -198,10 +201,11 @@ class AlloyDBVectorStore(PGVectorStore):
             model_id (str): The model id used for generating embeddings.
             content_column (Optional[str]): Name of the content column.
             embedding_column (Optional[str]): Name of the embedding column.
+            schema_name (Optional[str]): Name of the database schema.
         """
         self._engine._run_as_sync(
             self._PGVectorStore__vs.ainitialize_auto_vector_embeddings(  # type: ignore
-                model_id, content_column, embedding_column
+                model_id, content_column, embedding_column, schema_name
             )
         )
 
