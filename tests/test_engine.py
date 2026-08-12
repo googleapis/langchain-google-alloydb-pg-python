@@ -715,8 +715,8 @@ class TestEngineUnit:
             timestamp_col="ts",
             horizon=5,
         )
-        assert len(results) == 1
-        assert results[0]["prediction"] == 1.0
+        assert results == [{"prediction": 1.0}]
+        engine._run_as_sync.assert_called_once()
 
     def test_forecast_with_optional_params(self, engine):
         """Test forecast with source_query and conf_level."""
@@ -730,8 +730,7 @@ class TestEngineUnit:
             horizon=10,
             conf_level=0.95,
         )
-        assert len(results) == 1
-        assert results[0]["prediction"] == 42.0
+        assert results == [{"prediction": 42.0}]
         engine._run_as_sync.assert_called_once()
 
     @pytest.mark.asyncio
