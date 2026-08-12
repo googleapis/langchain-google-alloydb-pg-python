@@ -134,8 +134,12 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             embedding=embedding, k=k, filter=filter, **kwargs
         )
 
-    async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
+    async def aset_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
+        if not num_leaves:
+            return
         # Required index memory in MB
         buffer = 1
         index_memory_required = (
@@ -145,6 +149,8 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         async with self.engine.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
+
+    set_maintenance_work_mem = aset_maintenance_work_mem
 
     def add_images(
         self,

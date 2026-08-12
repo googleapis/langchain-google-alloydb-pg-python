@@ -51,7 +51,7 @@ test = [
     "pytest==9.0.3",
     "pytest-cov==7.1.0",
     "pytest-depends==1.0.1",
-    "Pillow==12.2.0",
+    "Pillow==12.3.0",
     "langchain-tests==1.1.9"
 ]
 
