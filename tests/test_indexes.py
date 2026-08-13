@@ -122,6 +122,14 @@ class TestAlloyDBIndex:
         with pytest.raises(ValueError, match="Invalid mode 'INVALID'"):
             index.index_options()
 
+    def test_scann_index_functions(self):
+        idx_l2 = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        assert idx_l2.get_index_function() == "l2"
+        idx_cos = ScaNNIndex(distance_strategy=DistanceStrategy.COSINE_DISTANCE)
+        assert idx_cos.get_index_function() == "cosine"
+        idx_dot = ScaNNIndex(distance_strategy=DistanceStrategy.INNER_PRODUCT)
+        assert idx_dot.get_index_function() == "dot_prod"
+
     def test_scann_query_options_default(self):
         options = ScaNNQueryOptions()
         assert options.to_parameter() == [
