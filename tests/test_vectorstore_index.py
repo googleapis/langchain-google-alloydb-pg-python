@@ -45,7 +45,7 @@ VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
-texts = ["foo", "bar", "baz"]
+texts = [f"document {i}" for i in range(10)]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
 metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
@@ -260,6 +260,7 @@ class TestAsyncIndex:
             embedding_service=embeddings_service,
             table_name=DEFAULT_TABLE_OMNI,
         )
+        await vs.aadd_texts(texts, ids=ids)
         yield vs
 
     async def test_aapply_vector_index(self, vs):
