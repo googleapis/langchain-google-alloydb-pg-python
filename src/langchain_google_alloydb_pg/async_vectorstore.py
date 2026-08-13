@@ -235,19 +235,31 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             "embedding_column": self.embedding_column,
         }
         async with self.engine.connect() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector_assist"))
             result = await conn.execute(text(query), params)
-            return [dict(row) for row in result.mappings()]
+            rows = [dict(row) for row in result.mappings()]
+            await conn.commit()
+            return rows
 
-    async def aapply_vector_assist_spec(self) -> list[dict]:
+    async def aapply_vector_assist_spec(
+        self, spec_id: Optional[str] = None
+    ) -> list[dict]:
         """Asynchronously apply the Vector Assist spec for the current table."""
-        query = "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
-        params = {
-            "table_name": self.table_name,
-            "embedding_column": self.embedding_column,
-        }
+        if spec_id:
+            query = "SELECT * FROM vector_assist.apply_spec(spec_id => :spec_id)"
+            params = {"spec_id": spec_id}
+        else:
+            query = "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
+            params = {
+                "table_name": self.table_name,
+                "embedding_column": self.embedding_column,
+            }
         async with self.engine.connect() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector_assist"))
             result = await conn.execute(text(query), params)
-            return [dict(row) for row in result.mappings()]
+            rows = [dict(row) for row in result.mappings()]
+            await conn.commit()
+            return rows
 
     async def aget_vector_assist_recommendations(self) -> list[dict]:
         """Asynchronously get Vector Assist recommendations for the current table."""
@@ -267,9 +279,9 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             )
             return []
 
-        query = "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
+        query = "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
         async with self.engine.connect() as conn:
-            result = await conn.execute(text(query), {"spec_id": spec_id})
+            result = await conn.execute(text(query), {"spec_id": str(spec_id)})
             return [dict(row) for row in result.mappings()]
 
     def add_images(

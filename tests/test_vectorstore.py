@@ -126,13 +126,20 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = await AlloyDBEngine.afrom_instance(
-            project_id=db_project,
-            cluster=db_cluster,
-            instance=db_instance,
-            region=db_region,
-            database=db_name,
-        )
+        host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        user = os.environ.get("OMNI_USER") or os.environ.get("DB_USER", "postgres")
+        password = os.environ.get("OMNI_PASSWORD") or os.environ.get("DB_PASSWORD")
+        if host and password:
+            connstring = f"postgresql+asyncpg://{user}:{password}@{host}:5432/{db_name}"
+            engine = AlloyDBEngine.from_connection_string(connstring)
+        else:
+            engine = await AlloyDBEngine.afrom_instance(
+                project_id=db_project,
+                cluster=db_cluster,
+                instance=db_instance,
+                region=db_region,
+                database=db_name,
+            )
 
         yield engine
         await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
@@ -777,14 +784,55 @@ class TestVectorStore:
         assert len(results) > 0
         assert "Auto columnarization" in results[0].page_content
 
-    def test_live_vector_assist(self, vs):
+    def test_live_vector_assist(self, engine):
         """Test vector assist spec definition, application, and recommendations against live AlloyDB instance."""
+        table_name = "va_live_sync_table_" + str(uuid.uuid4()).replace("-", "_")
+        engine._run_as_sync(
+            aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
+        )
+        engine._run_as_sync(
+            aexecute(
+                engine,
+                f"""
+                CREATE TABLE "{table_name}" (
+                    langchain_id uuid PRIMARY KEY,
+                    content text,
+                    embedding vector({VECTOR_SIZE}),
+                    meta jsonb
+                );
+                """,
+            )
+        )
+        engine._run_as_sync(
+            aexecute(
+                engine,
+                f"""
+                INSERT INTO "{table_name}" (langchain_id, content, embedding, meta)
+                SELECT 
+                    gen_random_uuid(),
+                    'Content ' || i,
+                    (SELECT array_agg((random() * 2 - 1)::float4)::vector({VECTOR_SIZE}) FROM generate_series(1, {VECTOR_SIZE})),
+                    '{{"page": 1}}'::jsonb
+                FROM generate_series(1, 100) AS i;
+                """,
+            )
+        )
+        vs = AlloyDBVectorStore.create_sync(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+            metadata_json_column="meta",
+        )
         specs = vs.define_vector_assist_spec()
         assert isinstance(specs, list)
+        assert len(specs) > 0
         apply_res = vs.apply_vector_assist_spec()
         assert isinstance(apply_res, list)
         recs = vs.get_vector_assist_recommendations()
         assert isinstance(recs, list)
+        engine._run_as_sync(
+            aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
+        )
 
 
 class TestVectorStoreUnit:

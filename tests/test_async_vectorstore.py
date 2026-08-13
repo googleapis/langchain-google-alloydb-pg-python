@@ -105,13 +105,23 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = await AlloyDBEngine.afrom_instance(
-            project_id=db_project,
-            instance=db_instance,
-            cluster=db_cluster,
-            region=db_region,
-            database=db_name,
-        )
+        host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        user = os.environ.get("OMNI_USER") or os.environ.get("DB_USER", "postgres")
+        password = os.environ.get("OMNI_PASSWORD") or os.environ.get("DB_PASSWORD")
+        if host and password:
+            import sqlalchemy.ext.asyncio
+
+            connstring = f"postgresql+asyncpg://{user}:{password}@{host}:5432/{db_name}"
+            async_engine = sqlalchemy.ext.asyncio.create_async_engine(connstring)
+            engine = AlloyDBEngine.from_engine(async_engine)
+        else:
+            engine = await AlloyDBEngine.afrom_instance(
+                project_id=db_project,
+                instance=db_instance,
+                cluster=db_cluster,
+                region=db_region,
+                database=db_name,
+            )
 
         yield engine
         await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
@@ -505,14 +515,47 @@ class TestVectorStore:
         assert len(results) > 0
         assert "Auto columnarization" in results[0].page_content
 
-    async def test_live_vector_assist(self, vs):
+    async def test_live_vector_assist(self, engine):
         """Test vector assist spec definition, application, and recommendations against live AlloyDB instance."""
+        table_name = "va_live_table_" + str(uuid.uuid4()).replace("-", "_")
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
+        await aexecute(
+            engine,
+            f"""
+            CREATE TABLE "{table_name}" (
+                langchain_id uuid PRIMARY KEY,
+                content text,
+                embedding vector({VECTOR_SIZE}),
+                meta jsonb
+            );
+            """,
+        )
+        await aexecute(
+            engine,
+            f"""
+            INSERT INTO "{table_name}" (langchain_id, content, embedding, meta)
+            SELECT 
+                gen_random_uuid(),
+                'Content ' || i,
+                (SELECT array_agg((random() * 2 - 1)::float4)::vector({VECTOR_SIZE}) FROM generate_series(1, {VECTOR_SIZE})),
+                '{{"page": 1}}'::jsonb
+            FROM generate_series(1, 100) AS i;
+            """,
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+            metadata_json_column="meta",
+        )
         specs = await vs.adefine_vector_assist_spec()
         assert isinstance(specs, list)
+        assert len(specs) > 0
         apply_res = await vs.aapply_vector_assist_spec()
         assert isinstance(apply_res, list)
         recs = await vs.aget_vector_assist_recommendations()
         assert isinstance(recs, list)
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
 
 
 @pytest.mark.asyncio
@@ -636,7 +679,7 @@ class TestAsyncVectorStoreUnit:
                 # 3. Assert recommendations and query call
                 assert res == [{"rec": "ok"}]
                 call_args = mock_conn.execute.call_args
-                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
+                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
                 assert call_args[0][1] == {"spec_id": "spec123"}
 
     async def test_aget_vector_assist_recommendations_spec_id_zero(self, vs):
@@ -660,8 +703,8 @@ class TestAsyncVectorStoreUnit:
                 # 3. Assert integer spec ID 0 is handled correctly
                 assert res == [{"rec": "ok_zero"}]
                 call_args = mock_conn.execute.call_args
-                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
-                assert call_args[0][1] == {"spec_id": 0}
+                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
+                assert call_args[0][1] == {"spec_id": "0"}
 
     async def test_aget_vector_assist_recommendations_empty_specs(self, vs):
         """Test retrieving vector assist recommendations when no specs exist."""
