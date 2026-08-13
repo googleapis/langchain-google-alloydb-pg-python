@@ -492,7 +492,12 @@ class TestVectorStore:
 
     async def test_live_auto_columnarization(self, vs):
         """Test triggering auto columnarization recommendations against live AlloyDB instance."""
-        await vs.aenable_auto_columnarization()
+        try:
+            await vs.aenable_auto_columnarization()
+        except Exception as e:
+            if "google_columnar_engine.enabled" in str(e) or "shared_preload_libraries" in str(e):
+                pytest.skip(f"Columnar engine flag not enabled on instance: {e}")
+            raise
 
         # Assert functional similarity search still works after auto columnarization
         await vs.aadd_texts(["Auto columnarization test document"])
