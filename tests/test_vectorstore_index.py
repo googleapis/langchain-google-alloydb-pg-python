@@ -329,17 +329,31 @@ class TestAsyncIndex:
         await omni_vs.adrop_vector_index("secondindex")
         await omni_vs.adrop_vector_index(DEFAULT_INDEX_NAME_OMNI)
 
-    async def test_aapply_alloydb_scann_index_auto_mode(self, omni_vs):
+    async def test_aapply_alloydb_scann_index_auto_mode(self, omni_engine):
+        table_name = "auto_scann_omni_table_" + str(uuid.uuid4()).replace("-", "_")
+        await omni_engine.ainit_vectorstore_table(table_name, VECTOR_SIZE)
+        await aexecute(
+            omni_engine,
+            f"""
+            INSERT INTO "{table_name}" (langchain_id, content, embedding)
+            SELECT 
+                gen_random_uuid(),
+                'Document ' || i,
+                (SELECT array_agg((random() * 2 - 1)::float4)::vector({VECTOR_SIZE}) FROM generate_series(1, {VECTOR_SIZE}))
+            FROM generate_series(1, 10005) AS i;
+            """,
+        )
+        vs = await AlloyDBVectorStore.create(
+            omni_engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+        )
         index = ScaNNIndex(
             name="auto_scann_index",
             mode="AUTO",
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
-        try:
-            await omni_vs.aapply_vector_index(index)
-            assert await omni_vs.ais_valid_index("auto_scann_index")
-            await omni_vs.adrop_vector_index("auto_scann_index")
-        except Exception as e:
-            if "10000" in str(e) or "FAILED_PRECONDITION" in str(e):
-                pytest.skip(f"ScaNN AUTO mode requires >= 10,000 rows on live instance: {e}")
-            raise
+        await vs.aapply_vector_index(index)
+        assert await vs.ais_valid_index("auto_scann_index")
+        await vs.adrop_vector_index("auto_scann_index")
+        await aexecute(omni_engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')

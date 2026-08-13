@@ -252,17 +252,31 @@ class TestIndex:
         await vs.adrop_vector_index("secondindex")
         await vs.adrop_vector_index("scann_index")
 
-    async def test_aapply_alloydb_scann_index_auto_mode(self, vs):
+    async def test_aapply_alloydb_scann_index_auto_mode(self, engine):
+        table_name = "auto_scann_table_" + UUID_STR
+        await engine._ainit_vectorstore_table(table_name, VECTOR_SIZE)
+        await aexecute(
+            engine,
+            f"""
+            INSERT INTO "{table_name}" (langchain_id, content, embedding)
+            SELECT 
+                gen_random_uuid(),
+                'Document ' || i,
+                (SELECT array_agg((random() * 2 - 1)::float4)::vector({VECTOR_SIZE}) FROM generate_series(1, {VECTOR_SIZE}))
+            FROM generate_series(1, 10005) AS i;
+            """,
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+        )
         index = ScaNNIndex(
             name="auto_scann_index",
             mode="AUTO",
             distance_strategy=DistanceStrategy.COSINE_DISTANCE,
         )
-        try:
-            await vs.aapply_vector_index(index)
-            assert await vs.is_valid_index("auto_scann_index")
-            await vs.adrop_vector_index("auto_scann_index")
-        except Exception as e:
-            if "10000" in str(e) or "FAILED_PRECONDITION" in str(e):
-                pytest.skip(f"ScaNN AUTO mode requires >= 10,000 rows on live instance: {e}")
-            raise
+        await vs.aapply_vector_index(index)
+        assert await vs.is_valid_index("auto_scann_index")
+        await vs.adrop_vector_index("auto_scann_index")
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
