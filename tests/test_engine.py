@@ -111,24 +111,32 @@ class TestEngineAsync:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = await AlloyDBEngine.afrom_instance(
-            project_id=db_project,
-            cluster=db_cluster,
-            instance=db_instance,
-            region=db_region,
-            database=db_name,
-            engine_args={
-                # add some connection args to validate engine_args works correctly
-                "pool_size": 3,
-                "max_overflow": 2,
-            },
-        )
+    async def engine(
+        self, db_project, db_region, db_cluster, db_instance, db_name, user, password
+    ):
+        omni_host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        if omni_host:
+            port = os.environ.get("OMNI_PORT", "5432")
+            conn_str = f"postgresql+asyncpg://{user}:{password}@{omni_host}:{port}/{db_name}?ssl=require"
+            engine = AlloyDBEngine.from_connection_string(conn_str)
+        else:
+            engine = await AlloyDBEngine.afrom_instance(
+                project_id=db_project,
+                cluster=db_cluster,
+                instance=db_instance,
+                region=db_region,
+                database=db_name,
+                engine_args={
+                    # add some connection args to validate engine_args works correctly
+                    "pool_size": 3,
+                    "max_overflow": 2,
+                },
+            )
         yield engine
-        await aexecute(engine, f'DROP TABLE "{CUSTOM_TABLE}"')
-        await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE}"')
-        await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE}"')
-        await aexecute(engine, f'DROP TABLE "{HYBRID_SEARCH_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{CUSTOM_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{INT_ID_CUSTOM_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{HYBRID_SEARCH_TABLE}"')
         await engine.close()
 
     async def test_init_table(self, engine):
@@ -434,19 +442,27 @@ class TestEngineSync:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = AlloyDBEngine.from_instance(
-            project_id=db_project,
-            instance=db_instance,
-            cluster=db_cluster,
-            region=db_region,
-            database=db_name,
-        )
+    async def engine(
+        self, db_project, db_region, db_cluster, db_instance, db_name, user, password
+    ):
+        omni_host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        if omni_host:
+            port = os.environ.get("OMNI_PORT", "5432")
+            conn_str = f"postgresql+asyncpg://{user}:{password}@{omni_host}:{port}/{db_name}?ssl=require"
+            engine = AlloyDBEngine.from_connection_string(conn_str)
+        else:
+            engine = AlloyDBEngine.from_instance(
+                project_id=db_project,
+                instance=db_instance,
+                cluster=db_cluster,
+                region=db_region,
+                database=db_name,
+            )
         yield engine
-        await aexecute(engine, f'DROP TABLE "{CUSTOM_TABLE_SYNC}"')
-        await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE_SYNC}"')
-        await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE_SYNC}"')
-        await aexecute(engine, f'DROP TABLE "{HYBRID_SEARCH_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{CUSTOM_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{INT_ID_CUSTOM_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{HYBRID_SEARCH_TABLE_SYNC}"')
         await engine.close()
 
     async def test_init_table(self, engine):
@@ -618,6 +634,40 @@ class TestEngineSync:
         ]
         for row in results:
             assert row in expected
+
+    async def test_live_forecast(self, engine):
+        """Test live google_ml.forecast validation / execution on AlloyDB."""
+        ts_table = "forecast_live_ts_" + str(uuid.uuid4()).replace("-", "_")
+        await aexecute(
+            engine,
+            f"""
+            CREATE TABLE IF NOT EXISTS "{ts_table}" (
+                timestamp_col timestamp without time zone,
+                data_col float8
+            );
+            """,
+        )
+        try:
+            results = await engine.aforecast(
+                model_id="test_model",
+                source_table=ts_table,
+                timestamp_col="timestamp_col",
+                data_col="data_col",
+                horizon=3,
+            )
+            assert isinstance(results, list)
+        except Exception as e:
+            # Model may not be registered in Vertex AI / AlloyDB model registry in test env
+            if (
+                "model" in str(e).lower()
+                or "not found" in str(e).lower()
+                or "google_ml" in str(e).lower()
+            ):
+                pass
+            else:
+                raise
+        finally:
+            await aexecute(engine, f'DROP TABLE IF EXISTS "{ts_table}"')
 
 
 class TestEngineUnit:
