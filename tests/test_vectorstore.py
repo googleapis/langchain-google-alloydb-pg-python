@@ -774,7 +774,9 @@ class TestVectorStore:
         try:
             vs.enable_auto_columnarization()
         except Exception as e:
-            if "google_columnar_engine.enabled" in str(e) or "shared_preload_libraries" in str(e):
+            if "google_columnar_engine.enabled" in str(
+                e
+            ) or "shared_preload_libraries" in str(e):
                 pytest.skip(f"Columnar engine flag not enabled on instance: {e}")
             raise
 
@@ -863,7 +865,9 @@ class TestVectorStoreUnit:
         # 1. Call sync facade with specific column
         vs.enable_columnar_engine(["content"])
         # 2. Assert delegation to underlying async implementation
-        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(["content"])
+        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(
+            ["content"]
+        )
 
     def test_enable_columnar_engine_without_columns(self, vs):
         """Test enabling columnar engine without columns triggers default on underlying store."""
@@ -878,7 +882,9 @@ class TestVectorStoreUnit:
         # 1. Call async facade with specific column
         await vs.aenable_columnar_engine(["content"])
         # 2. Assert delegation to underlying async implementation
-        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(["content"])
+        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(
+            ["content"]
+        )
 
     @pytest.mark.asyncio
     async def test_aenable_columnar_engine_without_columns(self, vs):
@@ -1023,5 +1029,3 @@ class TestVectorStoreUnit:
         vs._PGVectorStore__vs.ainitialize_auto_vector_embeddings.assert_called_once_with(
             "test-model", "custom_content", "custom_embedding", "myschema"
         )
-
-

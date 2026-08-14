@@ -505,7 +505,9 @@ class TestVectorStore:
         try:
             await vs.aenable_auto_columnarization()
         except Exception as e:
-            if "google_columnar_engine.enabled" in str(e) or "shared_preload_libraries" in str(e):
+            if "google_columnar_engine.enabled" in str(
+                e
+            ) or "shared_preload_libraries" in str(e):
                 pytest.skip(f"Columnar engine flag not enabled on instance: {e}")
             raise
 
@@ -582,7 +584,10 @@ class TestAsyncVectorStoreUnit:
 
             # 3. Assert exact SQL signature and parameters sent to the database
             call_args = mock_conn.execute.call_args
-            assert str(call_args[0][0]) == "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            assert (
+                str(call_args[0][0])
+                == "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            )
             assert call_args[0][1] == {"table_name": "test_table", "columns": "content"}
 
     async def test_aenable_columnar_engine_without_columns(self, vs):
@@ -597,7 +602,9 @@ class TestAsyncVectorStoreUnit:
 
             # 3. Assert default single-argument query is executed
             call_args = mock_conn.execute.call_args
-            assert str(call_args[0][0]) == "SELECT google_columnar_engine_add(:table_name)"
+            assert (
+                str(call_args[0][0]) == "SELECT google_columnar_engine_add(:table_name)"
+            )
             assert call_args[0][1] == {"table_name": "test_table"}
 
     async def test_aenable_auto_columnarization(self, vs):
@@ -612,7 +619,10 @@ class TestAsyncVectorStoreUnit:
 
             # 3. Assert recommendation query executed on engine
             call_args = mock_conn.execute.call_args
-            assert str(call_args[0][0]) == "SELECT google_columnar_engine_recommend('AUTO_COLUMNARIZATION')"
+            assert (
+                str(call_args[0][0])
+                == "SELECT google_columnar_engine_recommend('AUTO_COLUMNARIZATION')"
+            )
 
     async def test_adefine_vector_assist_spec(self, vs):
         """Test definition of vector assist specification."""
@@ -630,7 +640,10 @@ class TestAsyncVectorStoreUnit:
             # 3. Assert returned spec list and query parameters
             assert res == [{"spec": "ok"}]
             call_args = mock_conn.execute.call_args
-            assert str(call_args[0][0]) == "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+            assert (
+                str(call_args[0][0])
+                == "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+            )
             assert call_args[0][1] == {
                 "table_name": "test_table",
                 "embedding_column": "embedding",
@@ -652,7 +665,10 @@ class TestAsyncVectorStoreUnit:
             # 3. Assert results and query parameters
             assert res == [{"apply": "ok"}]
             call_args = mock_conn.execute.call_args
-            assert str(call_args[0][0]) == "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
+            assert (
+                str(call_args[0][0])
+                == "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
+            )
             assert call_args[0][1] == {
                 "table_name": "test_table",
                 "embedding_column": "embedding",
@@ -679,7 +695,10 @@ class TestAsyncVectorStoreUnit:
                 # 3. Assert recommendations and query call
                 assert res == [{"rec": "ok"}]
                 call_args = mock_conn.execute.call_args
-                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
+                assert (
+                    str(call_args[0][0])
+                    == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
+                )
                 assert call_args[0][1] == {"spec_id": "spec123"}
 
     async def test_aget_vector_assist_recommendations_spec_id_zero(self, vs):
@@ -703,7 +722,10 @@ class TestAsyncVectorStoreUnit:
                 # 3. Assert integer spec ID 0 is handled correctly
                 assert res == [{"rec": "ok_zero"}]
                 call_args = mock_conn.execute.call_args
-                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
+                assert (
+                    str(call_args[0][0])
+                    == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
+                )
                 assert call_args[0][1] == {"spec_id": "0"}
 
     async def test_aget_vector_assist_recommendations_empty_specs(self, vs):
@@ -738,7 +760,10 @@ class TestAsyncVectorStoreUnit:
 
             # 3. Assert exact procedure call and parameters
             call_args = mock_conn.execute.call_args
-            assert str(call_args[0][0]) == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            assert (
+                str(call_args[0][0])
+                == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            )
             assert call_args[0][1] == {
                 "model_id": "test-model",
                 "table_name": '"public"."test_table"',
@@ -763,7 +788,10 @@ class TestAsyncVectorStoreUnit:
 
             # 3. Assert custom parameters and quoted schema identifier
             call_args = mock_conn.execute.call_args
-            assert str(call_args[0][0]) == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            assert (
+                str(call_args[0][0])
+                == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            )
             assert call_args[0][1] == {
                 "model_id": "test-model",
                 "table_name": '"myschema"."test_table"',
@@ -782,7 +810,9 @@ class TestAsyncVectorStoreUnit:
         ):
             await vs.ainitialize_auto_vector_embeddings(model_id="test-model")
 
-    async def test_ainitialize_auto_vector_embeddings_missing_embedding_column(self, vs):
+    async def test_ainitialize_auto_vector_embeddings_missing_embedding_column(
+        self, vs
+    ):
         """Test error raised when required embedding_column name is missing."""
         # 1. Clear embedding_column on vector store
         vs.embedding_column = None
@@ -792,5 +822,3 @@ class TestAsyncVectorStoreUnit:
             ValueError, match="embedding_column must be provided or configured"
         ):
             await vs.ainitialize_auto_vector_embeddings(model_id="test-model")
-
-
