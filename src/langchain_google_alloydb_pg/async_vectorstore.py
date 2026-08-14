@@ -164,6 +164,7 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             DEFAULT_INDEX_NAME_SUFFIX,
             ExactNearestNeighbor,
         )
+
         from .indexes import ScaNNIndex
 
         if isinstance(index, ExactNearestNeighbor):
@@ -187,18 +188,12 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} "{name}" ON "{self.schema_name}"."{self.table_name}" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};'
 
         mem_query = None
-        if isinstance(index, ScaNNIndex) and getattr(index, "num_leaves", None):
+        if isinstance(index, ScaNNIndex) and index.num_leaves is not None:
+            num_leaves: int = index.num_leaves
+            vector_size: int = getattr(self, "vector_size", 768) or 768
             mem_mb = max(
                 10,
-                round(
-                    50
-                    * index.num_leaves
-                    * getattr(self, "vector_size", 768)
-                    * 4
-                    / 1024
-                    / 1024
-                )
-                + 1,
+                round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
             )
             mem_query = f"SET maintenance_work_mem TO '{mem_mb} MB';"
 

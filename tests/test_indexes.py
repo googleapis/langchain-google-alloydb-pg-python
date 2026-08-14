@@ -179,8 +179,9 @@ class TestAlloyDBIndex:
             warnings.simplefilter("always")
             params = options.to_parameter()
             assert len(w) == 1
-            assert "Both 'pct_leaves_to_search' and 'num_leaves_to_search' were provided" in str(
-                w[-1].message
+            assert (
+                "Both 'pct_leaves_to_search' and 'num_leaves_to_search' were provided"
+                in str(w[-1].message)
             )
             assert params == [
                 "scann.pct_leaves_to_search = 0.5",
