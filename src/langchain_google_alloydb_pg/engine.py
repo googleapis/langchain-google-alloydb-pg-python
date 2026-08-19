@@ -631,18 +631,57 @@ class AlloyDBEngine(PGEngine):
         source_query: Optional[str] = None,
         conf_level: Optional[float] = None,
     ) -> list[dict]:
-        if not model_id:
-            raise ValueError("model_id must be provided.")
-        if not source_table:
-            raise ValueError("source_table must be provided.")
-        if not timestamp_col:
-            raise ValueError("timestamp_col must be provided.")
-        if not data_col:
-            raise ValueError("data_col must be provided.")
-        if horizon <= 0:
-            raise ValueError("horizon must be a positive integer.")
-        if conf_level is not None and not (0 < conf_level < 1):
-            raise ValueError("conf_level must be between 0 and 1.")
+        if not model_id or not isinstance(model_id, str) or not model_id.strip():
+            raise ValueError("model_id must be a non-empty string.")
+        if (
+            not source_table
+            or not isinstance(source_table, str)
+            or not source_table.strip()
+        ):
+            raise ValueError("source_table must be a non-empty string.")
+        if (
+            not timestamp_col
+            or not isinstance(timestamp_col, str)
+            or not timestamp_col.strip()
+        ):
+            raise ValueError("timestamp_col must be a non-empty string.")
+        if not data_col or not isinstance(data_col, str) or not data_col.strip():
+            raise ValueError("data_col must be a non-empty string.")
+
+        # Validate horizon
+        import math
+        import operator
+
+        try:
+            if isinstance(horizon, bool):
+                raise TypeError
+            horizon_val = operator.index(horizon)
+            if horizon_val <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise ValueError("horizon must be a positive integer.") from None
+
+        if horizon_val > 2_147_483_647:
+            raise ValueError(
+                "horizon exceeds maximum 32-bit integer limit (2,147,483,647)."
+            )
+
+        # Validate conf_level
+        if conf_level is not None:
+            if not isinstance(conf_level, (int, float)) or isinstance(conf_level, bool):
+                raise TypeError("conf_level must be a float between 0 and 1.")
+            if (
+                not (0 < conf_level < 1)
+                or math.isnan(conf_level)
+                or math.isinf(conf_level)
+            ):
+                raise ValueError("conf_level must be a float strictly between 0 and 1.")
+
+        # Clean source_query
+        if source_query is not None:
+            if not isinstance(source_query, str):
+                raise TypeError("source_query must be a string.")
+            source_query = source_query.strip() or None
 
         args = [
             "model_id => :model_id",
@@ -652,11 +691,11 @@ class AlloyDBEngine(PGEngine):
             "horizon => :horizon",
         ]
         params: dict[str, Any] = {
-            "model_id": model_id,
-            "source_table": source_table,
-            "timestamp_col": timestamp_col,
-            "data_col": data_col,
-            "horizon": horizon,
+            "model_id": model_id.strip(),
+            "source_table": source_table.strip(),
+            "timestamp_col": timestamp_col.strip(),
+            "data_col": data_col.strip(),
+            "horizon": horizon_val,
         }
         if source_query is not None:
             args.append("source_query => :source_query")
@@ -666,9 +705,21 @@ class AlloyDBEngine(PGEngine):
             params["conf_level"] = conf_level
 
         query = f"SELECT * FROM google_ml.forecast({', '.join(args)})"
-        async with self._pool.connect() as conn:
-            result = await conn.execute(text(query), params)
-            return [dict(row) for row in result.mappings()]
+        try:
+            async with self._pool.connect() as conn:
+                result = await conn.execute(text(query), params)
+                return [dict(row) for row in result.mappings()]
+        except Exception as e:
+            if (
+                "google_ml" in str(e)
+                or "UndefinedFunctionError" in type(e).__name__
+                or "UndefinedSchemaError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB AI google_ml extension is not installed or enabled. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS google_ml CASCADE;' on your database."
+                ) from e
+            raise
 
     async def aforecast(
         self,

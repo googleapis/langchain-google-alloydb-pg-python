@@ -823,7 +823,7 @@ class TestEngineUnit:
     @pytest.mark.asyncio
     async def test_aforecast_validation_errors(self, engine):
         """Test validation errors for invalid input parameters in _aforecast."""
-        with pytest.raises(ValueError, match="model_id must be provided"):
+        with pytest.raises(ValueError, match="model_id must be a non-empty string"):
             await engine._aforecast(
                 model_id="",
                 source_table="sales",
@@ -831,7 +831,7 @@ class TestEngineUnit:
                 data_col="revenue",
                 horizon=3,
             )
-        with pytest.raises(ValueError, match="source_table must be provided"):
+        with pytest.raises(ValueError, match="source_table must be a non-empty string"):
             await engine._aforecast(
                 model_id="model_1",
                 source_table="",
@@ -839,7 +839,9 @@ class TestEngineUnit:
                 data_col="revenue",
                 horizon=3,
             )
-        with pytest.raises(ValueError, match="timestamp_col must be provided"):
+        with pytest.raises(
+            ValueError, match="timestamp_col must be a non-empty string"
+        ):
             await engine._aforecast(
                 model_id="model_1",
                 source_table="sales",
@@ -847,7 +849,7 @@ class TestEngineUnit:
                 data_col="revenue",
                 horizon=3,
             )
-        with pytest.raises(ValueError, match="data_col must be provided"):
+        with pytest.raises(ValueError, match="data_col must be a non-empty string"):
             await engine._aforecast(
                 model_id="model_1",
                 source_table="sales",
@@ -863,7 +865,9 @@ class TestEngineUnit:
                 data_col="revenue",
                 horizon=0,
             )
-        with pytest.raises(ValueError, match="conf_level must be between 0 and 1"):
+        with pytest.raises(
+            ValueError, match="conf_level must be a float strictly between 0 and 1"
+        ):
             await engine._aforecast(
                 model_id="model_1",
                 source_table="sales",
