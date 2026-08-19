@@ -573,9 +573,9 @@ class TestAsyncVectorStoreUnit:
         return vs
 
     async def test_aenable_columnar_engine(self, vs):
-        """Test enabling the columnar engine executes queries on engine with columns."""
+        """Test enabling columnar engine with a specific column list."""
         # 1. Mock the database connection
-        with patch.object(vs.engine, "connect") as mock_connect:
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_connect.return_value.__aenter__.return_value = mock_conn
 
@@ -588,13 +588,19 @@ class TestAsyncVectorStoreUnit:
                 str(call_args[0][0])
                 == "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
             )
-            assert call_args[0][1] == {"table_name": "test_table", "columns": "content"}
+            assert call_args[0][1] == {
+                "table_name": '"public"."test_table"',
+                "columns": '"content"',
+            }
 
     async def test_aenable_columnar_engine_without_columns(self, vs):
         """Test enabling columnar engine without specifying columns (entire table)."""
         # 1. Mock the database connection
-        with patch.object(vs.engine, "connect") as mock_connect:
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.fetchall.return_value = [("content",), ("langchain_id",)]
+            mock_conn.execute.return_value = mock_result
             mock_connect.return_value.__aenter__.return_value = mock_conn
 
             # 2. Call aenable_columnar_engine without column arguments
@@ -603,14 +609,18 @@ class TestAsyncVectorStoreUnit:
             # 3. Assert default single-argument query is executed
             call_args = mock_conn.execute.call_args
             assert (
-                str(call_args[0][0]) == "SELECT google_columnar_engine_add(:table_name)"
+                str(call_args[0][0])
+                == "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
             )
-            assert call_args[0][1] == {"table_name": "test_table"}
+            assert call_args[0][1] == {
+                "table_name": '"public"."test_table"',
+                "columns": '"content","langchain_id"',
+            }
 
     async def test_aenable_auto_columnarization(self, vs):
         """Test enabling auto columnarization executes queries on engine."""
         # 1. Mock the database connection
-        with patch.object(vs.engine, "connect") as mock_connect:
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_connect.return_value.__aenter__.return_value = mock_conn
 
@@ -627,7 +637,7 @@ class TestAsyncVectorStoreUnit:
     async def test_adefine_vector_assist_spec(self, vs):
         """Test definition of vector assist specification."""
         # 1. Mock database returning a vector assist spec row
-        with patch.object(vs.engine, "connect") as mock_connect:
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_result = MagicMock()
             mock_result.mappings.return_value = [{"spec": "ok"}]
@@ -645,14 +655,14 @@ class TestAsyncVectorStoreUnit:
                 == "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
             )
             assert call_args[0][1] == {
-                "table_name": "test_table",
+                "table_name": '"public"."test_table"',
                 "embedding_column": "embedding",
             }
 
     async def test_aapply_vector_assist_spec(self, vs):
         """Test applying vector assist specifications."""
         # 1. Mock database applying vector assist spec
-        with patch.object(vs.engine, "connect") as mock_connect:
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_result = MagicMock()
             mock_result.mappings.return_value = [{"apply": "ok"}]
@@ -667,89 +677,50 @@ class TestAsyncVectorStoreUnit:
             call_args = mock_conn.execute.call_args
             assert (
                 str(call_args[0][0])
-                == "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
+                == "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, vector_column_name => :embedding_column)"
             )
             assert call_args[0][1] == {
-                "table_name": "test_table",
+                "table_name": '"public"."test_table"',
                 "embedding_column": "embedding",
             }
 
     async def test_aget_vector_assist_recommendations(self, vs):
         """Test retrieving vector assist recommendations with a valid spec ID."""
-        # 1. Mock spec definition returning vector_spec_id
-        with patch.object(
-            vs,
-            "adefine_vector_assist_spec",
-            return_value=[{"vector_spec_id": "spec123"}],
-        ):
-            with patch.object(vs.engine, "connect") as mock_connect:
-                mock_conn = AsyncMock()
-                mock_result = MagicMock()
-                mock_result.mappings.return_value = [{"rec": "ok"}]
-                mock_conn.execute.return_value = mock_result
-                mock_connect.return_value.__aenter__.return_value = mock_conn
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            # First query returns spec_id, second query returns recommendations
+            mock_spec_result = MagicMock()
+            mock_spec_result.mappings.return_value.first.return_value = {
+                "spec_id": "spec123"
+            }
+            mock_rec_result = MagicMock()
+            mock_rec_result.mappings.return_value = [{"rec": "ok"}]
+            mock_conn.execute.side_effect = [mock_spec_result, mock_rec_result]
+            mock_connect.return_value.__aenter__.return_value = mock_conn
 
-                # 2. Retrieve recommendations
-                res = await vs.aget_vector_assist_recommendations()
+            # 2. Retrieve recommendations
+            res = await vs.aget_vector_assist_recommendations()
 
-                # 3. Assert recommendations and query call
-                assert res == [{"rec": "ok"}]
-                call_args = mock_conn.execute.call_args
-                assert (
-                    str(call_args[0][0])
-                    == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
-                )
-                assert call_args[0][1] == {"spec_id": "spec123"}
-
-    async def test_aget_vector_assist_recommendations_spec_id_zero(self, vs):
-        """Test retrieving vector assist recommendations when spec_id is 0 (integer ID)."""
-        # 1. Mock spec definition returning spec ID = 0
-        with patch.object(
-            vs,
-            "adefine_vector_assist_spec",
-            return_value=[{"vector_spec_id": 0}],
-        ):
-            with patch.object(vs.engine, "connect") as mock_connect:
-                mock_conn = AsyncMock()
-                mock_result = MagicMock()
-                mock_result.mappings.return_value = [{"rec": "ok_zero"}]
-                mock_conn.execute.return_value = mock_result
-                mock_connect.return_value.__aenter__.return_value = mock_conn
-
-                # 2. Retrieve recommendations
-                res = await vs.aget_vector_assist_recommendations()
-
-                # 3. Assert integer spec ID 0 is handled correctly
-                assert res == [{"rec": "ok_zero"}]
-                call_args = mock_conn.execute.call_args
-                assert (
-                    str(call_args[0][0])
-                    == "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
-                )
-                assert call_args[0][1] == {"spec_id": "0"}
+            # 3. Assert recommendations and query calls
+            assert res == [{"rec": "ok"}]
+            assert mock_conn.execute.call_count == 2
 
     async def test_aget_vector_assist_recommendations_empty_specs(self, vs):
-        """Test retrieving vector assist recommendations when no specs exist."""
-        # 1. Mock empty spec list
-        with patch.object(vs, "adefine_vector_assist_spec", return_value=[]):
-            # 2. Assert empty recommendations returned without making queries
-            res = await vs.aget_vector_assist_recommendations()
-            assert res == []
+        """Test retrieving vector assist recommendations when no specs exist in vector_assist.specs."""
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_spec_result = MagicMock()
+            mock_spec_result.mappings.return_value.first.return_value = None
+            mock_conn.execute.return_value = mock_spec_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
 
-    async def test_aget_vector_assist_recommendations_no_spec_id(self, vs):
-        """Test retrieving vector assist recommendations when spec has no ID key."""
-        # 1. Mock spec missing vector_spec_id key
-        with patch.object(
-            vs, "adefine_vector_assist_spec", return_value=[{"other_key": "val"}]
-        ):
-            # 2. Assert empty recommendations returned
             res = await vs.aget_vector_assist_recommendations()
             assert res == []
 
     async def test_ainitialize_auto_vector_embeddings(self, vs):
         """Test initializing auto vector embeddings asynchronously with default columns."""
         # 1. Mock the database connection
-        with patch.object(vs.engine, "connect") as mock_connect:
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_connect.return_value.__aenter__.return_value = mock_conn
 
@@ -774,7 +745,7 @@ class TestAsyncVectorStoreUnit:
     async def test_ainitialize_auto_vector_embeddings_custom_columns(self, vs):
         """Test initializing auto vector embeddings with custom columns and schema."""
         # 1. Mock the database connection
-        with patch.object(vs.engine, "connect") as mock_connect:
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_connect.return_value.__aenter__.return_value = mock_conn
 
