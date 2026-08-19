@@ -33,6 +33,11 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @property
+    def _pool_engine(self) -> Any:
+        """Helper to access the underlying pool from AlloyDBEngine or PGEngine."""
+        return getattr(self.engine, "_pool", self.engine)
+
     def _encode_image(self, uri: str) -> str:
         """Get base64 string from a image URI."""
         gcs_uri = re.match("gs://(.*?)/(.*)", uri)
@@ -172,7 +177,7 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             return
 
         if index.extension_name:
-            async with self.engine.connect() as conn:
+            async with self._pool_engine.connect() as conn:
                 await conn.execute(
                     text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
                 )
@@ -190,7 +195,16 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         mem_query = None
         if isinstance(index, ScaNNIndex) and index.num_leaves is not None:
             num_leaves: int = index.num_leaves
-            vector_size: int = getattr(self, "vector_size", 768) or 768
+            # Fetch vector_size from embedding_service if available, otherwise default to 768
+            vector_size: int = 768
+            if hasattr(self, "embedding_service") and hasattr(
+                self.embedding_service, "embedding_size"
+            ):
+                vector_size = (
+                    getattr(self.embedding_service, "embedding_size", 768) or 768
+                )
+            elif hasattr(self, "vector_size"):
+                vector_size = getattr(self, "vector_size", 768) or 768
             mem_mb = max(
                 10,
                 round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
@@ -198,19 +212,27 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             mem_query = f"SET maintenance_work_mem TO '{mem_mb} MB';"
 
         if concurrently:
-            async with self.engine.connect() as conn:
+            async with self._pool_engine.connect() as conn:
                 autocommit_conn = await conn.execution_options(
                     isolation_level="AUTOCOMMIT"
                 )
                 if mem_query:
                     await autocommit_conn.execute(text(mem_query))
-                await autocommit_conn.execute(text(stmt))
+                try:
+                    await autocommit_conn.execute(text(stmt))
+                finally:
+                    if mem_query:
+                        await autocommit_conn.execute(
+                            text("RESET maintenance_work_mem;")
+                        )
         else:
-            async with self.engine.connect() as conn:
+            async with self._pool_engine.begin() as conn:
                 if mem_query:
-                    await conn.execute(text(mem_query))
+                    # SET LOCAL is automatically scoped to the transaction block
+                    await conn.execute(
+                        text(f"SET LOCAL maintenance_work_mem TO '{mem_mb} MB';")
+                    )
                 await conn.execute(text(stmt))
-                await conn.commit()
 
     def add_images(
         self,

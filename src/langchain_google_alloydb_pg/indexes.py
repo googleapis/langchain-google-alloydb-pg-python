@@ -68,7 +68,6 @@ class ScaNNIndex(BaseIndex):
     Args:
         mode (Optional[str]): Index mode (e.g. 'AUTO' for auto-tuned indexing). Defaults to None.
         num_leaves (Optional[int]): Number of leaves in index clusters. Defaults to 5.
-        quantizer (str): Quantizer type. Defaults to 'sq8'.
         extension_name (str): Extension name. Defaults to 'alloydb_scann'.
     """
 
@@ -80,13 +79,20 @@ class ScaNNIndex(BaseIndex):
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
     extension_name: str = "alloydb_scann"
 
-    def index_options(self) -> str:
-        """Set index query options for vector store initialization."""
+    def __post_init__(self) -> None:
         if self.mode is not None:
-            if self.mode.upper() != "AUTO":
+            if self.mode.upper() == "AUTO":
+                self.num_leaves = None
+            else:
                 raise ValueError(
                     f"Invalid mode '{self.mode}'. Only mode='AUTO' is currently supported."
                 )
+        elif self.num_leaves is not None and self.num_leaves <= 0:
+            raise ValueError("num_leaves must be a positive integer.")
+
+    def index_options(self) -> str:
+        """Set index query options for vector store initialization."""
+        if self.mode is not None:
             return "(mode = 'AUTO')"
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
 
@@ -113,6 +119,26 @@ class ScaNNQueryOptions(QueryOptions):
     num_leaves_to_search: Optional[int] = 1
     pre_reordering_num_neighbors: int = -1
     pct_leaves_to_search: Optional[float] = None
+
+    def __post_init__(self) -> None:
+        if self.pct_leaves_to_search is not None:
+            if not isinstance(self.pct_leaves_to_search, (int, float)) or isinstance(
+                self.pct_leaves_to_search, bool
+            ):
+                raise TypeError(
+                    "pct_leaves_to_search must be a float between 0.0 and 1.0."
+                )
+            if not (0.0 < self.pct_leaves_to_search <= 1.0):
+                raise ValueError(
+                    "pct_leaves_to_search must be strictly greater than 0.0 and less than or equal to 1.0."
+                )
+        if self.num_leaves_to_search is not None:
+            if not isinstance(self.num_leaves_to_search, int) or isinstance(
+                self.num_leaves_to_search, bool
+            ):
+                raise TypeError("num_leaves_to_search must be an integer.")
+            if self.num_leaves_to_search <= 0:
+                raise ValueError("num_leaves_to_search must be a positive integer.")
 
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
