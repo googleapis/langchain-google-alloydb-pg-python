@@ -87,8 +87,13 @@ class ScaNNIndex(BaseIndex):
                 raise ValueError(
                     f"Invalid mode '{self.mode}'. Only mode='AUTO' is currently supported."
                 )
-        elif self.num_leaves is not None and self.num_leaves <= 0:
-            raise ValueError("num_leaves must be a positive integer.")
+        elif self.num_leaves is not None:
+            if (
+                isinstance(self.num_leaves, bool)
+                or not isinstance(self.num_leaves, int)
+                or self.num_leaves <= 0
+            ):
+                raise ValueError("num_leaves must be a positive integer.")
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
@@ -139,6 +144,10 @@ class ScaNNQueryOptions(QueryOptions):
                 raise TypeError("num_leaves_to_search must be an integer.")
             if self.num_leaves_to_search <= 0:
                 raise ValueError("num_leaves_to_search must be a positive integer.")
+            if self.num_leaves_to_search > 2_147_483_647:
+                raise ValueError(
+                    "num_leaves_to_search exceeds maximum 32-bit integer limit (2,147,483,647)."
+                )
 
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
