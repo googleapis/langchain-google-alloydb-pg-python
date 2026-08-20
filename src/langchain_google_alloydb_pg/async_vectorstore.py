@@ -150,18 +150,15 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     async def aset_maintenance_work_mem(
         self, num_leaves: Optional[int], vector_size: int
     ) -> None:
-        """Set database maintenance work memory (for ScaNN index creation)."""
-        if not num_leaves:
-            return
-        # Required index memory in MB (minimum 10 MB for ScaNN)
-        buffer = 1
-        index_memory_required = max(
-            10, round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
+        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
+        import warnings
+
+        warnings.warn(
+            "aset_maintenance_work_mem is deprecated and has no effect. "
+            "aapply_vector_index automatically calculates and sets maintenance_work_mem.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        async with self._pool_engine.begin() as conn:
-            await conn.execute(
-                text(f"SET LOCAL maintenance_work_mem TO '{index_memory_required} MB';")
-            )
 
     set_maintenance_work_mem = aset_maintenance_work_mem
 
@@ -195,7 +192,14 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             if index.name is None:
                 index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
             name = index.name
-        stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} "{name}" ON "{self.schema_name}"."{self.table_name}" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};'
+
+        schema = getattr(self, "schema_name", None)
+        table_identifier = (
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
+        )
+        stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} {_quote_ident(name)} ON {table_identifier} USING {index.index_type} ({_quote_ident(self.embedding_column)} {function}) {params} {filter};'
 
         mem_query = None
         if isinstance(index, ScaNNIndex) and index.num_leaves is not None:
@@ -312,12 +316,15 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         Args:
             columns: Optional list of column names to add to the columnar engine.
         """
-        schema = getattr(self, "schema_name", "public") or "public"
-        table_identifier = (
-            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
-            if schema
-            else _quote_ident(self.table_name)
-        )
+        schema = getattr(self, "schema_name", None)
+        if schema:
+            table_identifier = f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            schema_clause = "table_schema = :schema"
+            schema_param = schema
+        else:
+            table_identifier = _quote_ident(self.table_name)
+            schema_clause = "table_schema = CURRENT_SCHEMA()"
+            schema_param = None
 
         if columns:
             columns_str = ",".join(_quote_ident(c) for c in columns)
@@ -329,17 +336,17 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             query = "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
             # Fetch all columns except the vector embedding column
             async with self._pool_engine.connect() as conn:
-                col_result = await conn.execute(
-                    text(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_name = :table_name AND table_schema = :schema AND column_name != :embed_col"
-                    ),
-                    {
-                        "table_name": self.table_name,
-                        "schema": schema,
-                        "embed_col": self.embedding_column,
-                    },
+                col_query = (
+                    "SELECT column_name FROM information_schema.columns "
+                    f"WHERE table_name = :table_name AND {schema_clause} AND column_name != :embed_col"
                 )
+                col_params: dict[str, Any] = {
+                    "table_name": self.table_name,
+                    "embed_col": self.embedding_column,
+                }
+                if schema_param:
+                    col_params["schema"] = schema_param
+                col_result = await conn.execute(text(col_query), col_params)
                 col_names = [row[0] for row in col_result.fetchall()]
             if col_names:
                 columns_str = ",".join(_quote_ident(c) for c in col_names)
@@ -424,7 +431,7 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             if schema
             else _quote_ident(self.table_name)
         )
-        if spec_id:
+        if spec_id is not None:
             query = "SELECT * FROM vector_assist.apply_spec(spec_id => :spec_id)"
             params = {"spec_id": spec_id}
         else:

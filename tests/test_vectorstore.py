@@ -941,7 +941,9 @@ class TestVectorStoreUnit:
         res = vs.apply_vector_assist_spec()
         # 3. Assert return value and underlying call
         assert res == expected
-        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_once_with()
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_once_with(
+            spec_id=None
+        )
 
     @pytest.mark.asyncio
     async def test_aapply_vector_assist_spec(self, vs):
@@ -953,7 +955,200 @@ class TestVectorStoreUnit:
         res = await vs.aapply_vector_assist_spec()
         # 3. Assert return value and underlying call
         assert res == expected
-        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_once_with()
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_once_with(
+            spec_id=None
+        )
+
+    def test_apply_vector_assist_spec_id_passthrough(self, vs):
+        """Test spec_id pass-through in apply_vector_assist_spec and aapply_vector_assist_spec."""
+        # Test with a valid spec_id
+        vs.apply_vector_assist_spec(spec_id="spec_123")
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_with(
+            spec_id="spec_123"
+        )
+
+        # Test with empty string spec_id to verify if it is passed through or treated as None
+        vs.apply_vector_assist_spec(spec_id="")
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_with(spec_id="")
+
+    @pytest.mark.asyncio
+    async def test_aapply_vector_assist_spec_id_passthrough(self, vs):
+        """Test spec_id pass-through in aapply_vector_assist_spec asynchronously."""
+        await vs.aapply_vector_assist_spec(spec_id="spec_456")
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_with(
+            spec_id="spec_456"
+        )
+
+        await vs.aapply_vector_assist_spec(spec_id="")
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_with(spec_id="")
+
+    @pytest.mark.asyncio
+    async def test_quote_ident_adversarial_payloads(self):
+        """Test _quote_ident in aenable_columnar_engine, adefine_vector_assist_spec, aapply_vector_assist_spec, aget_vector_assist_recommendations with adversarial payloads."""
+        from langchain_google_alloydb_pg.async_vectorstore import (
+            AsyncAlloyDBVectorStore,
+        )
+
+        store = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        store.table_name = 'table"; DROP TABLE users;--'
+        store.schema_name = 'public"; DROP TABLE users;--'
+        store.embedding_column = 'embedding"; DROP TABLE users;--'
+        store.engine = MagicMock()
+
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+        mock_conn.commit = AsyncMock()
+        mock_conn.fetchall = MagicMock(return_value=[])
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        store.engine._pool = MagicMock()
+        store.engine._pool.connect = MagicMock(return_value=mock_ctx)
+
+        # 1. Test aenable_columnar_engine
+        await store.aenable_columnar_engine(columns=['col"; DROP TABLE--'])
+        # Verify that the table_identifier in params has properly escaped quotes
+        call_args = mock_conn.execute.call_args
+        assert call_args is not None
+        params = call_args[0][1]
+        assert (
+            params["table_name"]
+            == '"public""; DROP TABLE users;--"."table""; DROP TABLE users;--"'
+        )
+        assert params["columns"] == '"col""; DROP TABLE--"'
+
+        # 2. Test adefine_vector_assist_spec
+        mock_conn.execute.reset_mock()
+        mock_result = MagicMock()
+        mock_result.mappings.return_value = []
+        mock_conn.execute.return_value = mock_result
+        await store.adefine_vector_assist_spec()
+        call_args = mock_conn.execute.call_args
+        assert call_args is not None
+        params = call_args[0][1]
+        assert (
+            params["table_name"]
+            == '"public""; DROP TABLE users;--"."table""; DROP TABLE users;--"'
+        )
+
+        # 3. Test aapply_vector_assist_spec
+        mock_conn.execute.reset_mock()
+        mock_conn.execute.return_value = mock_result
+        await store.aapply_vector_assist_spec()
+        call_args = mock_conn.execute.call_args
+        assert call_args is not None
+        params = call_args[0][1]
+        assert (
+            params["table_name"]
+            == '"public""; DROP TABLE users;--"."table""; DROP TABLE users;--"'
+        )
+
+        # 4. Test aget_vector_assist_recommendations
+        mock_conn.execute.reset_mock()
+        mock_mappings = MagicMock()
+        mock_mappings.first.return_value = None
+        mock_result.mappings.return_value = mock_mappings
+        mock_conn.execute.return_value = mock_result
+        await store.aget_vector_assist_recommendations()
+        call_args = mock_conn.execute.call_args
+        assert call_args is not None
+        params = call_args[0][1]
+        assert (
+            params["table_name"]
+            == '"public""; DROP TABLE users;--"."table""; DROP TABLE users;--"'
+        )
+
+    @pytest.mark.asyncio
+    async def test_enable_columnar_engine_schema_handling(self):
+        """Test aenable_columnar_engine with schema="" and schema=None to verify if it uses "public" or CURRENT_SCHEMA()."""
+        from langchain_google_alloydb_pg.async_vectorstore import (
+            AsyncAlloyDBVectorStore,
+        )
+
+        store = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        store.table_name = "test_table"
+        store.embedding_column = "embedding"
+        store.engine = MagicMock()
+
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+        mock_conn.commit = AsyncMock()
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        store.engine._pool = MagicMock()
+        store.engine._pool.connect = MagicMock(return_value=mock_ctx)
+
+        # Test with schema_name = "" -> should NOT hardcode "public", should use CURRENT_SCHEMA()
+        store.schema_name = ""
+        await store.aenable_columnar_engine(columns=["content"])
+        call_args = mock_conn.execute.call_args
+        params = call_args[0][1]
+        assert params["table_name"] == '"test_table"'
+
+        # Test with schema_name = None -> should NOT hardcode "public", should use CURRENT_SCHEMA()
+        store.schema_name = None
+        await store.aenable_columnar_engine(columns=["content"])
+        call_args = mock_conn.execute.call_args
+        params = call_args[0][1]
+        assert params["table_name"] == '"test_table"'
+
+    @pytest.mark.asyncio
+    async def test_apply_vector_index_schema_handling(self):
+        """Test aapply_vector_index with schema_name=None and schema_name="" to verify it does not produce "None"."table" or ""."table"."""
+        from langchain_google_alloydb_pg.async_vectorstore import (
+            AsyncAlloyDBVectorStore,
+        )
+        from langchain_google_alloydb_pg.indexes import HNSWIndex
+
+        store = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        store.table_name = "test_table"
+        store.embedding_column = "embedding"
+        store.engine = MagicMock()
+
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_ctx.__aexit__ = AsyncMock(return_value=None)
+
+        store.engine._pool = MagicMock()
+        store.engine._pool.begin = MagicMock(return_value=mock_ctx)
+
+        index = HNSWIndex(name="idx_test")
+
+        # Test with schema_name = None -> should produce ON "test_table"
+        store.schema_name = None
+        await store.aapply_vector_index(index)
+        call_args = mock_conn.execute.call_args
+        stmt = str(call_args[0][0])
+        assert 'ON "test_table"' in stmt
+        assert '"None"' not in stmt
+
+        # Test with schema_name = "" -> should produce ON "test_table"
+        store.schema_name = ""
+        await store.aapply_vector_index(index)
+        call_args = mock_conn.execute.call_args
+        stmt = str(call_args[0][0])
+        assert 'ON "test_table"' in stmt
+        assert '""."test_table"' not in stmt
+
+    @pytest.mark.asyncio
+    async def test_set_maintenance_work_mem_retention(self):
+        """Test aset_maintenance_work_mem to verify it is deprecated and issues a DeprecationWarning."""
+        from langchain_google_alloydb_pg.async_vectorstore import (
+            AsyncAlloyDBVectorStore,
+        )
+
+        store = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+
+        with pytest.deprecated_call():
+            await store.aset_maintenance_work_mem(num_leaves=10, vector_size=768)
 
     def test_get_vector_assist_recommendations(self, vs):
         """Test retrieving vector assist recommendations."""
