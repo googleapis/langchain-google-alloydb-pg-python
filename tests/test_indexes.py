@@ -116,11 +116,54 @@ class TestAlloyDBIndex:
         assert index.index_options() == "(mode = 'AUTO')"
 
     def test_scann_index_invalid_mode(self):
-        index = ScaNNIndex(name="test_index", mode="INVALID")
         import pytest
 
         with pytest.raises(ValueError, match="Invalid mode 'INVALID'"):
-            index.index_options()
+            ScaNNIndex(name="test_index", mode="INVALID")
+
+    def test_scann_index_num_leaves_validation(self):
+        import pytest
+
+        # Test bool (True/False)
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=True)
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=False)
+
+        # Test float
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=5.5)
+
+        # Test str
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves="5")
+
+        # Test 0
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=0)
+
+        # Test negative int
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=-5)
+
+        # Test mode="AUTO" with negative num_leaves (should fail because num_leaves is validated before mode="AUTO" is applied)
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(mode="AUTO", num_leaves=-5)
+
+        # Test num_leaves > 2_147_483_647 (should fail)
+        with pytest.raises(
+            ValueError, match="num_leaves exceeds maximum 32-bit integer limit"
+        ):
+            ScaNNIndex(num_leaves=3_000_000_000)
+
+    def test_scann_query_options_num_leaves_overflow(self):
+        import pytest
+
+        with pytest.raises(
+            ValueError,
+            match="num_leaves_to_search exceeds maximum 32-bit integer limit",
+        ):
+            ScaNNQueryOptions(num_leaves_to_search=2_147_483_648)
 
     def test_scann_index_functions(self):
         idx_l2 = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)

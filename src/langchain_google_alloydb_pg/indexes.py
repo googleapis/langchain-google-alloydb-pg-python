@@ -80,6 +80,18 @@ class ScaNNIndex(BaseIndex):
     extension_name: str = "alloydb_scann"
 
     def __post_init__(self) -> None:
+        if self.num_leaves is not None:
+            if (
+                isinstance(self.num_leaves, bool)
+                or not isinstance(self.num_leaves, int)
+                or self.num_leaves <= 0
+            ):
+                raise ValueError("num_leaves must be a positive integer.")
+            if self.num_leaves > 2_147_483_647:
+                raise ValueError(
+                    "num_leaves exceeds maximum 32-bit integer limit (2,147,483,647)."
+                )
+
         if self.mode is not None:
             if self.mode.upper() == "AUTO":
                 self.num_leaves = None
@@ -87,13 +99,6 @@ class ScaNNIndex(BaseIndex):
                 raise ValueError(
                     f"Invalid mode '{self.mode}'. Only mode='AUTO' is currently supported."
                 )
-        elif self.num_leaves is not None:
-            if (
-                isinstance(self.num_leaves, bool)
-                or not isinstance(self.num_leaves, int)
-                or self.num_leaves <= 0
-            ):
-                raise ValueError("num_leaves must be a positive integer.")
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
