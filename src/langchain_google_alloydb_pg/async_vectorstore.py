@@ -30,6 +30,11 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 
 
+def _quote_ident(ident: str) -> str:
+    """Quote a PostgreSQL identifier to prevent SQL injection and syntax errors."""
+    return '"' + ident.replace('"', '""') + '"'
+
+
 class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     """Google AlloyDB Vector Store class"""
 
@@ -153,10 +158,10 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         index_memory_required = max(
             10, round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
         )
-        query = f"SET maintenance_work_mem TO '{index_memory_required} MB';"
-        async with self.engine.connect() as conn:
-            await conn.execute(text(query))
-            await conn.commit()
+        async with self._pool_engine.begin() as conn:
+            await conn.execute(
+                text(f"SET LOCAL maintenance_work_mem TO '{index_memory_required} MB';")
+            )
 
     set_maintenance_work_mem = aset_maintenance_work_mem
 
@@ -179,12 +184,9 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             await self.adrop_vector_index()
             return
 
-        if index.extension_name:
-            async with self._pool_engine.connect() as conn:
-                await conn.execute(
-                    text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
-                )
-                await conn.commit()
+        # Note: CREATE EXTENSION is omitted here as it requires SUPERUSER privileges.
+        # Extensions should be created during database setup by an administrator.
+
         function = index.get_index_function()
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
@@ -225,9 +227,13 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
                     await autocommit_conn.execute(text(stmt))
                 finally:
                     if mem_query:
-                        await autocommit_conn.execute(
-                            text("RESET maintenance_work_mem;")
-                        )
+                        try:
+                            await autocommit_conn.execute(
+                                text("RESET maintenance_work_mem;")
+                            )
+                        except Exception:
+                            # Preserve the original CREATE INDEX exception if the connection is broken
+                            pass
         else:
             async with self._pool_engine.begin() as conn:
                 if mem_query:
@@ -306,13 +312,12 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         Args:
             columns: Optional list of column names to add to the columnar engine.
         """
-        schema = getattr(self, "schema_name", "public")
+        schema = getattr(self, "schema_name", "public") or "public"
         table_identifier = (
-            f'"{schema}"."{self.table_name}"' if schema else f'"{self.table_name}"'
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
         )
-
-        def _quote_ident(ident: str) -> str:
-            return '"' + ident.replace('"', '""') + '"'
 
         if columns:
             columns_str = ",".join(_quote_ident(c) for c in columns)
@@ -380,9 +385,11 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
 
     async def adefine_vector_assist_spec(self) -> list[dict]:
         """Asynchronously define a Vector Assist spec for the current table."""
-        schema = getattr(self, "schema_name", "public")
+        schema = getattr(self, "schema_name", "public") or "public"
         table_identifier = (
-            f'"{schema}"."{self.table_name}"' if schema else f'"{self.table_name}"'
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
         )
         query = "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
         params = {
@@ -411,9 +418,11 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         self, spec_id: Optional[str] = None
     ) -> list[dict]:
         """Asynchronously apply the Vector Assist spec for the current table."""
-        schema = getattr(self, "schema_name", "public")
+        schema = getattr(self, "schema_name", "public") or "public"
         table_identifier = (
-            f'"{schema}"."{self.table_name}"' if schema else f'"{self.table_name}"'
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
         )
         if spec_id:
             query = "SELECT * FROM vector_assist.apply_spec(spec_id => :spec_id)"
@@ -444,9 +453,11 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
 
     async def aget_vector_assist_recommendations(self) -> list[dict]:
         """Asynchronously get Vector Assist recommendations for the current table."""
-        schema = getattr(self, "schema_name", "public")
+        schema = getattr(self, "schema_name", "public") or "public"
         table_identifier = (
-            f'"{schema}"."{self.table_name}"' if schema else f'"{self.table_name}"'
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
         )
 
         # Query existing spec_id from vector_assist.specs instead of defining a new spec (avoids side-effects)

@@ -267,9 +267,7 @@ class AlloyDBVectorStore(PGVectorStore):
         self, num_leaves: Optional[int], vector_size: int
     ) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
-        await self._engine._run_as_async(
-            self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
-        )
+        await self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
 
     def set_maintenance_work_mem(
         self, num_leaves: Optional[int], vector_size: int
@@ -329,16 +327,18 @@ class AlloyDBVectorStore(PGVectorStore):
             self._PGVectorStore__vs.adefine_vector_assist_spec()  # type: ignore
         )
 
-    async def aapply_vector_assist_spec(self) -> list[dict]:
+    async def aapply_vector_assist_spec(
+        self, spec_id: Optional[str] = None
+    ) -> list[dict]:
         """Asynchronously apply the Vector Assist spec for the current table."""
         return await self._engine._run_as_async(
-            self._PGVectorStore__vs.aapply_vector_assist_spec()  # type: ignore
+            self._PGVectorStore__vs.aapply_vector_assist_spec(spec_id=spec_id)  # type: ignore
         )
 
-    def apply_vector_assist_spec(self) -> list[dict]:
+    def apply_vector_assist_spec(self, spec_id: Optional[str] = None) -> list[dict]:
         """Apply the Vector Assist spec for the current table."""
         return self._engine._run_as_sync(
-            self._PGVectorStore__vs.aapply_vector_assist_spec()  # type: ignore
+            self._PGVectorStore__vs.aapply_vector_assist_spec(spec_id=spec_id)  # type: ignore
         )
 
     async def aget_vector_assist_recommendations(self) -> list[dict]:
