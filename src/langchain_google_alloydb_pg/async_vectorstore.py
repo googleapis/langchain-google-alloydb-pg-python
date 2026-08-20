@@ -202,21 +202,39 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} {_quote_ident(name)} ON {table_identifier} USING {index.index_type} ({_quote_ident(self.embedding_column)} {function}) {params} {filter};'
 
         mem_query = None
-        if isinstance(index, ScaNNIndex) and index.num_leaves is not None:
-            num_leaves: int = index.num_leaves
-            # Fetch vector_size from embedding_service if available, otherwise default to 768
+        if isinstance(index, ScaNNIndex):
+            # For mode="AUTO", num_leaves is None. Use a default estimate of 1000 for memory calculation.
+            num_leaves: int = index.num_leaves if index.num_leaves is not None else 1000
+
+            # Resolve vector_size: first check embedding_service.embedding_size,
+            # then try to measure via embed_query, then check self.vector_size,
+            # and finally fall back to 768.
             vector_size: int = 768
-            if hasattr(self, "embedding_service") and hasattr(
-                self.embedding_service, "embedding_size"
+            if (
+                hasattr(self, "embedding_service")
+                and self.embedding_service is not None
             ):
-                vector_size = (
-                    getattr(self.embedding_service, "embedding_size", 768) or 768
-                )
+                if hasattr(self.embedding_service, "embedding_size"):
+                    vector_size = (
+                        getattr(self.embedding_service, "embedding_size", 768) or 768
+                    )
+                elif hasattr(self.embedding_service, "embed_query"):
+                    try:
+                        sample_emb = self.embedding_service.embed_query("test")
+                        if sample_emb and isinstance(sample_emb, (list, tuple)):
+                            vector_size = len(sample_emb)
+                    except Exception:
+                        pass
             elif hasattr(self, "vector_size"):
                 vector_size = getattr(self, "vector_size", 768) or 768
-            mem_mb = max(
-                10,
-                round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
+
+            # Calculate required memory in MB, capping at PostgreSQL's maximum limit of 2,097,151 MB (2 GB - 1 kB)
+            mem_mb = min(
+                2_097_151,
+                max(
+                    10,
+                    round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
+                ),
             )
             mem_query = f"SET maintenance_work_mem TO '{mem_mb} MB';"
 
@@ -493,7 +511,10 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
 
                 spec_id = spec_row.get("spec_id")
                 query = "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
-                result = await conn.execute(text(query), {"spec_id": str(spec_id)})
+                result = await conn.execute(
+                    text(query),
+                    {"spec_id": str(spec_id) if spec_id is not None else None},
+                )
                 return [dict(row) for row in result.mappings()]
         except Exception as e:
             if (
