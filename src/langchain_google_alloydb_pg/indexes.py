@@ -80,6 +80,11 @@ class ScaNNIndex(BaseIndex):
     extension_name: str = "alloydb_scann"
 
     def __post_init__(self) -> None:
+        if self.mode is None and self.num_leaves is None:
+            raise ValueError(
+                "Either 'mode' must be 'AUTO' or 'num_leaves' must be specified."
+            )
+
         if self.num_leaves is not None:
             if (
                 isinstance(self.num_leaves, bool)
@@ -93,12 +98,11 @@ class ScaNNIndex(BaseIndex):
                 )
 
         if self.mode is not None:
-            if self.mode.upper() == "AUTO":
-                self.num_leaves = None
-            else:
+            if not isinstance(self.mode, str) or self.mode.upper() != "AUTO":
                 raise ValueError(
                     f"Invalid mode '{self.mode}'. Only mode='AUTO' is currently supported."
                 )
+            self.num_leaves = None
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
