@@ -1,3 +1,3 @@
 langchain-google-alloydb-pg==0.15.0
-langchain==1.3.15
+langchain==1.3.17
 langchain-google-vertexai==3.2.4
