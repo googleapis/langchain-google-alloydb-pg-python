@@ -102,6 +102,7 @@ class ScaNNIndex(BaseIndex):
                 raise ValueError(
                     f"Invalid mode '{self.mode}'. Only mode='AUTO' is currently supported."
                 )
+            self.mode = "AUTO"
             self.num_leaves = None
 
     def index_options(self) -> str:
