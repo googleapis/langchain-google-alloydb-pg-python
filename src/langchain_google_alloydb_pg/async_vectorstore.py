@@ -206,27 +206,21 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             # For mode="AUTO", num_leaves is None. Use a default estimate of 1000 for memory calculation.
             num_leaves: int = index.num_leaves if index.num_leaves is not None else 1000
 
-            # Resolve vector_size: first check embedding_service.embedding_size,
-            # then try to measure via embed_query, then check self.vector_size,
-            # and finally fall back to 768.
+            # Resolve vector_size with proper precedence and no blocking/deadlocking I/O:
+            # 1. self.vector_size (explicitly set on store)
+            # 2. embedding_service.embedding_size (if present)
+            # 3. Fallback to 768
             vector_size: int = 768
-            if (
+            if hasattr(self, "vector_size") and self.vector_size is not None:
+                vector_size = getattr(self, "vector_size", 768) or 768
+            elif (
                 hasattr(self, "embedding_service")
                 and self.embedding_service is not None
+                and hasattr(self.embedding_service, "embedding_size")
             ):
-                if hasattr(self.embedding_service, "embedding_size"):
-                    vector_size = (
-                        getattr(self.embedding_service, "embedding_size", 768) or 768
-                    )
-                elif hasattr(self.embedding_service, "embed_query"):
-                    try:
-                        sample_emb = self.embedding_service.embed_query("test")
-                        if sample_emb and isinstance(sample_emb, (list, tuple)):
-                            vector_size = len(sample_emb)
-                    except Exception:
-                        pass
-            elif hasattr(self, "vector_size"):
-                vector_size = getattr(self, "vector_size", 768) or 768
+                vector_size = (
+                    getattr(self.embedding_service, "embedding_size", 768) or 768
+                )
 
             # Calculate required memory in MB, capping at PostgreSQL's maximum limit of 2,097,151 MB (2 GB - 1 kB)
             mem_mb = min(

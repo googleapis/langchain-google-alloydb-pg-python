@@ -106,7 +106,7 @@ class AlloyDBEngine(PGEngine):
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> Future:
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
@@ -144,7 +144,7 @@ class AlloyDBEngine(PGEngine):
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -158,9 +158,9 @@ class AlloyDBEngine(PGEngine):
             password (Optional[str]): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
-            engine_args (Mapping): Additional arguments that are passed directly to
-                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
-                used to specify additional parameters to the underlying pool during it's creation.
+            engine_args (Optional[Mapping[str, Any]]): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during its creation.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
@@ -193,7 +193,7 @@ class AlloyDBEngine(PGEngine):
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread: Optional[Thread] = None,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -209,9 +209,9 @@ class AlloyDBEngine(PGEngine):
             loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
             thread (Optional[Thread]): Thread used to create the engine async.
             iam_account_email (Optional[str]): IAM service account email.
-            engine_args (Mapping): Additional arguments that are passed directly to
-                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
-                used to specify additional parameters to the underlying pool during it's creation.
+            engine_args (Optional[Mapping[str, Any]]): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during its creation.
 
         Raises:
             ValueError: Raises error if only one of 'user' or 'password' is specified.
@@ -261,10 +261,11 @@ class AlloyDBEngine(PGEngine):
             )
             return conn
 
+        engine_kwargs = dict(engine_args) if engine_args is not None else {}
         engine = create_async_engine(
             "postgresql+asyncpg://",
             async_creator=getconn,
-            **engine_args,
+            **engine_kwargs,
         )
         return cls(PGEngine._PGEngine__create_key, engine, loop, thread)  # type: ignore
 
@@ -280,7 +281,7 @@ class AlloyDBEngine(PGEngine):
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -294,9 +295,9 @@ class AlloyDBEngine(PGEngine):
             password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
-            engine_args (Mapping): Additional arguments that are passed directly to
-                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
-                used to specify additional parameters to the underlying pool during it's creation.
+            engine_args (Optional[Mapping[str, Any]]): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during its creation.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
@@ -321,15 +322,17 @@ class AlloyDBEngine(PGEngine):
         url: str | URL,
         **kwargs: Any,
     ) -> AlloyDBEngine:
-        """Create an AlloyDBEngine instance from arguments
-        Args:
-            url (Optional[str]): the URL used to connect to a database. Use url or set other arguments.
-        Raises:
-            ValueError: If not all database url arguments are specified
-        Returns:
-            AlloyDBEngine
-        """
+        """Create an AlloyDBEngine instance from arguments.
 
+        Args:
+            url (str | URL): The URL used to connect to a database.
+
+        Raises:
+            ValueError: If not all database url arguments are specified.
+
+        Returns:
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
+        """
         return AlloyDBEngine.from_engine_args(url=url, **kwargs)
 
     @classmethod
@@ -338,16 +341,16 @@ class AlloyDBEngine(PGEngine):
         url: str | URL,
         **kwargs: Any,
     ) -> AlloyDBEngine:
-        """Create an AlloyDBEngine instance from arguments
+        """Create an AlloyDBEngine instance from arguments.
 
         Args:
-            url (Optional[str]): the URL used to connect to a database. Use url or set other arguments.
+            url (str | URL): The URL used to connect to a database.
 
         Raises:
-            ValueError: If not all database url arguments are specified
+            ValueError: If not all database url arguments are specified.
 
         Returns:
-            AlloyDBEngine
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
         """
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
@@ -366,6 +369,82 @@ class AlloyDBEngine(PGEngine):
 
         engine = create_async_engine(url, **kwargs)
         return cls(PGEngine._PGEngine__create_key, engine, cls._default_loop, cls._default_thread)  # type: ignore
+
+    @classmethod
+    def from_engine(
+        cls: type[AlloyDBEngine],
+        engine: Any,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AlloyDBEngine:
+        """Create an AlloyDBEngine instance from an AsyncEngine."""
+        return cls(PGEngine._PGEngine__create_key, engine, loop, None)  # type: ignore
+
+    def close(self) -> None:  # type: ignore[override]
+        """Synchronously dispose of the connection pool."""
+        if self._loop and self._loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(self._pool.dispose(), self._loop)
+            future.result()
+        elif self._default_loop and self._default_loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(
+                self._pool.dispose(), self._default_loop
+            )
+            future.result()
+        else:
+            asyncio.run(self._pool.dispose())
+
+    async def aclose(self) -> None:
+        """Asynchronously dispose of the connection pool."""
+        await self._run_as_async(self._pool.dispose())
+
+    async def __aenter__(self) -> AlloyDBEngine:
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.aclose()
+
+    def __enter__(self) -> AlloyDBEngine:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    async def adrop_table(
+        self,
+        table_name: str,
+        *,
+        schema_name: str = "public",
+    ) -> None:
+        """Asynchronously drop a table from the database.
+
+        Args:
+            table_name (str): The name of the table to drop.
+            schema_name (str): The schema name of the table. Default: "public".
+        """
+        await self._run_as_async(
+            self._adrop_table(table_name=table_name, schema_name=schema_name)
+        )
+
+    def drop_table(
+        self,
+        table_name: str,
+        *,
+        schema_name: str = "public",
+    ) -> None:
+        """Synchronously drop a table from the database.
+
+        Args:
+            table_name (str): The name of the table to drop.
+            schema_name (str): The schema name of the table. Default: "public".
+        """
+        self._run_as_sync(
+            self._adrop_table(table_name=table_name, schema_name=schema_name)
+        )
 
     async def _ainit_chat_history_table(
         self, table_name: str, schema_name: str = "public"
@@ -414,7 +493,7 @@ class AlloyDBEngine(PGEngine):
     def init_chat_history_table(
         self, table_name: str, schema_name: str = "public"
     ) -> None:
-        """Create a Cloud SQL table to store chat history.
+        """Create an AlloyDB table to store chat history.
 
         Args:
             table_name (str): Table name to store chat history.
@@ -610,9 +689,10 @@ class AlloyDBEngine(PGEngine):
     def init_checkpoint_table(
         self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
     ) -> None:
-        """Create Cloud SQL tables to store checkpoints.
+        """Create AlloyDB tables to store checkpoints.
 
         Args:
+            table_name (str): The checkpoint table name. Default: "checkpoints".
             schema_name (str): The schema name to store checkpoint tables.
                 Default: "public".
 
@@ -620,6 +700,178 @@ class AlloyDBEngine(PGEngine):
             None
         """
         self._run_as_sync(self._ainit_checkpoint_table(table_name, schema_name))
+
+    async def _aforecast(
+        self,
+        model_id: str,
+        source_table: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        if not model_id or not isinstance(model_id, str) or not model_id.strip():
+            raise ValueError("model_id must be a non-empty string.")
+        if (
+            not source_table
+            or not isinstance(source_table, str)
+            or not source_table.strip()
+        ):
+            raise ValueError("source_table must be a non-empty string.")
+        if (
+            not timestamp_col
+            or not isinstance(timestamp_col, str)
+            or not timestamp_col.strip()
+        ):
+            raise ValueError("timestamp_col must be a non-empty string.")
+        if not data_col or not isinstance(data_col, str) or not data_col.strip():
+            raise ValueError("data_col must be a non-empty string.")
+
+        # Validate horizon
+        import math
+        import operator
+
+        try:
+            if isinstance(horizon, bool):
+                raise TypeError
+            horizon_val = operator.index(horizon)
+            if horizon_val <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise ValueError("horizon must be a positive integer.") from None
+
+        if horizon_val > 2_147_483_647:
+            raise ValueError(
+                "horizon exceeds maximum 32-bit integer limit (2,147,483,647)."
+            )
+
+        # Validate conf_level
+        if conf_level is not None:
+            if not isinstance(conf_level, (int, float)) or isinstance(conf_level, bool):
+                raise TypeError("conf_level must be a float between 0 and 1.")
+            if (
+                not (0 < conf_level < 1)
+                or math.isnan(conf_level)
+                or math.isinf(conf_level)
+            ):
+                raise ValueError("conf_level must be a float strictly between 0 and 1.")
+
+        # Clean source_query
+        if source_query is not None:
+            if not isinstance(source_query, str):
+                raise TypeError("source_query must be a string.")
+            source_query = source_query.strip() or None
+
+        args = [
+            "model_id => :model_id",
+            "source_table => :source_table",
+            "timestamp_col => :timestamp_col",
+            "data_col => :data_col",
+            "horizon => :horizon",
+        ]
+        params: dict[str, Any] = {
+            "model_id": model_id.strip(),
+            "source_table": source_table.strip(),
+            "timestamp_col": timestamp_col.strip(),
+            "data_col": data_col.strip(),
+            "horizon": horizon_val,
+        }
+        if source_query is not None:
+            args.append("source_query => :source_query")
+            params["source_query"] = source_query
+        if conf_level is not None:
+            args.append("conf_level => :conf_level")
+            params["conf_level"] = conf_level
+
+        query = f"SELECT * FROM google_ml.forecast({', '.join(args)})"
+        try:
+            async with self._pool.connect() as conn:
+                result = await conn.execute(text(query), params)
+                return [dict(row) for row in result.mappings()]
+        except Exception as e:
+            if (
+                "google_ml" in str(e)
+                or "UndefinedFunctionError" in type(e).__name__
+                or "UndefinedSchemaError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB AI google_ml extension is not installed or enabled. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS google_ml CASCADE;' on your database."
+                ) from e
+            raise
+
+    async def aforecast(
+        self,
+        model_id: str,
+        source_table: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        """Asynchronously get forecasting from AlloyDB AI.
+
+        Args:
+            model_id: The ID of the time series forecasting model.
+            source_table: The table to read historical time series data from.
+            timestamp_col: The column containing the timestamp.
+            data_col: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast.
+            source_query: Optional query to filter historical data.
+            conf_level: Optional confidence level for prediction intervals.
+
+        Returns:
+            A list of dictionaries with forecast_timestamp, forecast_value, and intervals.
+        """
+        return await self._run_as_async(
+            self._aforecast(
+                model_id,
+                source_table,
+                timestamp_col,
+                data_col,
+                horizon,
+                source_query,
+                conf_level,
+            )
+        )
+
+    def forecast(
+        self,
+        model_id: str,
+        source_table: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        """Synchronously get forecasting from AlloyDB AI.
+
+        Args:
+            model_id: The ID of the time series forecasting model.
+            source_table: The table to read historical time series data from.
+            timestamp_col: The column containing the timestamp.
+            data_col: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast.
+            source_query: Optional query to filter historical data.
+            conf_level: Optional confidence level for prediction intervals.
+
+        Returns:
+            A list of dictionaries with forecast_timestamp, forecast_value, and intervals.
+        """
+        return self._run_as_sync(
+            self._aforecast(
+                model_id,
+                source_table,
+                timestamp_col,
+                data_col,
+                horizon,
+                source_query,
+                conf_level,
+            )
+        )
 
     async def _aload_table_schema(
         self, table_name: str, schema_name: str = "public"
