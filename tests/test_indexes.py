@@ -109,6 +109,77 @@ class TestAlloyDBIndex:
         assert index.quantizer == "sq8"  # Check default value
         assert index.index_options() == "(num_leaves = 10, quantizer = sq8)"
 
+    def test_scann_index_auto_mode(self):
+        index = ScaNNIndex(name="test_index", mode="AUTO")
+        assert index.index_type == "ScaNN"
+        assert index.mode == "AUTO"
+        assert index.index_options() == "(mode = 'AUTO')"
+
+    def test_scann_index_invalid_mode(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid mode 'INVALID'"):
+            ScaNNIndex(name="test_index", mode="INVALID")
+
+    def test_scann_index_num_leaves_validation(self):
+        import pytest
+
+        # Test bool (True/False)
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=True)
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=False)
+
+        # Test float
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=5.5)
+
+        # Test str
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves="5")
+
+        # Test 0
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=0)
+
+        # Test negative int
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(num_leaves=-5)
+
+        # Test mode="AUTO" with negative num_leaves (should fail because num_leaves is validated before mode="AUTO" is applied)
+        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
+            ScaNNIndex(mode="AUTO", num_leaves=-5)
+
+        # Test num_leaves > 2_147_483_647 (should fail)
+        with pytest.raises(
+            ValueError, match="num_leaves exceeds maximum 32-bit integer limit"
+        ):
+            ScaNNIndex(num_leaves=3_000_000_000)
+
+    def test_scann_query_options_num_leaves_overflow(self):
+        import pytest
+
+        with pytest.raises(
+            ValueError,
+            match="num_leaves_to_search exceeds maximum 32-bit integer limit",
+        ):
+            ScaNNQueryOptions(num_leaves_to_search=2_147_483_648)
+
+    def test_scann_index_functions(self):
+        idx_l2 = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
+        assert idx_l2.get_index_function() == "l2"
+        idx_cos = ScaNNIndex(distance_strategy=DistanceStrategy.COSINE_DISTANCE)
+        assert idx_cos.get_index_function() == "cosine"
+        idx_dot = ScaNNIndex(distance_strategy=DistanceStrategy.INNER_PRODUCT)
+        assert idx_dot.get_index_function() == "dot_prod"
+
+    def test_scann_query_options_default(self):
+        options = ScaNNQueryOptions()
+        assert options.to_parameter() == [
+            "scann.num_leaves_to_search = 1",
+            "scann.pre_reordering_num_neighbors = -1",
+        ]
+
     def test_scann_query_options(self):
         options = ScaNNQueryOptions(
             num_leaves_to_search=2, pre_reordering_num_neighbors=10
@@ -124,3 +195,38 @@ class TestAlloyDBIndex:
             assert "to_string is deprecated, use to_parameter instead." in str(
                 w[-1].message
             )
+
+    def test_scann_query_options_pct_leaves(self):
+        options = ScaNNQueryOptions(
+            pre_reordering_num_neighbors=10,
+            pct_leaves_to_search=0.2,
+        )
+        assert options.to_parameter() == [
+            "scann.pct_leaves_to_search = 0.2",
+            "scann.pre_reordering_num_neighbors = 10",
+        ]
+        with warnings.catch_warnings(record=True) as w:
+            to_str = options.to_string()
+            assert (
+                to_str
+                == "scann.pct_leaves_to_search = 0.2, scann.pre_reordering_num_neighbors = 10"
+            )
+
+    def test_scann_query_options_both_params_warns(self):
+        options = ScaNNQueryOptions(
+            num_leaves_to_search=5,
+            pre_reordering_num_neighbors=10,
+            pct_leaves_to_search=0.5,
+        )
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            params = options.to_parameter()
+            assert len(w) == 1
+            assert (
+                "Both 'pct_leaves_to_search' and 'num_leaves_to_search' were provided"
+                in str(w[-1].message)
+            )
+            assert params == [
+                "scann.pct_leaves_to_search = 0.5",
+                "scann.pre_reordering_num_neighbors = 10",
+            ]

@@ -33,6 +33,11 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @property
+    def _pool_engine(self) -> Any:
+        """Helper to access the underlying pool from AlloyDBEngine or PGEngine."""
+        return getattr(self.engine, "_pool", self.engine)
+
     def _encode_image(self, uri: str) -> str:
         """Get base64 string from a image URI."""
         gcs_uri = re.match("gs://(.*?)/(.*)", uri)
@@ -134,17 +139,100 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             embedding=embedding, k=k, filter=filter, **kwargs
         )
 
-    async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
+    async def aset_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
-        # Required index memory in MB
+        if not num_leaves:
+            return
+        # Required index memory in MB (minimum 10 MB for ScaNN)
         buffer = 1
-        index_memory_required = (
-            round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
-        )  # Convert bytes to MB
+        index_memory_required = max(
+            10, round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
+        )
         query = f"SET maintenance_work_mem TO '{index_memory_required} MB';"
         async with self.engine.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
+
+    set_maintenance_work_mem = aset_maintenance_work_mem
+
+    async def aapply_vector_index(
+        self,
+        index: Any,
+        name: Optional[str] = None,
+        *,
+        concurrently: bool = False,
+    ) -> None:
+        """Create index in the vector store table with ScaNN memory management."""
+        from langchain_postgres.v2.indexes import (
+            DEFAULT_INDEX_NAME_SUFFIX,
+            ExactNearestNeighbor,
+        )
+
+        from .indexes import ScaNNIndex
+
+        if isinstance(index, ExactNearestNeighbor):
+            await self.adrop_vector_index()
+            return
+
+        if index.extension_name:
+            async with self._pool_engine.connect() as conn:
+                await conn.execute(
+                    text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
+                )
+                await conn.commit()
+        function = index.get_index_function()
+
+        filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
+        params = "WITH " + index.index_options()
+        if name is None:
+            if index.name is None:
+                index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
+            name = index.name
+        stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} "{name}" ON "{self.schema_name}"."{self.table_name}" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};'
+
+        mem_query = None
+        if isinstance(index, ScaNNIndex) and index.num_leaves is not None:
+            num_leaves: int = index.num_leaves
+            # Fetch vector_size from embedding_service if available, otherwise default to 768
+            vector_size: int = 768
+            if hasattr(self, "embedding_service") and hasattr(
+                self.embedding_service, "embedding_size"
+            ):
+                vector_size = (
+                    getattr(self.embedding_service, "embedding_size", 768) or 768
+                )
+            elif hasattr(self, "vector_size"):
+                vector_size = getattr(self, "vector_size", 768) or 768
+            mem_mb = max(
+                10,
+                round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
+            )
+            mem_query = f"SET maintenance_work_mem TO '{mem_mb} MB';"
+
+        if concurrently:
+            async with self._pool_engine.connect() as conn:
+                autocommit_conn = await conn.execution_options(
+                    isolation_level="AUTOCOMMIT"
+                )
+                if mem_query:
+                    await autocommit_conn.execute(text(mem_query))
+                try:
+                    await autocommit_conn.execute(text(stmt))
+                finally:
+                    if mem_query:
+                        await autocommit_conn.execute(
+                            text("RESET maintenance_work_mem;")
+                        )
+        else:
+            async with self._pool_engine.begin() as conn:
+                if mem_query:
+                    # SET LOCAL is automatically scoped to the transaction block
+                    await conn.execute(
+                        text(f"SET LOCAL maintenance_work_mem TO '{mem_mb} MB';")
+                    )
+                await conn.execute(text(stmt))
 
     def add_images(
         self,

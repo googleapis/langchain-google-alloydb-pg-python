@@ -31,6 +31,7 @@ from langchain_google_alloydb_pg.indexes import (
     HNSWIndex,
     IVFFlatIndex,
     IVFIndex,
+    ScaNNIndex,
 )
 
 UUID_STR = str(uuid.uuid4()).replace("-", "_")
@@ -41,7 +42,7 @@ VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
-texts = ["foo", "bar", "baz"]
+texts = [f"document {i}" for i in range(10)]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
 metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
@@ -88,16 +89,26 @@ class TestIndex:
 
     @pytest_asyncio.fixture(scope="class")
     async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = await AlloyDBEngine.afrom_instance(
-            project_id=db_project,
-            instance=db_instance,
-            cluster=db_cluster,
-            region=db_region,
-            database=db_name,
-        )
+        host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        user = os.environ.get("OMNI_USER") or os.environ.get("DB_USER", "postgres")
+        password = os.environ.get("OMNI_PASSWORD") or os.environ.get("DB_PASSWORD")
+        if host and password:
+            import sqlalchemy.ext.asyncio
+
+            connstring = f"postgresql+asyncpg://{user}:{password}@{host}:5432/{db_name}"
+            async_engine = sqlalchemy.ext.asyncio.create_async_engine(connstring)
+            engine = AlloyDBEngine.from_engine(async_engine)
+        else:
+            engine = await AlloyDBEngine.afrom_instance(
+                project_id=db_project,
+                instance=db_instance,
+                cluster=db_cluster,
+                region=db_region,
+                database=db_name,
+            )
         yield engine
-        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_TABLE}")
-        await aexecute(engine, f"DROP TABLE IF EXISTS {DEFAULT_HYBRID_TABLE}")
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_HYBRID_TABLE}"')
         await engine.close()
 
     @pytest_asyncio.fixture(scope="class")
@@ -225,3 +236,47 @@ class TestIndex:
         await vs.adrop_vector_index(tsv_index_name)
         is_valid_index = await vs.is_valid_index(tsv_index_name)
         assert is_valid_index == False
+
+    async def test_aapply_alloydb_scann_index_ScaNN(self, vs):
+        index = ScaNNIndex(
+            name="scann_index", distance_strategy=DistanceStrategy.EUCLIDEAN
+        )
+        await vs.aset_maintenance_work_mem(index.num_leaves, VECTOR_SIZE)
+        await vs.aapply_vector_index(index, concurrently=True)
+        assert await vs.is_valid_index("scann_index")
+        index = ScaNNIndex(
+            name="secondindex", distance_strategy=DistanceStrategy.COSINE_DISTANCE
+        )
+        await vs.aapply_vector_index(index)
+        assert await vs.is_valid_index("secondindex")
+        await vs.adrop_vector_index("secondindex")
+        await vs.adrop_vector_index("scann_index")
+
+    async def test_aapply_alloydb_scann_index_auto_mode(self, engine):
+        table_name = "auto_scann_table_" + UUID_STR
+        await engine._ainit_vectorstore_table(table_name, VECTOR_SIZE)
+        await aexecute(
+            engine,
+            f"""
+            INSERT INTO "{table_name}" (langchain_id, content, embedding)
+            SELECT 
+                gen_random_uuid(),
+                'Document ' || i,
+                (SELECT array_agg((random() * 2 - 1)::float4)::vector({VECTOR_SIZE}) FROM generate_series(1, {VECTOR_SIZE}))
+            FROM generate_series(1, 10005) AS i;
+            """,
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+        )
+        index = ScaNNIndex(
+            name="auto_scann_index",
+            mode="AUTO",
+            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+        )
+        await vs.aapply_vector_index(index)
+        assert await vs.is_valid_index("auto_scann_index")
+        await vs.adrop_vector_index("auto_scann_index")
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
