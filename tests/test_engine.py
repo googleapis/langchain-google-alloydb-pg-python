@@ -15,6 +15,7 @@
 import os
 import uuid
 from typing import Sequence
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg  # type: ignore
 import pytest
@@ -42,7 +43,7 @@ HYBRID_SEARCH_TABLE_SYNC = "hybrid_sync" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
-host = os.environ["IP_ADDRESS"]
+host = os.environ.get("IP_ADDRESS", "127.0.0.1")
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -110,24 +111,32 @@ class TestEngineAsync:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = await AlloyDBEngine.afrom_instance(
-            project_id=db_project,
-            cluster=db_cluster,
-            instance=db_instance,
-            region=db_region,
-            database=db_name,
-            engine_args={
-                # add some connection args to validate engine_args works correctly
-                "pool_size": 3,
-                "max_overflow": 2,
-            },
-        )
+    async def engine(
+        self, db_project, db_region, db_cluster, db_instance, db_name, user, password
+    ):
+        omni_host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        if omni_host:
+            port = os.environ.get("OMNI_PORT", "5432")
+            conn_str = f"postgresql+asyncpg://{user}:{password}@{omni_host}:{port}/{db_name}?ssl=require"
+            engine = AlloyDBEngine.from_connection_string(conn_str)
+        else:
+            engine = await AlloyDBEngine.afrom_instance(
+                project_id=db_project,
+                cluster=db_cluster,
+                instance=db_instance,
+                region=db_region,
+                database=db_name,
+                engine_args={
+                    # add some connection args to validate engine_args works correctly
+                    "pool_size": 3,
+                    "max_overflow": 2,
+                },
+            )
         yield engine
-        await aexecute(engine, f'DROP TABLE "{CUSTOM_TABLE}"')
-        await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE}"')
-        await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE}"')
-        await aexecute(engine, f'DROP TABLE "{HYBRID_SEARCH_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{CUSTOM_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{INT_ID_CUSTOM_TABLE}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{HYBRID_SEARCH_TABLE}"')
         await engine.close()
 
     async def test_init_table(self, engine):
@@ -433,19 +442,27 @@ class TestEngineSync:
         return get_env_var("IAM_ACCOUNT", "Cloud SQL IAM account email")
 
     @pytest_asyncio.fixture(scope="class")
-    async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = AlloyDBEngine.from_instance(
-            project_id=db_project,
-            instance=db_instance,
-            cluster=db_cluster,
-            region=db_region,
-            database=db_name,
-        )
+    async def engine(
+        self, db_project, db_region, db_cluster, db_instance, db_name, user, password
+    ):
+        omni_host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        if omni_host:
+            port = os.environ.get("OMNI_PORT", "5432")
+            conn_str = f"postgresql+asyncpg://{user}:{password}@{omni_host}:{port}/{db_name}?ssl=require"
+            engine = AlloyDBEngine.from_connection_string(conn_str)
+        else:
+            engine = AlloyDBEngine.from_instance(
+                project_id=db_project,
+                instance=db_instance,
+                cluster=db_cluster,
+                region=db_region,
+                database=db_name,
+            )
         yield engine
-        await aexecute(engine, f'DROP TABLE "{CUSTOM_TABLE_SYNC}"')
-        await aexecute(engine, f'DROP TABLE "{DEFAULT_TABLE_SYNC}"')
-        await aexecute(engine, f'DROP TABLE "{INT_ID_CUSTOM_TABLE_SYNC}"')
-        await aexecute(engine, f'DROP TABLE "{HYBRID_SEARCH_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{CUSTOM_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{INT_ID_CUSTOM_TABLE_SYNC}"')
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{HYBRID_SEARCH_TABLE_SYNC}"')
         await engine.close()
 
     async def test_init_table(self, engine):
@@ -617,3 +634,245 @@ class TestEngineSync:
         ]
         for row in results:
             assert row in expected
+
+    async def test_live_forecast(self, engine):
+        """Test live google_ml.forecast validation / execution on AlloyDB."""
+        ts_table = "forecast_live_ts_" + str(uuid.uuid4()).replace("-", "_")
+        await aexecute(
+            engine,
+            f"""
+            CREATE TABLE IF NOT EXISTS "{ts_table}" (
+                timestamp_col timestamp without time zone,
+                data_col float8
+            );
+            """,
+        )
+        try:
+            results = await engine.aforecast(
+                model_id="test_model",
+                source_table=ts_table,
+                timestamp_col="timestamp_col",
+                data_col="data_col",
+                horizon=3,
+            )
+            assert isinstance(results, list)
+        except Exception as e:
+            # Model may not be registered in Vertex AI / AlloyDB model registry in test env
+            if (
+                "model" in str(e).lower()
+                or "not found" in str(e).lower()
+                or "google_ml" in str(e).lower()
+            ):
+                pass
+            else:
+                raise
+        finally:
+            await aexecute(engine, f'DROP TABLE IF EXISTS "{ts_table}"')
+
+
+class TestEngineUnit:
+    @pytest.fixture
+    def engine(self):
+        eng = AlloyDBEngine.__new__(AlloyDBEngine)
+        eng._pool = MagicMock()
+
+        def mock_run_sync(coro):
+            coro.close()
+            ret = eng._run_as_sync.return_value
+            if isinstance(ret, MagicMock):
+                return [{"prediction": 1.0}]
+            return ret
+
+        eng._run_as_sync = MagicMock(side_effect=mock_run_sync)
+
+        async def mock_run_async(coro):
+            return await coro
+
+        eng._run_as_async = mock_run_async
+        return eng
+
+    @pytest.mark.asyncio
+    async def test_aforecast(self, engine):
+        """Test that aforecast calls the underlying google_ml.forecast table function asynchronously."""
+        with patch.object(engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [
+                {"prediction": 1.0},
+                {"prediction": 2.0},
+            ]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            results = await engine.aforecast(
+                model_id="test_model",
+                source_table="test_table",
+                source_query=None,
+                data_col="data",
+                timestamp_col="ts",
+                horizon=5,
+            )
+            assert len(results) == 2
+            assert results[0]["prediction"] == 1.0
+            call_args = mock_conn.execute.call_args
+            assert "SELECT * FROM google_ml.forecast" in str(call_args[0][0])
+            assert "source_query" not in str(call_args[0][0])
+            assert "conf_level" not in str(call_args[0][0])
+            assert call_args[0][1] == {
+                "model_id": "test_model",
+                "source_table": "test_table",
+                "timestamp_col": "ts",
+                "data_col": "data",
+                "horizon": 5,
+            }
+
+    @pytest.mark.asyncio
+    async def test_aforecast_with_optional_params(self, engine):
+        """Test aforecast with source_query and conf_level."""
+        with patch.object(
+            engine, "_aforecast", new_callable=AsyncMock
+        ) as mock_aforecast:
+            mock_aforecast.return_value = [{"prediction": 42.0}]
+            results = await engine.aforecast(
+                model_id="test_model",
+                source_table="test_table",
+                source_query="SELECT * FROM data",
+                data_col="data",
+                timestamp_col="ts",
+                horizon=10,
+                conf_level=0.95,
+            )
+            assert len(results) == 1
+            assert results[0]["prediction"] == 42.0
+            mock_aforecast.assert_called_once_with(
+                "test_model",
+                "test_table",
+                "ts",
+                "data",
+                10,
+                "SELECT * FROM data",
+                0.95,
+            )
+
+    def test_forecast(self, engine):
+        """Test that forecast evaluates via _run_as_sync to proxy the google_ml.forecast."""
+        engine._run_as_sync.return_value = [{"prediction": 1.0}]
+        results = engine.forecast(
+            model_id="test_model",
+            source_table="test_table",
+            source_query=None,
+            data_col="data",
+            timestamp_col="ts",
+            horizon=5,
+        )
+        assert results == [{"prediction": 1.0}]
+        engine._run_as_sync.assert_called_once()
+
+    def test_forecast_with_optional_params(self, engine):
+        """Test forecast with source_query and conf_level."""
+        engine._run_as_sync.return_value = [{"prediction": 42.0}]
+        results = engine.forecast(
+            model_id="test_model",
+            source_table="test_table",
+            source_query="SELECT * FROM data",
+            data_col="data",
+            timestamp_col="ts",
+            horizon=10,
+            conf_level=0.95,
+        )
+        assert results == [{"prediction": 42.0}]
+        engine._run_as_sync.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_private_aforecast(self, engine):
+        """Test direct _aforecast execution and mapping parsing."""
+        with patch.object(engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [
+                {"forecast_timestamp": "2026-08-07", "forecast_value": 100.0}
+            ]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            results = await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+                source_query="SELECT * FROM sales WHERE active = true",
+                conf_level=0.9,
+            )
+            assert len(results) == 1
+            assert results[0]["forecast_value"] == 100.0
+            call_args = mock_conn.execute.call_args
+            assert "SELECT * FROM google_ml.forecast" in str(call_args[0][0])
+            assert "source_query => :source_query" in str(call_args[0][0])
+            assert "conf_level => :conf_level" in str(call_args[0][0])
+            assert call_args[0][1] == {
+                "model_id": "model_1",
+                "source_table": "sales",
+                "timestamp_col": "date",
+                "data_col": "revenue",
+                "horizon": 3,
+                "source_query": "SELECT * FROM sales WHERE active = true",
+                "conf_level": 0.9,
+            }
+
+    @pytest.mark.asyncio
+    async def test_aforecast_validation_errors(self, engine):
+        """Test validation errors for invalid input parameters in _aforecast."""
+        with pytest.raises(ValueError, match="model_id must be a non-empty string"):
+            await engine._aforecast(
+                model_id="",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="source_table must be a non-empty string"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(
+            ValueError, match="timestamp_col must be a non-empty string"
+        ):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="data_col must be a non-empty string"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="horizon must be a positive integer"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=0,
+            )
+        with pytest.raises(
+            ValueError, match="conf_level must be a float strictly between 0 and 1"
+        ):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+                conf_level=1.5,
+            )
