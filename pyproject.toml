@@ -46,6 +46,7 @@ test = [
     "black[jupyter]==26.5.1",
     "isort==9.0.0",
     "langgraph==1.2.2",
+    "langgraph-prebuilt==1.1.0",
     "mypy==2.1.0",
     "pytest-asyncio==1.4.0",
     "pytest==9.0.3",
