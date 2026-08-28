@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -169,3 +169,64 @@ class AlloyDBEmbeddings(Embeddings):
             result_map = result.mappings()
             results = result_map.fetchall()
         return json.loads(results[0]["embedding"])
+
+    async def aembed_image(self, image_uri: str) -> list[float]:
+        """Asynchronous Embed image.
+
+        Args:
+            image_uri (str): Image URI to embed.
+
+        Returns:
+            list[float]: Embedding.
+        """
+        embeddings = await self._engine._run_as_async(self.__aembed_image(image_uri))
+        return embeddings
+
+    def embed_image(self, image_uri: str) -> list[float]:
+        """Embed image.
+
+        Args:
+            image_uri (str): Image URI to embed.
+
+        Returns:
+            list[float]: Embedding.
+        """
+        return self._engine._run_as_sync(self.__aembed_image(image_uri))
+
+    async def __aembed_image(self, image_uri: str) -> list[float]:
+        """Coroutine for generating embeddings for a given image.
+
+        Args:
+            image_uri (str): Image URI to embed.
+
+        Returns:
+            list[float]: Embedding.
+        """
+        query = f" SELECT google_ml.image_embedding('{self.model_id}', '{image_uri}')::vector as embedding "
+        async with self._engine._pool.connect() as conn:
+            result = await conn.execute(text(query))
+            result_map = result.mappings()
+            results = result_map.fetchall()
+        return json.loads(results[0]["embedding"])
+
+    def embed_images(self, image_uris: list[str]) -> list[list[float]]:
+        """Embed list of images.
+
+        Args:
+            image_uris (list[str]): List of Image URIs to embed.
+
+        Returns:
+            list[list[float]]: Embeddings.
+        """
+        return [self.embed_image(uri) for uri in image_uris]
+
+    async def aembed_images(self, image_uris: list[str]) -> list[list[float]]:
+        """Asynchronous Embed list of images.
+
+        Args:
+            image_uris (list[str]): List of Image URIs to embed.
+
+        Returns:
+            list[list[float]]: Embeddings.
+        """
+        return [await self.aembed_image(uri) for uri in image_uris]

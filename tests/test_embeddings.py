@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -122,3 +122,16 @@ class TestAlloyDBEmbeddings:
         for embedding_field in embedding:
             assert isinstance(embedding_field, float)
             assert -1 <= embedding_field <= 1
+
+    async def test_embed_image(self, embeddings):
+        """Test image embedding generation via synchronous wrapper."""
+        # We assume the image returns an embedding list similar to embed_query
+        # when running against a live integration.
+        embedding = embeddings.embed_image("gs://bucket/test_image.jpg")
+        assert isinstance(embedding, list)
+
+    async def test_aembed_image(self, embeddings):
+        """Test image embedding generation asynchronously."""
+        embedding = await embeddings.aembed_image("gs://bucket/test_image.jpg")
+        assert isinstance(embedding, list)
+
