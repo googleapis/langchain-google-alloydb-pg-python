@@ -109,6 +109,26 @@ class TestAlloyDBIndex:
         assert index.quantizer == "sq8"  # Check default value
         assert index.index_options() == "(num_leaves = 10, quantizer = sq8)"
 
+    def test_scann_index_auto_mode(self):
+        index = ScaNNIndex(name="test_index", mode="AUTO")
+        assert index.index_type == "ScaNN"
+        assert index.mode == "AUTO"
+        assert index.index_options() == "(mode = 'AUTO')"
+
+    def test_scann_index_invalid_mode(self):
+        index = ScaNNIndex(name="test_index", mode="INVALID")
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid mode 'INVALID'"):
+            index.index_options()
+
+    def test_scann_query_options_default(self):
+        options = ScaNNQueryOptions()
+        assert options.to_parameter() == [
+            "scann.num_leaves_to_search = 1",
+            "scann.pre_reordering_num_neighbors = -1",
+        ]
+
     def test_scann_query_options(self):
         options = ScaNNQueryOptions(
             num_leaves_to_search=2, pre_reordering_num_neighbors=10
@@ -124,3 +144,37 @@ class TestAlloyDBIndex:
             assert "to_string is deprecated, use to_parameter instead." in str(
                 w[-1].message
             )
+
+    def test_scann_query_options_pct_leaves(self):
+        options = ScaNNQueryOptions(
+            pre_reordering_num_neighbors=10,
+            pct_leaves_to_search=0.2,
+        )
+        assert options.to_parameter() == [
+            "scann.pct_leaves_to_search = 0.2",
+            "scann.pre_reordering_num_neighbors = 10",
+        ]
+        with warnings.catch_warnings(record=True) as w:
+            to_str = options.to_string()
+            assert (
+                to_str
+                == "scann.pct_leaves_to_search = 0.2, scann.pre_reordering_num_neighbors = 10"
+            )
+
+    def test_scann_query_options_both_params_warns(self):
+        options = ScaNNQueryOptions(
+            num_leaves_to_search=5,
+            pre_reordering_num_neighbors=10,
+            pct_leaves_to_search=0.5,
+        )
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            params = options.to_parameter()
+            assert len(w) == 1
+            assert "Both 'pct_leaves_to_search' and 'num_leaves_to_search' were provided" in str(
+                w[-1].message
+            )
+            assert params == [
+                "scann.pct_leaves_to_search = 0.5",
+                "scann.pre_reordering_num_neighbors = 10",
+            ]

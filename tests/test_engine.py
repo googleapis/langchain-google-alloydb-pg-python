@@ -15,6 +15,7 @@
 import os
 import uuid
 from typing import Sequence
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg  # type: ignore
 import pytest
@@ -42,7 +43,7 @@ HYBRID_SEARCH_TABLE_SYNC = "hybrid_sync" + str(uuid.uuid4()).replace("-", "_")
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
-host = os.environ["IP_ADDRESS"]
+host = os.environ.get("IP_ADDRESS", "127.0.0.1")
 
 
 def get_env_var(key: str, desc: str) -> str:
@@ -617,3 +618,207 @@ class TestEngineSync:
         ]
         for row in results:
             assert row in expected
+
+
+class TestEngineUnit:
+    @pytest.fixture
+    def engine(self):
+        eng = AlloyDBEngine.__new__(AlloyDBEngine)
+        eng._pool = MagicMock()
+
+        def mock_run_sync(coro):
+            coro.close()
+            ret = eng._run_as_sync.return_value
+            if isinstance(ret, MagicMock):
+                return [{"prediction": 1.0}]
+            return ret
+
+        eng._run_as_sync = MagicMock(side_effect=mock_run_sync)
+
+        async def mock_run_async(coro):
+            return await coro
+
+        eng._run_as_async = mock_run_async
+        return eng
+
+    @pytest.mark.asyncio
+    async def test_aforecast(self, engine):
+        """Test that aforecast calls the underlying google_ml.forecast table function asynchronously."""
+        with patch.object(engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [
+                {"prediction": 1.0},
+                {"prediction": 2.0},
+            ]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            results = await engine.aforecast(
+                model_id="test_model",
+                source_table="test_table",
+                source_query=None,
+                data_col="data",
+                timestamp_col="ts",
+                horizon=5,
+            )
+            assert len(results) == 2
+            assert results[0]["prediction"] == 1.0
+            call_args = mock_conn.execute.call_args
+            assert "SELECT * FROM google_ml.forecast" in str(call_args[0][0])
+            assert "source_query" not in str(call_args[0][0])
+            assert "conf_level" not in str(call_args[0][0])
+            assert call_args[0][1] == {
+                "model_id": "test_model",
+                "source_table": "test_table",
+                "timestamp_col": "ts",
+                "data_col": "data",
+                "horizon": 5,
+            }
+
+    @pytest.mark.asyncio
+    async def test_aforecast_with_optional_params(self, engine):
+        """Test aforecast with source_query and conf_level."""
+        with patch.object(
+            engine, "_aforecast", new_callable=AsyncMock
+        ) as mock_aforecast:
+            mock_aforecast.return_value = [{"prediction": 42.0}]
+            results = await engine.aforecast(
+                model_id="test_model",
+                source_table="test_table",
+                source_query="SELECT * FROM data",
+                data_col="data",
+                timestamp_col="ts",
+                horizon=10,
+                conf_level=0.95,
+            )
+            assert len(results) == 1
+            assert results[0]["prediction"] == 42.0
+            mock_aforecast.assert_called_once_with(
+                "test_model",
+                "test_table",
+                "ts",
+                "data",
+                10,
+                "SELECT * FROM data",
+                0.95,
+            )
+
+    def test_forecast(self, engine):
+        """Test that forecast evaluates via _run_as_sync to proxy the google_ml.forecast."""
+        engine._run_as_sync.return_value = [{"prediction": 1.0}]
+        results = engine.forecast(
+            model_id="test_model",
+            source_table="test_table",
+            source_query=None,
+            data_col="data",
+            timestamp_col="ts",
+            horizon=5,
+        )
+        assert results == [{"prediction": 1.0}]
+        engine._run_as_sync.assert_called_once()
+
+    def test_forecast_with_optional_params(self, engine):
+        """Test forecast with source_query and conf_level."""
+        engine._run_as_sync.return_value = [{"prediction": 42.0}]
+        results = engine.forecast(
+            model_id="test_model",
+            source_table="test_table",
+            source_query="SELECT * FROM data",
+            data_col="data",
+            timestamp_col="ts",
+            horizon=10,
+            conf_level=0.95,
+        )
+        assert results == [{"prediction": 42.0}]
+        engine._run_as_sync.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_private_aforecast(self, engine):
+        """Test direct _aforecast execution and mapping parsing."""
+        with patch.object(engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [
+                {"forecast_timestamp": "2026-08-07", "forecast_value": 100.0}
+            ]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            results = await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+                source_query="SELECT * FROM sales WHERE active = true",
+                conf_level=0.9,
+            )
+            assert len(results) == 1
+            assert results[0]["forecast_value"] == 100.0
+            call_args = mock_conn.execute.call_args
+            assert "SELECT * FROM google_ml.forecast" in str(call_args[0][0])
+            assert "source_query => :source_query" in str(call_args[0][0])
+            assert "conf_level => :conf_level" in str(call_args[0][0])
+            assert call_args[0][1] == {
+                "model_id": "model_1",
+                "source_table": "sales",
+                "timestamp_col": "date",
+                "data_col": "revenue",
+                "horizon": 3,
+                "source_query": "SELECT * FROM sales WHERE active = true",
+                "conf_level": 0.9,
+            }
+
+    @pytest.mark.asyncio
+    async def test_aforecast_validation_errors(self, engine):
+        """Test validation errors for invalid input parameters in _aforecast."""
+        with pytest.raises(ValueError, match="model_id must be provided"):
+            await engine._aforecast(
+                model_id="",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="source_table must be provided"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="timestamp_col must be provided"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="",
+                data_col="revenue",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="data_col must be provided"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="",
+                horizon=3,
+            )
+        with pytest.raises(ValueError, match="horizon must be a positive integer"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=0,
+            )
+        with pytest.raises(ValueError, match="conf_level must be between 0 and 1"):
+            await engine._aforecast(
+                model_id="model_1",
+                source_table="sales",
+                timestamp_col="date",
+                data_col="revenue",
+                horizon=3,
+                conf_level=1.5,
+            )

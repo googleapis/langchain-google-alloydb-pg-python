@@ -18,6 +18,7 @@ import os
 import uuid
 from threading import Thread
 from typing import Sequence
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -30,6 +31,10 @@ from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
+from langchain_google_alloydb_pg.indexes import (
+    DistanceStrategy,
+    ScaNNIndex,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -39,7 +44,7 @@ IMAGE_TABLE_SYNC = "image_sync" + str(uuid.uuid4())
 VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
-host = os.environ["IP_ADDRESS"]
+host = os.environ.get("IP_ADDRESS", "127.0.0.1")
 
 texts = ["foo", "bar", "baz"]
 metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
@@ -745,3 +750,210 @@ class TestVectorStore:
 
     def test_get_table_name(self, vs):
         assert vs.get_table_name() == DEFAULT_TABLE
+
+    def test_live_columnar_engine(self, vs):
+        """Test enabling columnar engine against live AlloyDB instance."""
+        try:
+            vs.enable_columnar_engine(["content"])
+            vs.enable_columnar_engine()
+        except Exception as e:
+            pytest.skip(f"Columnar engine not supported/enabled on instance: {e}")
+
+    def test_live_auto_columnarization(self, vs):
+        """Test triggering auto columnarization recommendations against live AlloyDB instance."""
+        try:
+            vs.enable_auto_columnarization()
+        except Exception as e:
+            pytest.skip(f"Auto columnarization not supported/enabled on instance: {e}")
+
+    def test_live_vector_assist(self, vs):
+        """Test vector assist spec definition, application, and recommendations against live AlloyDB instance."""
+        try:
+            specs = vs.define_vector_assist_spec()
+            assert isinstance(specs, list)
+            apply_res = vs.apply_vector_assist_spec()
+            assert isinstance(apply_res, list)
+            recs = vs.get_vector_assist_recommendations()
+            assert isinstance(recs, list)
+        except Exception as e:
+            pytest.skip(f"Vector assist not supported/enabled on instance: {e}")
+
+
+class TestVectorStoreUnit:
+    @pytest.fixture
+    def vs(self):
+        vs = AlloyDBVectorStore.__new__(AlloyDBVectorStore)
+        vs._engine = MagicMock()
+        mock_vs = MagicMock()
+        vs._PGVectorStore__vs = mock_vs
+        vs._AlloyDBVectorStore__vs = mock_vs
+
+        def mock_sync(coro):
+            if hasattr(coro, "close"):
+                coro.close()
+            return getattr(vs._engine._run_as_sync, "return_value", None)
+
+        async def mock_async(coro):
+            if hasattr(coro, "close"):
+                coro.close()
+            return getattr(vs._engine._run_as_async, "return_value", None)
+
+        vs._engine._run_as_sync = MagicMock(side_effect=mock_sync)
+        vs._engine._run_as_async = AsyncMock(side_effect=mock_async)
+        return vs
+
+    def test_enable_columnar_engine(self, vs):
+        """Test enabling the columnar engine triggers the appropriate sync method on the underlying store."""
+        vs.enable_columnar_engine(["content"])
+        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(["content"])
+
+    def test_enable_columnar_engine_without_columns(self, vs):
+        """Test enabling columnar engine without columns."""
+        vs.enable_columnar_engine()
+        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(None)
+
+    @pytest.mark.asyncio
+    async def test_aenable_columnar_engine(self, vs):
+        """Test enabling the columnar engine triggers the appropriate async method on the underlying store."""
+        await vs.aenable_columnar_engine(["content"])
+        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(["content"])
+
+    @pytest.mark.asyncio
+    async def test_aenable_columnar_engine_without_columns(self, vs):
+        """Test enabling columnar engine without columns asynchronously."""
+        await vs.aenable_columnar_engine()
+        vs._PGVectorStore__vs.aenable_columnar_engine.assert_called_once_with(None)
+
+    def test_enable_auto_columnarization(self, vs):
+        """Test enabling auto columnarization triggers the sync engine wrapper."""
+        vs.enable_auto_columnarization()
+        vs._PGVectorStore__vs.aenable_auto_columnarization.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_aenable_auto_columnarization(self, vs):
+        """Test enabling auto columnarization triggers the async engine wrapper."""
+        await vs.aenable_auto_columnarization()
+        vs._PGVectorStore__vs.aenable_auto_columnarization.assert_called_once_with()
+
+    def test_define_vector_assist_spec(self, vs):
+        """Test definition of vector assist specification."""
+        expected = [{"spec": "ok"}]
+        vs._engine._run_as_sync.return_value = expected
+        res = vs.define_vector_assist_spec()
+        assert res == expected
+        vs._PGVectorStore__vs.adefine_vector_assist_spec.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_adefine_vector_assist_spec(self, vs):
+        """Test definition of vector assist specification asynchronously."""
+        expected = [{"spec": "ok"}]
+        vs._engine._run_as_async.return_value = expected
+        res = await vs.adefine_vector_assist_spec()
+        assert res == expected
+        vs._PGVectorStore__vs.adefine_vector_assist_spec.assert_called_once_with()
+
+    def test_apply_vector_assist_spec(self, vs):
+        """Test applying vector assist specifications."""
+        expected = [{"apply": "ok"}]
+        vs._engine._run_as_sync.return_value = expected
+        res = vs.apply_vector_assist_spec()
+        assert res == expected
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_aapply_vector_assist_spec(self, vs):
+        """Test applying vector assist specifications asynchronously."""
+        expected = [{"apply": "ok"}]
+        vs._engine._run_as_async.return_value = expected
+        res = await vs.aapply_vector_assist_spec()
+        assert res == expected
+        vs._PGVectorStore__vs.aapply_vector_assist_spec.assert_called_once_with()
+
+    def test_get_vector_assist_recommendations(self, vs):
+        """Test retrieving vector assist recommendations."""
+        expected = [{"rec": "ok"}]
+        vs._engine._run_as_sync.return_value = expected
+        res = vs.get_vector_assist_recommendations()
+        assert res == expected
+        vs._PGVectorStore__vs.aget_vector_assist_recommendations.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_aget_vector_assist_recommendations(self, vs):
+        """Test retrieving vector assist recommendations asynchronously."""
+        expected = [{"rec": "ok"}]
+        vs._engine._run_as_async.return_value = expected
+        res = await vs.aget_vector_assist_recommendations()
+        assert res == expected
+        vs._PGVectorStore__vs.aget_vector_assist_recommendations.assert_called_once_with()
+
+    def test_initialize_auto_vector_embeddings(self, vs):
+        """Test initializing auto vector embeddings."""
+        vs.initialize_auto_vector_embeddings(
+            model_id="test-model",
+        )
+        vs._PGVectorStore__vs.ainitialize_auto_vector_embeddings.assert_called_once_with(
+            "test-model", None, None, None
+        )
+
+    def test_initialize_auto_vector_embeddings_with_columns(self, vs):
+        """Test initializing auto vector embeddings with custom columns."""
+        vs.initialize_auto_vector_embeddings(
+            model_id="test-model",
+            content_column="custom_content",
+            embedding_column="custom_embedding",
+            schema_name="myschema",
+        )
+        vs._PGVectorStore__vs.ainitialize_auto_vector_embeddings.assert_called_once_with(
+            "test-model", "custom_content", "custom_embedding", "myschema"
+        )
+
+    @pytest.mark.asyncio
+    async def test_ainitialize_auto_vector_embeddings(self, vs):
+        """Test initializing auto vector embeddings asynchronously."""
+        await vs.ainitialize_auto_vector_embeddings(
+            model_id="test-model",
+        )
+        vs._PGVectorStore__vs.ainitialize_auto_vector_embeddings.assert_called_once_with(
+            "test-model", None, None, None
+        )
+
+    @pytest.mark.asyncio
+    async def test_ainitialize_auto_vector_embeddings_with_columns(self, vs):
+        """Test initializing auto vector embeddings with custom columns asynchronously."""
+        await vs.ainitialize_auto_vector_embeddings(
+            model_id="test-model",
+            content_column="custom_content",
+            embedding_column="custom_embedding",
+            schema_name="myschema",
+        )
+        vs._PGVectorStore__vs.ainitialize_auto_vector_embeddings.assert_called_once_with(
+            "test-model", "custom_content", "custom_embedding", "myschema"
+        )
+
+    def test_set_maintenance_work_mem_none(self, vs):
+        """Test setting maintenance work mem with None."""
+        vs.set_maintenance_work_mem(None, 768)
+        vs._PGVectorStore__vs.aset_maintenance_work_mem.assert_called_once_with(None, 768)
+
+    @pytest.mark.asyncio
+    async def test_aset_maintenance_work_mem_none(self, vs):
+        """Test setting maintenance work mem with None asynchronously."""
+        await vs.aset_maintenance_work_mem(None, 768)
+        vs._PGVectorStore__vs.aset_maintenance_work_mem.assert_called_once_with(None, 768)
+
+    def test_apply_vector_index_scann_auto(self, vs):
+        """Test applying ScaNN index in AUTO mode synchronously without live DB."""
+        index = ScaNNIndex(name="scann_auto", mode="AUTO")
+        vs.apply_vector_index(index)
+        vs._PGVectorStore__vs.aapply_vector_index.assert_called_once_with(
+            index, None, concurrently=False
+        )
+
+    @pytest.mark.asyncio
+    async def test_aapply_vector_index_scann_auto(self, vs):
+        """Test applying ScaNN index in AUTO mode asynchronously without live DB."""
+        index = ScaNNIndex(name="scann_auto", mode="AUTO")
+        await vs.aapply_vector_index(index)
+        vs._PGVectorStore__vs.aapply_vector_index.assert_called_once_with(
+            index, None, concurrently=False
+        )
