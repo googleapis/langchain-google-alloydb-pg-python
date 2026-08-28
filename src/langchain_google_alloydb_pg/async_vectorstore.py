@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import re
 from typing import Any, Optional
 
@@ -26,12 +27,24 @@ from langchain_core.documents import Document
 from langchain_postgres.v2.async_vectorstore import AsyncPGVectorStore
 from sqlalchemy import text
 
+logger = logging.getLogger(__name__)
+
+
+def _quote_ident(ident: str) -> str:
+    """Quote a PostgreSQL identifier to prevent SQL injection and syntax errors."""
+    return '"' + ident.replace('"', '""') + '"'
+
 
 class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     """Google AlloyDB Vector Store class"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    @property
+    def _pool_engine(self) -> Any:
+        """Helper to access the underlying pool from AlloyDBEngine or PGEngine."""
+        return getattr(self.engine, "_pool", self.engine)
 
     def _encode_image(self, uri: str) -> str:
         """Get base64 string from a image URI."""
@@ -134,17 +147,380 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             embedding=embedding, k=k, filter=filter, **kwargs
         )
 
-    async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
-        """Set database maintenance work memory (for ScaNN index creation)."""
-        # Required index memory in MB
-        buffer = 1
-        index_memory_required = (
-            round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
-        )  # Convert bytes to MB
-        query = f"SET maintenance_work_mem TO '{index_memory_required} MB';"
-        async with self.engine.connect() as conn:
-            await conn.execute(text(query))
-            await conn.commit()
+    async def aset_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
+        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
+        import warnings
+
+        warnings.warn(
+            "aset_maintenance_work_mem is deprecated and has no effect. "
+            "aapply_vector_index automatically calculates and sets maintenance_work_mem.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    set_maintenance_work_mem = aset_maintenance_work_mem
+
+    async def aapply_vector_index(
+        self,
+        index: Any,
+        name: Optional[str] = None,
+        *,
+        concurrently: bool = False,
+    ) -> None:
+        """Create index in the vector store table with ScaNN memory management."""
+        from langchain_postgres.v2.indexes import (
+            DEFAULT_INDEX_NAME_SUFFIX,
+            ExactNearestNeighbor,
+        )
+
+        from .indexes import ScaNNIndex
+
+        if isinstance(index, ExactNearestNeighbor):
+            await self.adrop_vector_index()
+            return
+
+        # Note: CREATE EXTENSION is omitted here as it requires SUPERUSER privileges.
+        # Extensions should be created during database setup by an administrator.
+
+        function = index.get_index_function()
+
+        filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
+        params = "WITH " + index.index_options()
+        if name is None:
+            if index.name is None:
+                index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
+            name = index.name
+
+        schema = getattr(self, "schema_name", None)
+        table_identifier = (
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
+        )
+        stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} {_quote_ident(name)} ON {table_identifier} USING {index.index_type} ({_quote_ident(self.embedding_column)} {function}) {params} {filter};'
+
+        mem_query = None
+        if isinstance(index, ScaNNIndex):
+            # For mode="AUTO", num_leaves is None. Use a default estimate of 1000 for memory calculation.
+            num_leaves: int = index.num_leaves if index.num_leaves is not None else 1000
+
+            # Resolve vector_size with proper precedence and no blocking/deadlocking I/O:
+            # 1. self.vector_size (explicitly set on store)
+            # 2. embedding_service.embedding_size (if present)
+            # 3. Fallback to 768
+            vector_size: int = 768
+            if hasattr(self, "vector_size") and self.vector_size is not None:
+                vector_size = getattr(self, "vector_size", 768) or 768
+            elif (
+                hasattr(self, "embedding_service")
+                and self.embedding_service is not None
+                and hasattr(self.embedding_service, "embedding_size")
+            ):
+                vector_size = (
+                    getattr(self.embedding_service, "embedding_size", 768) or 768
+                )
+
+            # Calculate required memory in MB, capping at PostgreSQL's maximum limit of 2,097,151 MB (2 GB - 1 kB)
+            mem_mb = min(
+                2_097_151,
+                max(
+                    10,
+                    round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
+                ),
+            )
+            mem_query = f"SET maintenance_work_mem TO '{mem_mb} MB';"
+
+        if concurrently:
+            async with self._pool_engine.connect() as conn:
+                autocommit_conn = await conn.execution_options(
+                    isolation_level="AUTOCOMMIT"
+                )
+                if mem_query:
+                    await autocommit_conn.execute(text(mem_query))
+                try:
+                    await autocommit_conn.execute(text(stmt))
+                finally:
+                    if mem_query:
+                        try:
+                            await autocommit_conn.execute(
+                                text("RESET maintenance_work_mem;")
+                            )
+                        except Exception:
+                            # Preserve the original CREATE INDEX exception if the connection is broken
+                            pass
+        else:
+            async with self._pool_engine.begin() as conn:
+                if mem_query:
+                    # SET LOCAL is automatically scoped to the transaction block
+                    await conn.execute(
+                        text(f"SET LOCAL maintenance_work_mem TO '{mem_mb} MB';")
+                    )
+                await conn.execute(text(stmt))
+
+    async def ainitialize_auto_vector_embeddings(
+        self,
+        model_id: str,
+        content_column: Optional[str] = None,
+        embedding_column: Optional[str] = None,
+        schema_name: Optional[str] = None,
+    ) -> None:
+        """Asynchronously initialize auto vector embeddings.
+
+        Args:
+            model_id: The ID of the model to use for embeddings.
+            content_column: Optional name of the content column. Defaults to self.content_column.
+            embedding_column: Optional name of the embedding column. Defaults to self.embedding_column.
+            schema_name: Optional name of the database schema. Defaults to self.schema_name.
+        """
+        content_col = content_column or self.content_column
+        embedding_col = embedding_column or self.embedding_column
+        schema = schema_name or getattr(self, "schema_name", "public")
+
+        if not content_col:
+            raise ValueError(
+                "content_column must be provided or configured on the vector store."
+            )
+        if not embedding_col:
+            raise ValueError(
+                "embedding_column must be provided or configured on the vector store."
+            )
+
+        def _quote_ident(ident: str) -> str:
+            return '"' + ident.replace('"', '""') + '"'
+
+        table_identifier = (
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
+        )
+        query = "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+        try:
+            async with self._pool_engine.connect() as conn:
+                await conn.execute(
+                    text(query),
+                    {
+                        "model_id": model_id,
+                        "table_name": table_identifier,
+                        "content_column": content_col,
+                        "embedding_column": embedding_col,
+                    },
+                )
+                await conn.commit()
+        except Exception as e:
+            if (
+                "ai.initialize_embeddings" in str(e)
+                or "UndefinedProcedureError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB AI extension is not installed or enabled. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS alloydb_ai CASCADE;' on your database."
+                ) from e
+            raise
+
+    async def aenable_columnar_engine(
+        self,
+        columns: Optional[list[str]] = None,
+    ) -> None:
+        """Asynchronously add the table and its columns to the columnar engine.
+
+        Args:
+            columns: Optional list of column names to add to the columnar engine.
+        """
+        schema = getattr(self, "schema_name", None)
+        if schema:
+            table_identifier = f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            schema_clause = "table_schema = :schema"
+            schema_param = schema
+        else:
+            table_identifier = _quote_ident(self.table_name)
+            schema_clause = "table_schema = CURRENT_SCHEMA()"
+            schema_param = None
+
+        if columns:
+            columns_str = ",".join(_quote_ident(c) for c in columns)
+            query = "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            params = {"table_name": table_identifier, "columns": columns_str}
+        else:
+            # When columns is None, we should exclude vector columns to avoid wasting columnar memory
+            # Query table columns excluding the embedding_column
+            query = "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            # Fetch all columns except the vector embedding column
+            async with self._pool_engine.connect() as conn:
+                col_query = (
+                    "SELECT column_name FROM information_schema.columns "
+                    f"WHERE table_name = :table_name AND {schema_clause} AND column_name != :embed_col"
+                )
+                col_params: dict[str, Any] = {
+                    "table_name": self.table_name,
+                    "embed_col": self.embedding_column,
+                }
+                if schema_param:
+                    col_params["schema"] = schema_param
+                col_result = await conn.execute(text(col_query), col_params)
+                col_names = [row[0] for row in col_result.fetchall()]
+            if col_names:
+                columns_str = ",".join(_quote_ident(c) for c in col_names)
+                params = {"table_name": table_identifier, "columns": columns_str}
+            else:
+                query = "SELECT google_columnar_engine_add(:table_name)"
+                params = {"table_name": table_identifier}
+
+        try:
+            async with self._pool_engine.connect() as conn:
+                await conn.execute(text(query), params)
+                await conn.commit()
+        except Exception as e:
+            if (
+                "google_columnar_engine" in str(e)
+                or "UndefinedFunctionError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB Columnar Engine is not installed or enabled on this instance. "
+                    "Please ensure 'google_columnar_engine' is in shared_preload_libraries "
+                    "and 'google_columnar_engine.enabled = on' is set in instance flags."
+                ) from e
+            raise
+
+    async def aenable_auto_columnarization(self) -> None:
+        """Asynchronously trigger auto-columnarization recommendations."""
+        query = "SELECT google_columnar_engine_recommend('AUTO_COLUMNARIZATION')"
+        try:
+            async with self._pool_engine.connect() as conn:
+                await conn.execute(text(query))
+                await conn.commit()
+        except Exception as e:
+            if (
+                "google_columnar_engine" in str(e)
+                or "UndefinedFunctionError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB Columnar Engine is not installed or enabled on this instance. "
+                    "Please ensure 'google_columnar_engine' is in shared_preload_libraries "
+                    "and 'google_columnar_engine.enabled = on' is set in instance flags."
+                ) from e
+            raise
+
+    async def adefine_vector_assist_spec(self) -> list[dict]:
+        """Asynchronously define a Vector Assist spec for the current table."""
+        schema = getattr(self, "schema_name", "public") or "public"
+        table_identifier = (
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
+        )
+        query = "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+        params = {
+            "table_name": table_identifier,
+            "embedding_column": self.embedding_column,
+        }
+        try:
+            async with self._pool_engine.connect() as conn:
+                result = await conn.execute(text(query), params)
+                rows = [dict(row) for row in result.mappings()]
+                await conn.commit()
+                return rows
+        except Exception as e:
+            if (
+                "vector_assist" in str(e)
+                or "UndefinedSchemaError" in type(e).__name__
+                or "UndefinedFunctionError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB Vector Assist extension is not installed on this database. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS vector_assist CASCADE;' as a superuser."
+                ) from e
+            raise
+
+    async def aapply_vector_assist_spec(
+        self, spec_id: Optional[str] = None
+    ) -> list[dict]:
+        """Asynchronously apply the Vector Assist spec for the current table."""
+        schema = getattr(self, "schema_name", "public") or "public"
+        table_identifier = (
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
+        )
+        if spec_id is not None:
+            query = "SELECT * FROM vector_assist.apply_spec(spec_id => :spec_id)"
+            params = {"spec_id": spec_id}
+        else:
+            query = "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+            params = {
+                "table_name": table_identifier,
+                "embedding_column": self.embedding_column,
+            }
+        try:
+            async with self._pool_engine.connect() as conn:
+                result = await conn.execute(text(query), params)
+                rows = [dict(row) for row in result.mappings()]
+                await conn.commit()
+                return rows
+        except Exception as e:
+            if (
+                "vector_assist" in str(e)
+                or "UndefinedSchemaError" in type(e).__name__
+                or "UndefinedFunctionError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB Vector Assist extension is not installed on this database. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS vector_assist CASCADE;' as a superuser."
+                ) from e
+            raise
+
+    async def aget_vector_assist_recommendations(self) -> list[dict]:
+        """Asynchronously get Vector Assist recommendations for the current table."""
+        schema = getattr(self, "schema_name", "public") or "public"
+        table_identifier = (
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
+        )
+
+        # Query existing spec_id from vector_assist.specs instead of defining a new spec (avoids side-effects)
+        query_spec = (
+            "SELECT spec_id FROM vector_assist.specs "
+            "WHERE table_name = :table_name AND vector_column_name = :embedding_column "
+            "ORDER BY created_at DESC LIMIT 1"
+        )
+        try:
+            async with self._pool_engine.connect() as conn:
+                spec_result = await conn.execute(
+                    text(query_spec),
+                    {
+                        "table_name": table_identifier,
+                        "embedding_column": self.embedding_column,
+                    },
+                )
+                spec_row = spec_result.mappings().first()
+                if not spec_row:
+                    logger.warning(
+                        "No vector assist spec found for table '%s'. "
+                        "Call adefine_vector_assist_spec() first to create a spec.",
+                        table_identifier,
+                    )
+                    return []
+
+                spec_id = spec_row.get("spec_id")
+                query = "SELECT * FROM vector_assist.get_recommendations(spec_id => :spec_id)"
+                result = await conn.execute(
+                    text(query),
+                    {"spec_id": str(spec_id) if spec_id is not None else None},
+                )
+                return [dict(row) for row in result.mappings()]
+        except Exception as e:
+            if (
+                "vector_assist" in str(e)
+                or "UndefinedSchemaError" in type(e).__name__
+                or "UndefinedFunctionError" in type(e).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB Vector Assist extension is not installed on this database. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS vector_assist CASCADE;' as a superuser."
+                ) from e
+            raise
 
     def add_images(
         self,
