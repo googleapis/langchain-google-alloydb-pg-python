@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from langchain_postgres.v2.hybrid_search_config import (
 
 from .chat_message_history import AlloyDBChatMessageHistory
 from .checkpoint import AlloyDBSaver
+from .document_compressor import AlloyDBDocumentCompressor
 from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
@@ -29,16 +30,17 @@ from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
 __all__ = [
-    "AlloyDBEngine",
-    "Column",
-    "AlloyDBVectorStore",
-    "AlloyDBLoader",
-    "AlloyDBDocumentSaver",
     "AlloyDBChatMessageHistory",
+    "AlloyDBDocumentCompressor",
+    "AlloyDBDocumentSaver",
     "AlloyDBEmbeddings",
-    "AlloyDBModelManager",
+    "AlloyDBEngine",
+    "AlloyDBLoader",
     "AlloyDBModel",
+    "AlloyDBModelManager",
     "AlloyDBSaver",
+    "AlloyDBVectorStore",
+    "Column",
     "HybridSearchConfig",
     "reciprocal_rank_fusion",
     "weighted_sum_ranking",
