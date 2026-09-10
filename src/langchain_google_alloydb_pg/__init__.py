@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
+from .tools import AlloyDBIfTool, AlloyDBSentimentTool, AlloyDBSummaryTool
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
@@ -43,4 +44,7 @@ __all__ = [
     "reciprocal_rank_fusion",
     "weighted_sum_ranking",
     "__version__",
+    "AlloyDBIfTool",
+    "AlloyDBSentimentTool",
+    "AlloyDBSummaryTool",
 ]
