@@ -13,7 +13,7 @@ dependencies = [
     "google-cloud-storage>=2.18.2, <4.0.0",
     "numpy>=1.24.4, <3.0.0; python_version >= '3.11'",
     "numpy>=1.24.4, <=2.2.6; python_version == '3.10'",
-    "langchain-postgres>=0.0.16",
+    "langchain-postgres @ git+https://github.com/langchain-ai/langchain-postgres.git@templatize-inline-embedding",
     "langgraph-checkpoint>=4.0.0, <4.2.0",
     "aiohttp>=3.12.15, <4.0.0",
 ]

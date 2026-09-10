@@ -14,6 +14,7 @@
 
 import os
 import uuid
+from typing import Any, Sequence
 
 import pytest
 import pytest_asyncio
@@ -66,7 +67,7 @@ async def aexecute(
 async def afetch(
     engine: AlloyDBEngine,
     query: str,
-):
+) -> Sequence[Any]:
     async def run(engine, query):
         async with engine._pool.connect() as conn:
             result = await conn.execute(text(query))
