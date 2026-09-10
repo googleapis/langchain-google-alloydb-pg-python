@@ -411,3 +411,4 @@ async def test_compress_documents_cross_loop_event_loop_safety():
     finally:
         engine_loop.call_soon_threadsafe(engine_loop.stop)
         thread.join(timeout=2.0)
+        engine_loop.close()
