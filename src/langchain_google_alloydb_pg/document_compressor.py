@@ -38,7 +38,7 @@ class AlloyDBDocumentCompressor(BaseDocumentCompressor):
     model_id: str = "semantic-ranker-512@latest"
     top_n: Optional[int] = None
 
-    if ConfigDict is not None:
+    if hasattr(BaseDocumentCompressor, "model_config") and ConfigDict is not None:
         model_config = ConfigDict(arbitrary_types_allowed=True)
     else:
 
@@ -66,65 +66,85 @@ class AlloyDBDocumentCompressor(BaseDocumentCompressor):
         if not documents:
             return []
 
+        if not query or not query.strip():
+            raise ValueError("Query string cannot be empty or whitespace.")
+
+        if self.top_n is not None and self.top_n <= 0:
+            raise ValueError("top_n must be a positive integer greater than 0.")
+
         texts = [doc.page_content for doc in documents]
 
-        # We construct a parameterized query that calls google_ml.rank
-        # The return type depends on the exact function signature, but typically it returns rows
-        # with an index or id mapping back to the input array.
-        # We query the function and rely on the order it returns to sort the documents.
+        # Parameterized query calling google_ml.rank
         query_text = """
             SELECT * FROM google_ml.rank(:model_id, :query, :documents, :top_n)
         """
 
-        async with self.engine._pool.connect() as conn:
-            result = await conn.execute(
-                text(query_text),
-                {
-                    "model_id": self.model_id,
-                    "query": query,
-                    "documents": texts,
-                    "top_n": self.top_n if self.top_n is not None else len(documents),
-                },
-            )
-            rows = result.fetchall()
+        async def _query():
+            async with self.engine._pool.connect() as conn:
+                result = await conn.execute(
+                    text(query_text),
+                    {
+                        "model_id": self.model_id,
+                        "query": query,
+                        "documents": texts,
+                        "top_n": (
+                            self.top_n if self.top_n is not None else len(documents)
+                        ),
+                    },
+                )
+                return result.fetchall()
+
+        rows = await self.engine._run_as_async(_query())
 
         compressed_docs = []
-        # Fallback to standard 1-to-1 if returns raw scores array
+        # Support fallback to array of scores if returned by custom transforms
         if len(rows) > 0 and len(rows[0]) == 1 and isinstance(rows[0][0], list):
-            # It returned a single row with an array of scores
             scores = rows[0][0]
             for idx, score in enumerate(scores):
                 if idx >= len(documents):
                     break
-                doc = documents[idx]
-                doc.metadata["relevance_score"] = float(score)
-                compressed_docs.append(doc)
-            # Sort by score descending
+                if score is None:
+                    continue
+                orig_doc = documents[idx]
+                new_metadata = dict(orig_doc.metadata)
+                new_metadata["relevance_score"] = float(score)
+                compressed_docs.append(
+                    Document(page_content=orig_doc.page_content, metadata=new_metadata)
+                )
             compressed_docs.sort(
                 key=lambda x: x.metadata["relevance_score"], reverse=True
             )
-            if self.top_n:
+            if self.top_n is not None:
                 compressed_docs = compressed_docs[: self.top_n]
         else:
-            # It returned rows, hopefully with (index, score) or just scores
-            for idx, row in enumerate(rows):
+            # Table-valued return: TABLE(index integer, score real)
+            for row in rows:
                 if len(row) >= 2:
-                    # Assuming (index, score) or (id, score)
-                    # We will just map it positionally for now or try to extract index
                     try:
-                        doc_idx = int(row[0]) - 1  # Postgres arrays are 1-indexed
-                        doc = documents[doc_idx]
-                        doc.metadata["relevance_score"] = float(row[1])
+                        raw_idx, raw_score = row[0], row[1]
+                        if raw_score is None:
+                            continue
+                        raw_idx_int = int(raw_idx)
+                        if raw_idx_int < 1 or raw_idx_int > len(documents):
+                            raise IndexError(
+                                f"Index {raw_idx_int} out of 1-based bounds [1, {len(documents)}]"
+                            )
+                        doc_idx = raw_idx_int - 1
+                        orig_doc = documents[doc_idx]
+                        score = float(raw_score)
+                        new_metadata = dict(orig_doc.metadata)
+                        new_metadata["relevance_score"] = score
+                        compressed_docs.append(
+                            Document(
+                                page_content=orig_doc.page_content,
+                                metadata=new_metadata,
+                            )
+                        )
                     except (ValueError, TypeError, IndexError):
-                        doc = documents[idx]
-                        try:
-                            doc.metadata["relevance_score"] = float(row[1])
-                        except (ValueError, TypeError, IndexError):
-                            doc.metadata["relevance_score"] = float(row[0])
+                        continue
                 else:
-                    doc = documents[idx]
-                    doc.metadata["relevance_score"] = float(row[0])
-                compressed_docs.append(doc)
+                    # Single column returns without document index cannot be safely mapped
+                    continue
 
         if self.top_n is not None:
             compressed_docs = compressed_docs[: self.top_n]
