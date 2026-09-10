@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from typing import Optional, Sequence
 
 from langchain_core.callbacks.manager import Callbacks
@@ -52,6 +53,20 @@ class AlloyDBDocumentCompressor(BaseDocumentCompressor):
         callbacks: Optional[Callbacks] = None,
     ) -> Sequence[Document]:
         """Compress documents using AlloyDB's rank model."""
+        try:
+            curr_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            curr_loop = None
+
+        if (
+            curr_loop is not None
+            and getattr(self.engine, "_loop", None) is not None
+            and curr_loop == self.engine._loop
+        ):
+            raise RuntimeError(
+                "Cannot call synchronous 'compress_documents' from the engine's background event loop "
+                "as it causes a thread deadlock. Use 'acompress_documents' instead."
+            )
         return self.engine._run_as_sync(
             self.acompress_documents(documents, query, callbacks)
         )
@@ -107,7 +122,11 @@ class AlloyDBDocumentCompressor(BaseDocumentCompressor):
                     continue
                 orig_doc = documents[idx]
                 new_metadata = dict(orig_doc.metadata)
-                new_metadata["relevance_score"] = float(score)
+                try:
+                    score_float = float(score)
+                except (ValueError, TypeError, OverflowError):
+                    continue
+                new_metadata["relevance_score"] = score_float
                 compressed_docs.append(
                     Document(page_content=orig_doc.page_content, metadata=new_metadata)
                 )
@@ -123,6 +142,8 @@ class AlloyDBDocumentCompressor(BaseDocumentCompressor):
                     try:
                         raw_idx, raw_score = row[0], row[1]
                         if raw_score is None:
+                            continue
+                        if isinstance(raw_idx, float) and not raw_idx.is_integer():
                             continue
                         raw_idx_int = int(raw_idx)
                         if raw_idx_int < 1 or raw_idx_int > len(documents):
@@ -140,7 +161,7 @@ class AlloyDBDocumentCompressor(BaseDocumentCompressor):
                                 metadata=new_metadata,
                             )
                         )
-                    except (ValueError, TypeError, IndexError):
+                    except (ValueError, TypeError, IndexError, OverflowError):
                         continue
                 else:
                     # Single column returns without document index cannot be safely mapped

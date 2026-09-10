@@ -412,3 +412,82 @@ async def test_compress_documents_cross_loop_event_loop_safety():
         engine_loop.call_soon_threadsafe(engine_loop.stop)
         thread.join(timeout=2.0)
         engine_loop.close()
+
+
+@pytest.mark.asyncio
+async def test_compress_documents_infinity_index_overflow_handling(
+    mock_engine, sample_documents
+):
+    """Verify that float('inf') or float('-inf') index rows are safely skipped without OverflowError (NEW-641-01)."""
+    conn = mock_engine._pool.connect.return_value.__aenter__.return_value
+    conn.execute.return_value.fetchall.return_value = [
+        [float("inf"), 0.99],
+        [float("-inf"), 0.88],
+        [1, 0.95],
+    ]
+    compressor = AlloyDBDocumentCompressor(engine=mock_engine)
+    result = await compressor.acompress_documents(sample_documents, "query")
+    assert len(result) == 1
+    assert result[0].page_content == sample_documents[0].page_content
+    assert result[0].metadata["relevance_score"] == 0.95
+
+
+@pytest.mark.asyncio
+async def test_compress_documents_array_fallback_non_numeric_score(
+    mock_engine, sample_documents
+):
+    """Verify that non-numeric scores in array fallback are safely skipped without ValueError (NEW-641-02)."""
+    conn = mock_engine._pool.connect.return_value.__aenter__.return_value
+    conn.execute.return_value.fetchall.return_value = [
+        [["not_a_number", 0.85, "nan_val"]]
+    ]
+    compressor = AlloyDBDocumentCompressor(engine=mock_engine)
+    result = await compressor.acompress_documents(sample_documents, "query")
+    assert len(result) == 1
+    assert result[0].page_content == sample_documents[1].page_content
+    assert result[0].metadata["relevance_score"] == 0.85
+
+
+@pytest.mark.asyncio
+async def test_compress_documents_fractional_float_index_rejected(
+    mock_engine, sample_documents
+):
+    """Verify that fractional float indices (e.g. 1.5) are safely skipped rather than truncated (NEW-641-03)."""
+    conn = mock_engine._pool.connect.return_value.__aenter__.return_value
+    conn.execute.return_value.fetchall.return_value = [
+        [1.5, 0.99],
+        [2.7, 0.88],
+        [1.0, 0.95],  # 1.0 is an exact integer float, should be accepted
+    ]
+    compressor = AlloyDBDocumentCompressor(engine=mock_engine)
+    result = await compressor.acompress_documents(sample_documents, "query")
+    assert len(result) == 1
+    assert result[0].page_content == sample_documents[0].page_content
+    assert result[0].metadata["relevance_score"] == 0.95
+
+
+def test_compress_documents_sync_deadlock_on_engine_loop():
+    """Verify that calling compress_documents on the engine loop raises RuntimeError (NEW-641-04)."""
+    loop = asyncio.new_event_loop()
+
+    class DeadlockEngine(AlloyDBEngine):
+
+        def __init__(self, loop):
+            self._loop = loop
+
+    engine = DeadlockEngine(loop)
+    compressor = AlloyDBDocumentCompressor(engine=engine)
+
+    def run_on_loop():
+        with pytest.raises(
+            RuntimeError, match="Cannot call synchronous 'compress_documents'"
+        ):
+            compressor.compress_documents([Document(page_content="text")], "query")
+
+    async def runner():
+        run_on_loop()
+
+    try:
+        loop.run_until_complete(runner())
+    finally:
+        loop.close()
