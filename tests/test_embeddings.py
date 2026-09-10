@@ -115,6 +115,12 @@ class TestAlloyDBEmbeddings:
         embedding_query = embeddings.embed_query_inline("test document")
         assert embedding_query == f"embedding('{model_id}', 'test document')::vector"
 
+    async def test_embed_query_inline_template(self, embeddings, model_id):
+        embedding_query = embeddings.embed_query_inline_template(":content")
+        assert embedding_query == f"embedding('{model_id}', :content)::vector"
+        embedding_query_search = embeddings.embed_query_inline_template(":query_text")
+        assert embedding_query_search == f"embedding('{model_id}', :query_text)::vector"
+
     async def test_aembed_query(self, embeddings):
         embedding = await embeddings.aembed_query("test document")
         assert isinstance(embedding, list)

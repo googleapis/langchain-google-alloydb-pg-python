@@ -63,6 +63,18 @@ async def aexecute(
     await engine._run_as_async(run(engine, query))
 
 
+async def afetch(
+    engine: AlloyDBEngine,
+    query: str,
+):
+    async def run(engine, query):
+        async with engine._pool.connect() as conn:
+            result = await conn.execute(text(query))
+            return result.fetchall()
+
+    return await engine._run_as_async(run(engine, query))
+
+
 @pytest.mark.asyncio(loop_scope="class")
 class TestVectorStoreEmbeddings:
     @pytest.fixture(scope="module")
@@ -186,6 +198,79 @@ class TestVectorStoreEmbeddings:
         assert results == [Document(page_content="foo", id=ids[0])]
         results = await vs.asimilarity_search("foo", k=1, filter={"content": "bar"})
         assert results == [Document(page_content="bar", id=ids[1])]
+
+    async def test_asimilarity_search_sql_injection(self, engine, vs):
+        temp_table = "temp_" + str(uuid.uuid4()).replace("-", "_")
+        await aexecute(engine, f"CREATE TABLE {temp_table} (id INT, val TEXT);")
+        await aexecute(engine, f"INSERT INTO {temp_table} VALUES (1, 'untouched');")
+        try:
+            # Attempt UPDATE SQL injection in similarity search
+            malicious_query = (
+                f"foo'); UPDATE {temp_table} SET val = 'hacked' WHERE id = 1; --"
+            )
+            results = await vs.asimilarity_search(malicious_query, k=1)
+            assert isinstance(results, list)
+            assert len(results) == 1
+
+            # Assert: verify in database that the temp table row was NOT updated
+            rows = await afetch(engine, f"SELECT val FROM {temp_table} WHERE id = 1;")
+            assert len(rows) == 1
+            assert rows[0][0] == "untouched"
+
+            # Attempt DROP TABLE SQL injection in similarity search
+            malicious_drop = f"foo'); DROP TABLE {temp_table}; --"
+            results = await vs.asimilarity_search(malicious_drop, k=1)
+            assert isinstance(results, list)
+
+            # Assert: verify in database that the temp table was NOT dropped
+            check_table = await afetch(
+                engine,
+                f"SELECT table_name FROM information_schema.tables WHERE table_name = '{temp_table}';",
+            )
+            assert len(check_table) == 1
+            assert check_table[0][0] == temp_table
+        finally:
+            await aexecute(engine, f"DROP TABLE IF EXISTS {temp_table};")
+
+    async def test_aadd_texts_sql_injection(self, engine, vs):
+        temp_table = "temp_" + str(uuid.uuid4()).replace("-", "_")
+        await aexecute(engine, f"CREATE TABLE {temp_table} (id INT, val TEXT);")
+        await aexecute(engine, f"INSERT INTO {temp_table} VALUES (1, 'untouched');")
+        try:
+            # Attempt UPDATE SQL injection during document insertion
+            malicious_text = (
+                f"test'); UPDATE {temp_table} SET val = 'hacked' WHERE id = 1; --"
+            )
+            added_ids = await vs.aadd_texts([malicious_text])
+            assert len(added_ids) == 1
+
+            # Assert: verify in database that the temp table row was NOT updated
+            rows = await afetch(engine, f"SELECT val FROM {temp_table} WHERE id = 1;")
+            assert len(rows) == 1
+            assert rows[0][0] == "untouched"
+
+            # Assert: verify the exact string was stored as literal text in the vectorstore table
+            stored = await afetch(
+                engine,
+                f"SELECT content FROM {DEFAULT_TABLE} WHERE langchain_id = '{added_ids[0]}';",
+            )
+            assert len(stored) == 1
+            assert stored[0][0] == malicious_text
+
+            # Attempt DROP TABLE SQL injection during document insertion
+            malicious_drop = f"test2'); DROP TABLE {temp_table}; --"
+            drop_ids = await vs.aadd_texts([malicious_drop])
+            assert len(drop_ids) == 1
+
+            # Assert: verify in database that the temp table was NOT dropped
+            check_table = await afetch(
+                engine,
+                f"SELECT table_name FROM information_schema.tables WHERE table_name = '{temp_table}';",
+            )
+            assert len(check_table) == 1
+            assert check_table[0][0] == temp_table
+        finally:
+            await aexecute(engine, f"DROP TABLE IF EXISTS {temp_table};")
 
     async def test_asimilarity_search_score(self, vs):
         results = await vs.asimilarity_search_with_score("foo")

@@ -128,6 +128,10 @@ class AlloyDBEmbeddings(Embeddings):
             "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
         )
 
+    def embed_query_inline_template(self, param_name: str = ":content") -> str:
+        clean_model_id = self.model_id.replace("'", "''")
+        return f"embedding('{clean_model_id}', {param_name})::vector"
+
     def embed_query_inline(self, query: str) -> str:
         return f"embedding('{self.model_id}', '{query}')::vector"
 
