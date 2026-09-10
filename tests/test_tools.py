@@ -387,28 +387,31 @@ def test_pydantic_schema_whitespace_stripping():
 async def test_concurrency_cross_loop_safety():
     """Test that _arun routes execution via _run_as_async to preserve cross-loop safety."""
     engine_loop = asyncio.new_event_loop()
+    try:
 
-    class CrossLoopSafeEngine(AlloyDBEngine):
+        class CrossLoopSafeEngine(AlloyDBEngine):
 
-        def __init__(self, loop):
-            self._loop = loop
-            self._pool = MagicMock()
-            conn_mock = AsyncMock()
-            conn_mock.execute.return_value = MagicMock(
-                scalar=MagicMock(return_value="positive")
-            )
-            self._pool.connect.return_value.__aenter__.return_value = conn_mock
+            def __init__(self, loop):
+                self._loop = loop
+                self._pool = MagicMock()
+                conn_mock = AsyncMock()
+                conn_mock.execute.return_value = MagicMock(
+                    scalar=MagicMock(return_value="positive")
+                )
+                self._pool.connect.return_value.__aenter__.return_value = conn_mock
 
-        async def _run_as_async(self, coro):
-            return await coro
+            async def _run_as_async(self, coro):
+                return await coro
 
-    engine = CrossLoopSafeEngine(engine_loop)
-    engine._run_as_async = AsyncMock(side_effect=engine._run_as_async)
-    tool = AlloyDBSentimentTool(engine=engine)
+        engine = CrossLoopSafeEngine(engine_loop)
+        engine._run_as_async = AsyncMock(side_effect=engine._run_as_async)
+        tool = AlloyDBSentimentTool(engine=engine)
 
-    result = await tool._arun("Cross-loop check")
-    assert result == "positive"
-    assert engine._run_as_async.called
+        result = await tool._arun("Cross-loop check")
+        assert result == "positive"
+        assert engine._run_as_async.called
+    finally:
+        engine_loop.close()
 
 
 def test_deadlock_guard_in_run():
