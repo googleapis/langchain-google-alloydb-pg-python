@@ -189,9 +189,7 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
         if name is None:
-            if index.name is None:
-                index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
-            name = index.name
+            name = index.name or (self.table_name + DEFAULT_INDEX_NAME_SUFFIX)
 
         schema = getattr(self, "schema_name", None)
         table_identifier = (

@@ -414,38 +414,6 @@ class AlloyDBEngine(PGEngine):
         except Exception:
             pass
 
-    async def adrop_table(
-        self,
-        table_name: str,
-        *,
-        schema_name: str = "public",
-    ) -> None:
-        """Asynchronously drop a table from the database.
-
-        Args:
-            table_name (str): The name of the table to drop.
-            schema_name (str): The schema name of the table. Default: "public".
-        """
-        await self._run_as_async(
-            self._adrop_table(table_name=table_name, schema_name=schema_name)
-        )
-
-    def drop_table(
-        self,
-        table_name: str,
-        *,
-        schema_name: str = "public",
-    ) -> None:
-        """Synchronously drop a table from the database.
-
-        Args:
-            table_name (str): The name of the table to drop.
-            schema_name (str): The schema name of the table. Default: "public".
-        """
-        self._run_as_sync(
-            self._adrop_table(table_name=table_name, schema_name=schema_name)
-        )
-
     async def _ainit_chat_history_table(
         self, table_name: str, schema_name: str = "public"
     ) -> None:
