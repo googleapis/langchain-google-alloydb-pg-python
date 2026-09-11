@@ -14,6 +14,8 @@
 from __future__ import annotations
 
 import asyncio
+import math
+import operator
 from concurrent.futures import Future
 from threading import Thread
 from typing import (
@@ -624,21 +626,48 @@ class AlloyDBEngine(PGEngine):
     async def _aforecast(
         self,
         model_id: str,
-        source_table: str,
         timestamp_col: str,
         data_col: str,
         horizon: int,
+        source_table: Optional[str] = None,
         source_query: Optional[str] = None,
         conf_level: Optional[float] = None,
     ) -> list[dict]:
+        """Execute google_ml.forecast query asynchronously.
+
+        Args:
+            model_id: The ID of the time series forecasting model.
+            timestamp_col: The column containing the timestamp.
+            data_col: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast.
+            source_table: Optional table to read historical time series data from.
+                Mutually exclusive with source_query.
+            source_query: Optional query to filter historical data.
+                Mutually exclusive with source_table.
+            conf_level: Optional confidence level for prediction intervals.
+
+        Returns:
+            A list of dictionaries with forecast_timestamp, forecast_value, and intervals.
+
+        Raises:
+            ValueError: If input validation fails (e.g. neither or both source_table and
+                source_query provided, empty strings, invalid horizon or conf_level).
+            RuntimeError: If the google_ml_integration extension is missing.
+        """
         if not model_id or not isinstance(model_id, str) or not model_id.strip():
             raise ValueError("model_id must be a non-empty string.")
-        if (
-            not source_table
-            or not isinstance(source_table, str)
-            or not source_table.strip()
+        if (source_table is None and source_query is None) or (
+            source_table is not None and source_query is not None
         ):
-            raise ValueError("source_table must be a non-empty string.")
+            raise ValueError(
+                "Exactly one of 'source_table' or 'source_query' must be provided."
+            )
+        if source_table is not None:
+            if not isinstance(source_table, str) or not source_table.strip():
+                raise ValueError("source_table must be a non-empty string.")
+        if source_query is not None:
+            if not isinstance(source_query, str) or not source_query.strip():
+                raise ValueError("source_query must be a non-empty string.")
         if (
             not timestamp_col
             or not isinstance(timestamp_col, str)
@@ -649,9 +678,6 @@ class AlloyDBEngine(PGEngine):
             raise ValueError("data_col must be a non-empty string.")
 
         # Validate horizon
-        import math
-        import operator
-
         try:
             if isinstance(horizon, bool):
                 raise TypeError
@@ -677,29 +703,31 @@ class AlloyDBEngine(PGEngine):
             ):
                 raise ValueError("conf_level must be a float strictly between 0 and 1.")
 
-        # Clean source_query
-        if source_query is not None:
-            if not isinstance(source_query, str):
-                raise TypeError("source_query must be a string.")
-            source_query = source_query.strip() or None
-
         args = [
             "model_id => :model_id",
-            "source_table => :source_table",
-            "timestamp_col => :timestamp_col",
-            "data_col => :data_col",
-            "horizon => :horizon",
         ]
         params: dict[str, Any] = {
             "model_id": model_id.strip(),
-            "source_table": source_table.strip(),
-            "timestamp_col": timestamp_col.strip(),
-            "data_col": data_col.strip(),
-            "horizon": horizon_val,
         }
-        if source_query is not None:
+
+        if source_table is not None:
+            args.append("source_table => :source_table")
+            params["source_table"] = source_table.strip()
+        elif source_query is not None:
             args.append("source_query => :source_query")
-            params["source_query"] = source_query
+            params["source_query"] = source_query.strip()
+
+        args.extend(
+            [
+                "timestamp_col => :timestamp_col",
+                "data_col => :data_col",
+                "horizon => :horizon",
+            ]
+        )
+        params["timestamp_col"] = timestamp_col.strip()
+        params["data_col"] = data_col.strip()
+        params["horizon"] = horizon_val
+
         if conf_level is not None:
             args.append("conf_level => :conf_level")
             params["conf_level"] = conf_level
@@ -710,24 +738,28 @@ class AlloyDBEngine(PGEngine):
                 result = await conn.execute(text(query), params)
                 return [dict(row) for row in result.mappings()]
         except Exception as e:
+            orig = getattr(e, "orig", e)
             if (
-                "google_ml" in str(e)
+                "google_ml_integration" in str(e)
+                or "google_ml" in str(e)
                 or "UndefinedFunctionError" in type(e).__name__
+                or "UndefinedFunctionError" in type(orig).__name__
                 or "UndefinedSchemaError" in type(e).__name__
+                or "UndefinedSchemaError" in type(orig).__name__
             ):
                 raise RuntimeError(
-                    "AlloyDB AI google_ml extension is not installed or enabled. "
-                    "Please execute 'CREATE EXTENSION IF NOT EXISTS google_ml CASCADE;' on your database."
+                    "AlloyDB AI google_ml_integration extension is not installed or enabled. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS google_ml_integration CASCADE;' on your database."
                 ) from e
             raise
 
     async def aforecast(
         self,
         model_id: str,
-        source_table: str,
         timestamp_col: str,
         data_col: str,
         horizon: int,
+        source_table: Optional[str] = None,
         source_query: Optional[str] = None,
         conf_level: Optional[float] = None,
     ) -> list[dict]:
@@ -735,11 +767,13 @@ class AlloyDBEngine(PGEngine):
 
         Args:
             model_id: The ID of the time series forecasting model.
-            source_table: The table to read historical time series data from.
             timestamp_col: The column containing the timestamp.
             data_col: The column containing the data to forecast.
             horizon: Number of future time steps to forecast.
+            source_table: Optional table to read historical time series data from.
+                Mutually exclusive with source_query.
             source_query: Optional query to filter historical data.
+                Mutually exclusive with source_table.
             conf_level: Optional confidence level for prediction intervals.
 
         Returns:
@@ -748,10 +782,10 @@ class AlloyDBEngine(PGEngine):
         return await self._run_as_async(
             self._aforecast(
                 model_id,
-                source_table,
                 timestamp_col,
                 data_col,
                 horizon,
+                source_table,
                 source_query,
                 conf_level,
             )
@@ -760,10 +794,10 @@ class AlloyDBEngine(PGEngine):
     def forecast(
         self,
         model_id: str,
-        source_table: str,
         timestamp_col: str,
         data_col: str,
         horizon: int,
+        source_table: Optional[str] = None,
         source_query: Optional[str] = None,
         conf_level: Optional[float] = None,
     ) -> list[dict]:
@@ -771,11 +805,13 @@ class AlloyDBEngine(PGEngine):
 
         Args:
             model_id: The ID of the time series forecasting model.
-            source_table: The table to read historical time series data from.
             timestamp_col: The column containing the timestamp.
             data_col: The column containing the data to forecast.
             horizon: Number of future time steps to forecast.
+            source_table: Optional table to read historical time series data from.
+                Mutually exclusive with source_query.
             source_query: Optional query to filter historical data.
+                Mutually exclusive with source_table.
             conf_level: Optional confidence level for prediction intervals.
 
         Returns:
@@ -784,10 +820,10 @@ class AlloyDBEngine(PGEngine):
         return self._run_as_sync(
             self._aforecast(
                 model_id,
-                source_table,
                 timestamp_col,
                 data_col,
                 horizon,
+                source_table,
                 source_query,
                 conf_level,
             )
