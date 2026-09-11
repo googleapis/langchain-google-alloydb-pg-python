@@ -167,6 +167,48 @@ class AlloyDBVectorStore(PGVectorStore):
         vs = engine._run_as_sync(coro)
         return cls(cls._PGVectorStore__create_key, engine, vs)  # type: ignore
 
+    async def ainitialize_auto_vector_embeddings(
+        self,
+        model_id: str,
+        content_column: Optional[str] = None,
+        embedding_column: Optional[str] = None,
+        schema_name: Optional[str] = None,
+    ) -> None:
+        """Generate and manage auto vector embeddings for large tables.
+
+        Args:
+            model_id (str): The model id used for generating embeddings.
+            content_column (Optional[str]): Name of the content column.
+            embedding_column (Optional[str]): Name of the embedding column.
+            schema_name (Optional[str]): Name of the database schema.
+        """
+        await self._engine._run_as_async(
+            self._PGVectorStore__vs.ainitialize_auto_vector_embeddings(  # type: ignore
+                model_id, content_column, embedding_column, schema_name
+            )
+        )
+
+    def initialize_auto_vector_embeddings(
+        self,
+        model_id: str,
+        content_column: Optional[str] = None,
+        embedding_column: Optional[str] = None,
+        schema_name: Optional[str] = None,
+    ) -> None:
+        """Generate and manage auto vector embeddings for large tables.
+
+        Args:
+            model_id (str): The model id used for generating embeddings.
+            content_column (Optional[str]): Name of the content column.
+            embedding_column (Optional[str]): Name of the embedding column.
+            schema_name (Optional[str]): Name of the database schema.
+        """
+        self._engine._run_as_sync(
+            self._PGVectorStore__vs.ainitialize_auto_vector_embeddings(  # type: ignore
+                model_id, content_column, embedding_column, schema_name
+            )
+        )
+
     async def aadd_images(
         self,
         uris: list[str],
@@ -222,15 +264,91 @@ class AlloyDBVectorStore(PGVectorStore):
         )
 
     async def aset_maintenance_work_mem(
-        self, num_leaves: int, vector_size: int
+        self, num_leaves: Optional[int], vector_size: int
     ) -> None:
-        """Set database maintenance work memory (for ScaNN index creation)."""
-        await self._engine._run_as_async(
-            self._PGVectorStore__vs.set_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
+        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
+        await self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
+
+    def set_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
+        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
+        self._engine._run_as_sync(
+            self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
         )
 
-    def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
-        """Set database maintenance work memory (for ScaNN index creation)."""
+    async def aenable_columnar_engine(
+        self,
+        columns: Optional[list[str]] = None,
+    ) -> None:
+        """Asynchronously add the table and its columns to the columnar engine.
+
+        Args:
+            columns: Optional list of column names to add to the columnar engine.
+        """
+        await self._engine._run_as_async(
+            self._PGVectorStore__vs.aenable_columnar_engine(columns)  # type: ignore
+        )
+
+    def enable_columnar_engine(
+        self,
+        columns: Optional[list[str]] = None,
+    ) -> None:
+        """Add the table and its columns to the columnar engine.
+
+        Args:
+            columns: Optional list of column names to add to the columnar engine.
+        """
         self._engine._run_as_sync(
-            self._PGVectorStore__vs.set_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
+            self._PGVectorStore__vs.aenable_columnar_engine(columns)  # type: ignore
+        )
+
+    async def aenable_auto_columnarization(self) -> None:
+        """Asynchronously trigger auto-columnarization recommendations."""
+        await self._engine._run_as_async(
+            self._PGVectorStore__vs.aenable_auto_columnarization()  # type: ignore
+        )
+
+    def enable_auto_columnarization(self) -> None:
+        """Trigger auto-columnarization recommendations."""
+        self._engine._run_as_sync(
+            self._PGVectorStore__vs.aenable_auto_columnarization()  # type: ignore
+        )
+
+    async def adefine_vector_assist_spec(self) -> list[dict]:
+        """Asynchronously define a Vector Assist spec for the current table."""
+        return await self._engine._run_as_async(
+            self._PGVectorStore__vs.adefine_vector_assist_spec()  # type: ignore
+        )
+
+    def define_vector_assist_spec(self) -> list[dict]:
+        """Define a Vector Assist spec for the current table."""
+        return self._engine._run_as_sync(
+            self._PGVectorStore__vs.adefine_vector_assist_spec()  # type: ignore
+        )
+
+    async def aapply_vector_assist_spec(
+        self, spec_id: Optional[str] = None
+    ) -> list[dict]:
+        """Asynchronously apply the Vector Assist spec for the current table."""
+        return await self._engine._run_as_async(
+            self._PGVectorStore__vs.aapply_vector_assist_spec(spec_id=spec_id)  # type: ignore
+        )
+
+    def apply_vector_assist_spec(self, spec_id: Optional[str] = None) -> list[dict]:
+        """Apply the Vector Assist spec for the current table."""
+        return self._engine._run_as_sync(
+            self._PGVectorStore__vs.aapply_vector_assist_spec(spec_id=spec_id)  # type: ignore
+        )
+
+    async def aget_vector_assist_recommendations(self) -> list[dict]:
+        """Asynchronously get Vector Assist recommendations for the current table."""
+        return await self._engine._run_as_async(
+            self._PGVectorStore__vs.aget_vector_assist_recommendations()  # type: ignore
+        )
+
+    def get_vector_assist_recommendations(self) -> list[dict]:
+        """Get Vector Assist recommendations for the current table."""
+        return self._engine._run_as_sync(
+            self._PGVectorStore__vs.aget_vector_assist_recommendations()  # type: ignore
         )
