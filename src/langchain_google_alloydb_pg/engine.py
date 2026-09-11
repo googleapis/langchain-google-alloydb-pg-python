@@ -14,6 +14,8 @@
 from __future__ import annotations
 
 import asyncio
+import math
+import operator
 from concurrent.futures import Future
 from threading import Thread
 from typing import (
@@ -620,6 +622,212 @@ class AlloyDBEngine(PGEngine):
             None
         """
         self._run_as_sync(self._ainit_checkpoint_table(table_name, schema_name))
+
+    async def _aforecast(
+        self,
+        model_id: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_table: Optional[str] = None,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        """Execute google_ml.forecast query asynchronously.
+
+        Args:
+            model_id: The ID of the time series forecasting model.
+            timestamp_col: The column containing the timestamp.
+            data_col: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast.
+            source_table: Optional table to read historical time series data from.
+                Mutually exclusive with source_query.
+            source_query: Optional query to filter historical data.
+                Mutually exclusive with source_table.
+            conf_level: Optional confidence level for prediction intervals.
+
+        Returns:
+            A list of dictionaries with forecast_timestamp, forecast_value, and intervals.
+
+        Raises:
+            ValueError: If input validation fails (e.g. neither or both source_table and
+                source_query provided, empty strings, invalid horizon or conf_level).
+            RuntimeError: If the google_ml_integration extension is missing.
+        """
+        if not model_id or not isinstance(model_id, str) or not model_id.strip():
+            raise ValueError("model_id must be a non-empty string.")
+        if (source_table is None and source_query is None) or (
+            source_table is not None and source_query is not None
+        ):
+            raise ValueError(
+                "Exactly one of 'source_table' or 'source_query' must be provided."
+            )
+        if source_table is not None:
+            if not isinstance(source_table, str) or not source_table.strip():
+                raise ValueError("source_table must be a non-empty string.")
+        if source_query is not None:
+            if not isinstance(source_query, str) or not source_query.strip():
+                raise ValueError("source_query must be a non-empty string.")
+        if (
+            not timestamp_col
+            or not isinstance(timestamp_col, str)
+            or not timestamp_col.strip()
+        ):
+            raise ValueError("timestamp_col must be a non-empty string.")
+        if not data_col or not isinstance(data_col, str) or not data_col.strip():
+            raise ValueError("data_col must be a non-empty string.")
+
+        # Validate horizon
+        try:
+            if isinstance(horizon, bool):
+                raise TypeError
+            horizon_val = operator.index(horizon)
+            if horizon_val <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise ValueError("horizon must be a positive integer.") from None
+
+        if horizon_val > 2_147_483_647:
+            raise ValueError(
+                "horizon exceeds maximum 32-bit integer limit (2,147,483,647)."
+            )
+
+        # Validate conf_level
+        if conf_level is not None:
+            if not isinstance(conf_level, (int, float)) or isinstance(conf_level, bool):
+                raise TypeError("conf_level must be a float between 0 and 1.")
+            if (
+                not (0 < conf_level < 1)
+                or math.isnan(conf_level)
+                or math.isinf(conf_level)
+            ):
+                raise ValueError("conf_level must be a float strictly between 0 and 1.")
+
+        args = [
+            "model_id => :model_id",
+        ]
+        params: dict[str, Any] = {
+            "model_id": model_id.strip(),
+        }
+
+        if source_table is not None:
+            args.append("source_table => :source_table")
+            params["source_table"] = source_table.strip()
+        elif source_query is not None:
+            args.append("source_query => :source_query")
+            params["source_query"] = source_query.strip()
+
+        args.extend(
+            [
+                "timestamp_col => :timestamp_col",
+                "data_col => :data_col",
+                "horizon => :horizon",
+            ]
+        )
+        params["timestamp_col"] = timestamp_col.strip()
+        params["data_col"] = data_col.strip()
+        params["horizon"] = horizon_val
+
+        if conf_level is not None:
+            args.append("conf_level => :conf_level")
+            params["conf_level"] = conf_level
+
+        query = f"SELECT * FROM google_ml.forecast({', '.join(args)})"
+        try:
+            async with self._pool.connect() as conn:
+                result = await conn.execute(text(query), params)
+                return [dict(row) for row in result.mappings()]
+        except Exception as e:
+            orig = getattr(e, "orig", e)
+            if (
+                "google_ml_integration" in str(e)
+                or "google_ml" in str(e)
+                or "UndefinedFunctionError" in type(e).__name__
+                or "UndefinedFunctionError" in type(orig).__name__
+                or "UndefinedSchemaError" in type(e).__name__
+                or "UndefinedSchemaError" in type(orig).__name__
+            ):
+                raise RuntimeError(
+                    "AlloyDB AI google_ml_integration extension is not installed or enabled. "
+                    "Please execute 'CREATE EXTENSION IF NOT EXISTS google_ml_integration CASCADE;' on your database."
+                ) from e
+            raise
+
+    async def aforecast(
+        self,
+        model_id: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_table: Optional[str] = None,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        """Asynchronously get forecasting from AlloyDB AI.
+
+        Args:
+            model_id: The ID of the time series forecasting model.
+            timestamp_col: The column containing the timestamp.
+            data_col: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast.
+            source_table: Optional table to read historical time series data from.
+                Mutually exclusive with source_query.
+            source_query: Optional query to filter historical data.
+                Mutually exclusive with source_table.
+            conf_level: Optional confidence level for prediction intervals.
+
+        Returns:
+            A list of dictionaries with forecast_timestamp, forecast_value, and intervals.
+        """
+        return await self._run_as_async(
+            self._aforecast(
+                model_id,
+                timestamp_col,
+                data_col,
+                horizon,
+                source_table,
+                source_query,
+                conf_level,
+            )
+        )
+
+    def forecast(
+        self,
+        model_id: str,
+        timestamp_col: str,
+        data_col: str,
+        horizon: int,
+        source_table: Optional[str] = None,
+        source_query: Optional[str] = None,
+        conf_level: Optional[float] = None,
+    ) -> list[dict]:
+        """Synchronously get forecasting from AlloyDB AI.
+
+        Args:
+            model_id: The ID of the time series forecasting model.
+            timestamp_col: The column containing the timestamp.
+            data_col: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast.
+            source_table: Optional table to read historical time series data from.
+                Mutually exclusive with source_query.
+            source_query: Optional query to filter historical data.
+                Mutually exclusive with source_table.
+            conf_level: Optional confidence level for prediction intervals.
+
+        Returns:
+            A list of dictionaries with forecast_timestamp, forecast_value, and intervals.
+        """
+        return self._run_as_sync(
+            self._aforecast(
+                model_id,
+                timestamp_col,
+                data_col,
+                horizon,
+                source_table,
+                source_query,
+                conf_level,
+            )
+        )
 
     async def _aload_table_schema(
         self, table_name: str, schema_name: str = "public"
