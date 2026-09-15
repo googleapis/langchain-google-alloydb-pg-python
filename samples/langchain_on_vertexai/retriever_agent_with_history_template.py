@@ -27,11 +27,11 @@ from config import (
     TABLE_NAME,
     USER,
 )
-from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools.retriever import create_retriever_tool
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
+from langsmith import Client
 from vertexai.preview import reasoning_engines  # type: ignore
 
 from langchain_google_alloydb_pg import (
@@ -109,7 +109,12 @@ class AlloyDBAgent(reasoning_engines.Queryable):
 
         # Initialize the LLM and prompt
         llm = ChatVertexAI(model_name=self.model_name, project=self.project)
-        base_prompt = hub.pull("langchain-ai/react-agent-template")
+        # ``react-agent-template`` is an official, trusted LangChain prompt.
+        # langsmith disables pulling public prompts by default, so explicitly
+        # acknowledge the source with ``dangerously_pull_public_prompt``.
+        base_prompt = Client().pull_prompt(
+            "langchain-ai/react-agent-template", dangerously_pull_public_prompt=True
+        )
         instructions = (
             "You are an assistant for question-answering tasks. "
             "Use the following pieces of retrieved context to answer "
@@ -135,19 +140,20 @@ class AlloyDBAgent(reasoning_engines.Queryable):
             history_messages_key="chat_history",
         )
 
-    def query(self, input: str, session_id: str, **kwargs: Any) -> str:
+    def query(self, **kwargs: Any) -> Any:
         """Query the application.
 
         Args:
-            input: The user query.
-            session_id: The user's session id.
+            **kwargs: Keyword arguments forwarded from the reasoning engine.
+                Expects ``input`` (the user query) and ``session_id``
+                (the user's session id).
 
         Returns:
-            The LLM response dictionary.
+            The LLM response.
         """
         response = self.agent.invoke(
-            {"input": input},
-            config={"configurable": {"session_id": session_id}},
+            {"input": kwargs["input"]},
+            config={"configurable": {"session_id": kwargs["session_id"]}},
         )
         return response["output"]
 

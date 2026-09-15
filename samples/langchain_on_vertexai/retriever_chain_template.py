@@ -109,18 +109,18 @@ class AlloyDBRetriever(reasoning_engines.Queryable):
         # an LLM to generate a response
         self.chain = create_retrieval_chain(retriever, combine_docs_chain)
 
-    def query(self, input: str, **kwargs: Any) -> str:
+    def query(self, **kwargs: Any) -> Any:
         """Query the application.
 
         Args:
-            input: The user query.
-            **kwargs: Additional arguments for Protocol compliance.
+            **kwargs: Keyword arguments forwarded from the reasoning engine.
+                Expects an ``input`` key containing the user query.
 
         Returns:
-            The LLM response dictionary.
+            The LLM response.
         """
         # Define the runtime logic that serves user queries
-        response = self.chain.invoke({"input": input})
+        response = self.chain.invoke({"input": kwargs["input"]})
         return response["answer"]
 
 
