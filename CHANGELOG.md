@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.15.0...v0.16.0) (2026-09-15)
+
+
+### Features
+
+* **embeddings:** Add templatized inline embedding support and tests ([#640](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/640)) ([d4e74e5](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/d4e74e5d4bb338f3b5aba4e3a904b1148be7e2be))
+
+
+### Bug Fixes
+
+* **embeddings:** Prevent SQL injection in AlloyDBEmbeddings ([#639](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/639)) ([b9b4216](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/b9b421636581b04b9d6cfa5ca9eb461bfb72176a))
+
 ## [0.15.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.14.0...v0.15.0) (2026-05-27)
 
 
