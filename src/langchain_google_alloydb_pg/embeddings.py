@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from langchain_core.embeddings import Embeddings
 from sqlalchemy import text
@@ -129,6 +130,8 @@ class AlloyDBEmbeddings(Embeddings):
         )
 
     def embed_query_inline_template(self, param_name: str = ":content") -> str:
+        if not re.match(r"^:[a-zA-Z_][a-zA-Z0-9_]*$", param_name):
+            raise ValueError(f"Invalid parameter name: {param_name}")
         clean_model_id = self.model_id.replace("'", "''")
         return f"embedding('{clean_model_id}', {param_name})::vector"
 
