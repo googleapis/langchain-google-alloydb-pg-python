@@ -111,6 +111,15 @@ class TestAlloyDBEmbeddings:
             assert isinstance(embedding_field, float)
             assert -1 <= embedding_field <= 1
 
+    async def test_embed_query_sql_injection(self, embeddings):
+        malicious_query = "'); DROP TABLE users; --"
+        embedding = embeddings.embed_query(malicious_query)
+        assert isinstance(embedding, list)
+        assert len(embedding) > 0
+        for embedding_field in embedding:
+            assert isinstance(embedding_field, float)
+            assert -1 <= embedding_field <= 1
+
     async def test_embed_query_inline(self, embeddings, model_id):
         embedding_query = embeddings.embed_query_inline("test document")
         assert embedding_query == f"embedding('{model_id}', 'test document')::vector"
@@ -125,8 +134,25 @@ class TestAlloyDBEmbeddings:
         with pytest.raises(ValueError, match="Invalid parameter name"):
             embeddings.embed_query_inline_template(":content); DROP TABLE users; --")
 
+    async def test_embed_query_inline_sql_injection(self, embeddings, model_id):
+        malicious_query = "'); DROP TABLE users; --"
+        embedding_query = embeddings.embed_query_inline(malicious_query)
+        assert (
+            embedding_query
+            == f"embedding('{model_id}', '''); DROP TABLE users; --')::vector"
+        )
+
     async def test_aembed_query(self, embeddings):
         embedding = await embeddings.aembed_query("test document")
+        assert isinstance(embedding, list)
+        assert len(embedding) > 0
+        for embedding_field in embedding:
+            assert isinstance(embedding_field, float)
+            assert -1 <= embedding_field <= 1
+
+    async def test_aembed_query_sql_injection(self, embeddings):
+        malicious_query = "'); DROP TABLE users; --"
+        embedding = await embeddings.aembed_query(malicious_query)
         assert isinstance(embedding, list)
         assert len(embedding) > 0
         for embedding_field in embedding:
