@@ -124,6 +124,16 @@ class TestAlloyDBEmbeddings:
         embedding_query = embeddings.embed_query_inline("test document")
         assert embedding_query == f"embedding('{model_id}', 'test document')::vector"
 
+    async def test_embed_query_inline_template(self, embeddings, model_id):
+        embedding_query = embeddings.embed_query_inline_template(":content")
+        assert embedding_query == f"embedding('{model_id}', :content)::vector"
+        embedding_query_search = embeddings.embed_query_inline_template(":query_text")
+        assert embedding_query_search == f"embedding('{model_id}', :query_text)::vector"
+        with pytest.raises(ValueError, match="Invalid parameter name"):
+            embeddings.embed_query_inline_template("invalid_no_colon")
+        with pytest.raises(ValueError, match="Invalid parameter name"):
+            embeddings.embed_query_inline_template(":content); DROP TABLE users; --")
+
     async def test_embed_query_inline_sql_injection(self, embeddings, model_id):
         malicious_query = "'); DROP TABLE users; --"
         embedding_query = embeddings.embed_query_inline(malicious_query)
