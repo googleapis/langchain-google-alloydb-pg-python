@@ -209,74 +209,6 @@ class AlloyDBVectorStore(PGVectorStore):
             )
         )
 
-    async def aadd_images(
-        self,
-        uris: list[str],
-        metadatas: Optional[list[dict]] = None,
-        ids: Optional[list[str]] = None,
-        store_uri_only: bool = False,
-        **kwargs: Any,
-    ) -> list[str]:
-        """Embed images and add to the table."""
-        return await self._engine._run_as_async(
-            self._PGVectorStore__vs.aadd_images(  # type: ignore
-                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
-            )
-        )
-
-    def add_images(
-        self,
-        uris: list[str],
-        metadatas: Optional[list[dict]] = None,
-        ids: Optional[list[str]] = None,
-        store_uri_only: bool = False,
-        **kwargs: Any,
-    ) -> list[str]:
-        """Embed images and add to the table."""
-        return self._engine._run_as_sync(
-            self._PGVectorStore__vs.aadd_images(  # type: ignore
-                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
-            )
-        )
-
-    def similarity_search_image(
-        self,
-        image_uri: str,
-        k: Optional[int] = None,
-        filter: Optional[dict] = None,
-        **kwargs: Any,
-    ) -> list[Document]:
-        """Return docs selected by similarity search on image."""
-        return self._engine._run_as_sync(
-            self._PGVectorStore__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)  # type: ignore
-        )
-
-    async def asimilarity_search_image(
-        self,
-        image_uri: str,
-        k: Optional[int] = None,
-        filter: Optional[dict] = None,
-        **kwargs: Any,
-    ) -> list[Document]:
-        """Return docs selected by similarity search on image_uri."""
-        return await self._engine._run_as_async(
-            self._PGVectorStore__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)  # type: ignore
-        )
-
-    async def aset_maintenance_work_mem(
-        self, num_leaves: Optional[int], vector_size: int
-    ) -> None:
-        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
-        await self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
-
-    def set_maintenance_work_mem(
-        self, num_leaves: Optional[int], vector_size: int
-    ) -> None:
-        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
-        self._engine._run_as_sync(
-            self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
-        )
-
     async def aenable_columnar_engine(
         self,
         columns: Optional[list[str]] = None,
@@ -351,4 +283,72 @@ class AlloyDBVectorStore(PGVectorStore):
         """Get Vector Assist recommendations for the current table."""
         return self._engine._run_as_sync(
             self._PGVectorStore__vs.aget_vector_assist_recommendations()  # type: ignore
+        )
+
+    async def aadd_images(
+        self,
+        uris: list[str],
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list[str]] = None,
+        store_uri_only: bool = False,
+        **kwargs: Any,
+    ) -> list[str]:
+        """Embed images and add to the table."""
+        return await self._engine._run_as_async(
+            self._PGVectorStore__vs.aadd_images(  # type: ignore
+                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
+            )
+        )
+
+    def add_images(
+        self,
+        uris: list[str],
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list[str]] = None,
+        store_uri_only: bool = False,
+        **kwargs: Any,
+    ) -> list[str]:
+        """Embed images and add to the table."""
+        return self._engine._run_as_sync(
+            self._PGVectorStore__vs.aadd_images(  # type: ignore
+                uris, metadatas, ids, store_uri_only=store_uri_only, **kwargs
+            )
+        )
+
+    def similarity_search_image(
+        self,
+        image_uri: str,
+        k: Optional[int] = None,
+        filter: Optional[dict] = None,
+        **kwargs: Any,
+    ) -> list[Document]:
+        """Return docs selected by similarity search on image."""
+        return self._engine._run_as_sync(
+            self._PGVectorStore__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)  # type: ignore
+        )
+
+    async def asimilarity_search_image(
+        self,
+        image_uri: str,
+        k: Optional[int] = None,
+        filter: Optional[dict] = None,
+        **kwargs: Any,
+    ) -> list[Document]:
+        """Return docs selected by similarity search on image_uri."""
+        return await self._engine._run_as_async(
+            self._PGVectorStore__vs.asimilarity_search_image(image_uri, k, filter, **kwargs)  # type: ignore
+        )
+
+    async def aset_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
+        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
+        await self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
+
+    def set_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
+        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
+        self._engine._run_as_sync(
+            self._PGVectorStore__vs.aset_maintenance_work_mem(num_leaves, vector_size)  # type: ignore
         )

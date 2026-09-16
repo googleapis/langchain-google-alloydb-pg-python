@@ -4,11 +4,35 @@ import os
 
 import pytest
 
+_MISSING_GCP_ENV = not bool(os.environ.get("PROJECT_ID"))
+_ADDED_DUMMY_VARS = []
+
+if _MISSING_GCP_ENV:
+    for _var in (
+        "PROJECT_ID",
+        "REGION",
+        "CLUSTER_ID",
+        "INSTANCE_ID",
+        "DATABASE_ID",
+        "TABLE_NAME",
+        "IP_ADDRESS",
+        "DB_USER",
+        "DB_PASSWORD",
+    ):
+        if _var not in os.environ:
+            os.environ[_var] = "dummy"
+            _ADDED_DUMMY_VARS.append(_var)
+
+collect_ignore = ["samples"]
+
 
 def pytest_collection_modifyitems(config, items):
     """Skip tests that require GCP environment variables if PROJECT_ID is not set."""
-    if os.environ.get("PROJECT_ID"):
+    if not _MISSING_GCP_ENV:
         return
+
+    for _var in _ADDED_DUMMY_VARS:
+        os.environ.pop(_var, None)
 
     skip_gcp = pytest.mark.skip(reason="Missing required GCP environment variables")
 
@@ -25,6 +49,7 @@ def pytest_collection_modifyitems(config, items):
         "test_checkpoint.py",
         "test_embeddings.py",
         "test_engine.py",
+        "test_engine_forecast.py",
         "test_loader.py",
         "test_model_manager.py",
         "test_pgvector_migrator.py",

@@ -257,6 +257,28 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
                     )
                 await conn.execute(text(stmt))
 
+    def add_images(
+        self,
+        uris: list[str],
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list[str]] = None,
+        **kwargs: Any,
+    ) -> list[str]:
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
+        )
+
+    def similarity_search_image(
+        self,
+        image_uri: str,
+        k: Optional[int] = None,
+        filter: Optional[dict] = None,
+        **kwargs: Any,
+    ) -> list[Document]:
+        raise NotImplementedError(
+            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
+        )
+
     async def ainitialize_auto_vector_embeddings(
         self,
         model_id: str,
@@ -519,25 +541,3 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
                     "Please execute 'CREATE EXTENSION IF NOT EXISTS vector_assist CASCADE;' as a superuser."
                 ) from e
             raise
-
-    def add_images(
-        self,
-        uris: list[str],
-        metadatas: Optional[list[dict]] = None,
-        ids: Optional[list[str]] = None,
-        **kwargs: Any,
-    ) -> list[str]:
-        raise NotImplementedError(
-            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
-        )
-
-    def similarity_search_image(
-        self,
-        image_uri: str,
-        k: Optional[int] = None,
-        filter: Optional[dict] = None,
-        **kwargs: Any,
-    ) -> list[Document]:
-        raise NotImplementedError(
-            "Sync methods are not implemented for AsyncAlloyDBVectorStore. Use AlloyDBVectorStore interface instead."
-        )
