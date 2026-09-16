@@ -7,6 +7,7 @@ API Reference
 
   langchain_google_alloydb_pg/engine
   langchain_google_alloydb_pg/vectorstore
+  langchain_google_alloydb_pg/indexes
   langchain_google_alloydb_pg/loader
   langchain_google_alloydb_pg/history
 

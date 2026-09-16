@@ -45,7 +45,7 @@ VECTOR_SIZE = 768
 
 embeddings_service = DeterministicFakeEmbedding(size=VECTOR_SIZE)
 
-texts = ["foo", "bar", "baz"]
+texts = [f"document {i}" for i in range(10)]
 ids = [str(uuid.uuid4()) for i in range(len(texts))]
 metadatas = [{"page": str(i), "source": "google.com"} for i in range(len(texts))]
 docs = [
@@ -260,6 +260,7 @@ class TestAsyncIndex:
             embedding_service=embeddings_service,
             table_name=DEFAULT_TABLE_OMNI,
         )
+        await vs.aadd_texts(texts, ids=ids)
         yield vs
 
     async def test_aapply_vector_index(self, vs):
@@ -327,3 +328,32 @@ class TestAsyncIndex:
         assert await omni_vs.ais_valid_index("secondindex")
         await omni_vs.adrop_vector_index("secondindex")
         await omni_vs.adrop_vector_index(DEFAULT_INDEX_NAME_OMNI)
+
+    async def test_aapply_alloydb_scann_index_auto_mode(self, omni_engine):
+        table_name = "auto_scann_omni_table_" + str(uuid.uuid4()).replace("-", "_")
+        await omni_engine.ainit_vectorstore_table(table_name, VECTOR_SIZE)
+        await aexecute(
+            omni_engine,
+            f"""
+            INSERT INTO "{table_name}" (langchain_id, content, embedding)
+            SELECT 
+                gen_random_uuid(),
+                'Document ' || i,
+                (SELECT array_agg((random() * 2 - 1)::float4)::vector({VECTOR_SIZE}) FROM generate_series(1, {VECTOR_SIZE}))
+            FROM generate_series(1, 10005) AS i;
+            """,
+        )
+        vs = await AlloyDBVectorStore.create(
+            omni_engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+        )
+        index = ScaNNIndex(
+            name="auto_scann_index",
+            mode="AUTO",
+            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+        )
+        await vs.aapply_vector_index(index)
+        assert await vs.ais_valid_index("auto_scann_index")
+        await vs.adrop_vector_index("auto_scann_index")
+        await aexecute(omni_engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
