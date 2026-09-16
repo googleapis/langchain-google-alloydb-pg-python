@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import os
 import uuid
 from typing import Sequence
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -25,8 +27,15 @@ from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
-from langchain_google_alloydb_pg import AlloyDBEngine, Column
+from langchain_google_alloydb_pg import AlloyDBEngine, AlloyDBVectorStore, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
+from langchain_google_alloydb_pg.indexes import (
+    DEFAULT_INDEX_NAME_SUFFIX,
+    DistanceStrategy,
+    HNSWIndex,
+    IVFFlatIndex,
+    ScaNNIndex,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -100,13 +109,23 @@ class TestVectorStore:
 
     @pytest_asyncio.fixture(scope="class")
     async def engine(self, db_project, db_region, db_cluster, db_instance, db_name):
-        engine = await AlloyDBEngine.afrom_instance(
-            project_id=db_project,
-            instance=db_instance,
-            cluster=db_cluster,
-            region=db_region,
-            database=db_name,
-        )
+        host = os.environ.get("OMNI_HOST") or os.environ.get("IP_ADDRESS")
+        user = os.environ.get("OMNI_USER") or os.environ.get("DB_USER", "postgres")
+        password = os.environ.get("OMNI_PASSWORD") or os.environ.get("DB_PASSWORD")
+        if host and password:
+            import sqlalchemy.ext.asyncio
+
+            connstring = f"postgresql+asyncpg://{user}:{password}@{host}:5432/{db_name}"
+            async_engine = sqlalchemy.ext.asyncio.create_async_engine(connstring)
+            engine = AlloyDBEngine.from_engine(async_engine)
+        else:
+            engine = await AlloyDBEngine.afrom_instance(
+                project_id=db_project,
+                instance=db_instance,
+                cluster=db_cluster,
+                region=db_region,
+                database=db_name,
+            )
 
         yield engine
         await aexecute(engine, f'DROP TABLE IF EXISTS "{DEFAULT_TABLE}"')
@@ -473,3 +492,478 @@ class TestVectorStore:
                 embedding_column="myembedding",
                 metadata_columns=["random_column"],  # invalid metadata column
             )
+
+    async def test_live_columnar_engine(self, vs):
+        """Test enabling columnar engine against live AlloyDB instance."""
+        await vs.aenable_columnar_engine(["content"])
+        await vs.aenable_columnar_engine()
+
+        # Assert functional similarity search still works on columnarized table
+        await vs.aadd_texts(["Columnar engine test document"])
+        results = await vs.asimilarity_search("Columnar test", k=1)
+        assert len(results) > 0
+        assert "Columnar" in results[0].page_content
+
+    async def test_live_auto_columnarization(self, vs):
+        """Test triggering auto columnarization recommendations against live AlloyDB instance."""
+        try:
+            await vs.aenable_auto_columnarization()
+        except Exception as e:
+            if "google_columnar_engine.enabled" in str(
+                e
+            ) or "shared_preload_libraries" in str(e):
+                pytest.skip(f"Columnar engine flag not enabled on instance: {e}")
+            raise
+
+        # Assert functional similarity search still works after auto columnarization
+        await vs.aadd_texts(["Auto columnarization test document"])
+        results = await vs.asimilarity_search("Auto columnarization", k=1)
+        assert len(results) > 0
+        assert "Auto columnarization" in results[0].page_content
+
+    async def test_live_vector_assist(self, engine):
+        """Test vector assist spec definition, application, and recommendations against live AlloyDB instance."""
+        table_name = "va_live_table_" + str(uuid.uuid4()).replace("-", "_")
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
+        await aexecute(
+            engine,
+            f"""
+            CREATE TABLE "{table_name}" (
+                langchain_id uuid PRIMARY KEY,
+                content text,
+                embedding vector({VECTOR_SIZE}),
+                meta jsonb
+            );
+            """,
+        )
+        await aexecute(
+            engine,
+            f"""
+            INSERT INTO "{table_name}" (langchain_id, content, embedding, meta)
+            SELECT 
+                gen_random_uuid(),
+                'Content ' || i,
+                (SELECT array_agg((random() * 2 - 1)::float4)::vector({VECTOR_SIZE}) FROM generate_series(1, {VECTOR_SIZE})),
+                '{{"page": 1}}'::jsonb
+            FROM generate_series(1, 100) AS i;
+            """,
+        )
+        vs = await AsyncAlloyDBVectorStore.create(
+            engine,
+            embedding_service=embeddings_service,
+            table_name=table_name,
+            metadata_json_column="meta",
+        )
+        specs = await vs.adefine_vector_assist_spec()
+        assert isinstance(specs, list)
+        assert len(specs) > 0
+        apply_res = await vs.aapply_vector_assist_spec()
+        assert isinstance(apply_res, list)
+        recs = await vs.aget_vector_assist_recommendations()
+        assert isinstance(recs, list)
+        await aexecute(engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
+
+
+@pytest.mark.asyncio
+class TestAsyncVectorStoreUnit:
+    @pytest.fixture
+    def vs(self):
+        vs = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        vs.engine = MagicMock()
+        vs.schema_name = "public"
+        vs.table_name = "test_table"
+        vs.content_column = "content"
+        vs.embedding_column = "embedding"
+        return vs
+
+    async def test_aenable_columnar_engine(self, vs):
+        """Test enabling columnar engine with a specific column list."""
+        # 1. Mock the database connection
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Call aenable_columnar_engine with a specific column list
+            await vs.aenable_columnar_engine(["content"])
+
+            # 3. Assert exact SQL signature and parameters sent to the database
+            call_args = mock_conn.execute.call_args
+            assert (
+                str(call_args[0][0])
+                == "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            )
+            assert call_args[0][1] == {
+                "table_name": '"public"."test_table"',
+                "columns": '"content"',
+            }
+
+    async def test_aenable_columnar_engine_without_columns(self, vs):
+        """Test enabling columnar engine without specifying columns (entire table)."""
+        # 1. Mock the database connection
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.fetchall.return_value = [("content",), ("langchain_id",)]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Call aenable_columnar_engine without column arguments
+            await vs.aenable_columnar_engine()
+
+            # 3. Assert default single-argument query is executed
+            call_args = mock_conn.execute.call_args
+            assert (
+                str(call_args[0][0])
+                == "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            )
+            assert call_args[0][1] == {
+                "table_name": '"public"."test_table"',
+                "columns": '"content","langchain_id"',
+            }
+
+    async def test_aenable_auto_columnarization(self, vs):
+        """Test enabling auto columnarization executes queries on engine."""
+        # 1. Mock the database connection
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Trigger auto columnarization recommendations
+            await vs.aenable_auto_columnarization()
+
+            # 3. Assert recommendation query executed on engine
+            call_args = mock_conn.execute.call_args
+            assert (
+                str(call_args[0][0])
+                == "SELECT google_columnar_engine_recommend('AUTO_COLUMNARIZATION')"
+            )
+
+    async def test_adefine_vector_assist_spec(self, vs):
+        """Test definition of vector assist specification."""
+        # 1. Mock database returning a vector assist spec row
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [{"spec": "ok"}]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Call adefine_vector_assist_spec
+            res = await vs.adefine_vector_assist_spec()
+
+            # 3. Assert returned spec list and query parameters
+            assert res == [{"spec": "ok"}]
+            call_args = mock_conn.execute.call_args
+            assert (
+                str(call_args[0][0])
+                == "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+            )
+            assert call_args[0][1] == {
+                "table_name": '"public"."test_table"',
+                "embedding_column": "embedding",
+            }
+
+    async def test_aapply_vector_assist_spec(self, vs):
+        """Test applying vector assist specifications."""
+        # 1. Mock database applying vector assist spec
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [{"apply": "ok"}]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Apply spec
+            res = await vs.aapply_vector_assist_spec()
+
+            # 3. Assert results and query parameters
+            assert res == [{"apply": "ok"}]
+            call_args = mock_conn.execute.call_args
+            assert (
+                str(call_args[0][0])
+                == "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+            )
+            assert call_args[0][1] == {
+                "table_name": '"public"."test_table"',
+                "embedding_column": "embedding",
+            }
+
+    async def test_aget_vector_assist_recommendations(self, vs):
+        """Test retrieving vector assist recommendations with a valid spec ID."""
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            # First query returns spec_id, second query returns recommendations
+            mock_spec_result = MagicMock()
+            mock_spec_result.mappings.return_value.first.return_value = {
+                "spec_id": "spec123"
+            }
+            mock_rec_result = MagicMock()
+            mock_rec_result.mappings.return_value = [{"rec": "ok"}]
+            mock_conn.execute.side_effect = [mock_spec_result, mock_rec_result]
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Retrieve recommendations
+            res = await vs.aget_vector_assist_recommendations()
+
+            # 3. Assert recommendations and query calls
+            assert res == [{"rec": "ok"}]
+            assert mock_conn.execute.call_count == 2
+
+    async def test_aget_vector_assist_recommendations_empty_specs(self, vs):
+        """Test retrieving vector assist recommendations when no specs exist in vector_assist.specs."""
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_spec_result = MagicMock()
+            mock_spec_result.mappings.return_value.first.return_value = None
+            mock_conn.execute.return_value = mock_spec_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            res = await vs.aget_vector_assist_recommendations()
+            assert res == []
+
+    async def test_ainitialize_auto_vector_embeddings(self, vs):
+        """Test initializing auto vector embeddings asynchronously with default columns."""
+        # 1. Mock the database connection
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Call auto vector embedding initialization
+            await vs.ainitialize_auto_vector_embeddings(
+                model_id="test-model",
+            )
+
+            # 3. Assert exact procedure call and parameters
+            call_args = mock_conn.execute.call_args
+            assert (
+                str(call_args[0][0])
+                == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            )
+            assert call_args[0][1] == {
+                "model_id": "test-model",
+                "table_name": '"public"."test_table"',
+                "content_column": "content",
+                "embedding_column": "embedding",
+            }
+
+    async def test_ainitialize_auto_vector_embeddings_custom_columns(self, vs):
+        """Test initializing auto vector embeddings with custom columns and schema."""
+        # 1. Mock the database connection
+        with patch.object(vs.engine._pool, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+
+            # 2. Call with custom content column, embedding column, and schema
+            await vs.ainitialize_auto_vector_embeddings(
+                model_id="test-model",
+                content_column="custom_content",
+                embedding_column="custom_embedding",
+                schema_name="myschema",
+            )
+
+            # 3. Assert custom parameters and quoted schema identifier
+            call_args = mock_conn.execute.call_args
+            assert (
+                str(call_args[0][0])
+                == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            )
+            assert call_args[0][1] == {
+                "model_id": "test-model",
+                "table_name": '"myschema"."test_table"',
+                "content_column": "custom_content",
+                "embedding_column": "custom_embedding",
+            }
+
+    async def test_ainitialize_auto_vector_embeddings_missing_columns(self, vs):
+        """Test error raised when required content column name is missing."""
+        # 1. Clear content_column on vector store
+        vs.content_column = None
+
+        # 2. Assert ValueError is raised when calling without content_column
+        with pytest.raises(
+            ValueError, match="content_column must be provided or configured"
+        ):
+            await vs.ainitialize_auto_vector_embeddings(model_id="test-model")
+
+    async def test_ainitialize_auto_vector_embeddings_missing_embedding_column(
+        self, vs
+    ):
+        """Test error raised when required embedding_column name is missing."""
+        # 1. Clear embedding_column on vector store
+        vs.embedding_column = None
+
+        # 2. Assert ValueError is raised when calling without embedding_column
+        with pytest.raises(
+            ValueError, match="embedding_column must be provided or configured"
+        ):
+            await vs.ainitialize_auto_vector_embeddings(model_id="test-model")
+
+
+@pytest.mark.asyncio
+class TestAsyncVectorStoreIndexUnit:
+    @pytest.fixture
+    def vs_and_conn(self):
+        vs = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        vs.table_name = "test_table"
+        vs.schema_name = "public"
+        vs.embedding_column = "embedding"
+
+        mock_conn = AsyncMock()
+        mock_conn.execution_options = AsyncMock(return_value=mock_conn)
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_conn
+        mock_ctx.__aexit__.return_value = None
+
+        mock_pool = MagicMock()
+        mock_pool.begin.return_value = mock_ctx
+        mock_pool.connect.return_value = mock_ctx
+
+        vs.engine = MagicMock(_pool=mock_pool)
+        return vs, mock_conn
+
+    async def test_aapply_vector_index_leaves_index_name_none(self, vs_and_conn):
+        vs, mock_conn = vs_and_conn
+        index = HNSWIndex(name=None)
+        assert index.name is None
+
+        await vs.aapply_vector_index(index)
+
+        # Calling aapply_vector_index with index.name = None must leave index.name as None
+        assert index.name is None
+        assert mock_conn.execute.call_count == 1
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        expected_index_name = f"test_table{DEFAULT_INDEX_NAME_SUFFIX}"
+        assert f'"{expected_index_name}"' in executed_query
+
+    async def test_aapply_vector_index_preserves_custom_name(self, vs_and_conn):
+        vs, mock_conn = vs_and_conn
+        index = HNSWIndex(name="my_custom_index")
+
+        await vs.aapply_vector_index(index)
+
+        assert index.name == "my_custom_index"
+        assert mock_conn.execute.call_count == 1
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        assert '"my_custom_index"' in executed_query
+
+    async def test_aapply_vector_index_with_explicit_name_arg(self, vs_and_conn):
+        vs, mock_conn = vs_and_conn
+        index = HNSWIndex(name=None)
+
+        await vs.aapply_vector_index(index, name="explicit_index_name")
+
+        assert index.name is None
+        assert mock_conn.execute.call_count == 1
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        assert '"explicit_index_name"' in executed_query
+
+    async def test_aapply_vector_index_concurrently_leaves_index_name_none(
+        self, vs_and_conn
+    ):
+        vs, mock_conn = vs_and_conn
+        index = HNSWIndex(name=None)
+
+        await vs.aapply_vector_index(index, concurrently=True)
+
+        assert index.name is None
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        expected_index_name = f"test_table{DEFAULT_INDEX_NAME_SUFFIX}"
+        assert f'"{expected_index_name}"' in executed_query
+        assert "CONCURRENTLY" in executed_query
+
+    async def test_aapply_vector_index_scann_leaves_index_name_none(self, vs_and_conn):
+        vs, mock_conn = vs_and_conn
+        index = ScaNNIndex(name=None)
+        assert index.name is None
+
+        await vs.aapply_vector_index(index)
+
+        assert index.name is None
+        executed_calls = [str(call[0][0]) for call in mock_conn.execute.call_args_list]
+        expected_index_name = f"test_table{DEFAULT_INDEX_NAME_SUFFIX}"
+        assert any(f'"{expected_index_name}"' in call for call in executed_calls)
+        assert any("SET LOCAL maintenance_work_mem" in call for call in executed_calls)
+
+    async def test_aapply_vector_index_ivfflat_leaves_index_name_none(
+        self, vs_and_conn
+    ):
+        vs, mock_conn = vs_and_conn
+        index = IVFFlatIndex(name=None)
+        assert index.name is None
+
+        await vs.aapply_vector_index(index)
+
+        assert index.name is None
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        expected_index_name = f"test_table{DEFAULT_INDEX_NAME_SUFFIX}"
+        assert f'"{expected_index_name}"' in executed_query
+
+    async def test_aapply_vector_index_reuse_across_tables(self):
+        mock_conn1 = AsyncMock()
+        mock_ctx1 = AsyncMock()
+        mock_ctx1.__aenter__.return_value = mock_conn1
+        mock_ctx1.__aexit__.return_value = None
+        mock_pool1 = MagicMock()
+        mock_pool1.begin.return_value = mock_ctx1
+
+        mock_conn2 = AsyncMock()
+        mock_ctx2 = AsyncMock()
+        mock_ctx2.__aenter__.return_value = mock_conn2
+        mock_ctx2.__aexit__.return_value = None
+        mock_pool2 = MagicMock()
+        mock_pool2.begin.return_value = mock_ctx2
+
+        vs1 = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        vs1.table_name = "table_one"
+        vs1.schema_name = "public"
+        vs1.embedding_column = "embedding"
+        vs1.engine = MagicMock(_pool=mock_pool1)
+
+        vs2 = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        vs2.table_name = "table_two"
+        vs2.schema_name = "public"
+        vs2.embedding_column = "embedding"
+        vs2.engine = MagicMock(_pool=mock_pool2)
+
+        shared_index = HNSWIndex(name=None)
+
+        await vs1.aapply_vector_index(shared_index)
+        assert shared_index.name is None
+        query1 = str(mock_conn1.execute.call_args[0][0])
+        assert f'"table_one{DEFAULT_INDEX_NAME_SUFFIX}"' in query1
+
+        await vs2.aapply_vector_index(shared_index)
+        assert shared_index.name is None
+        query2 = str(mock_conn2.execute.call_args[0][0])
+        assert f'"table_two{DEFAULT_INDEX_NAME_SUFFIX}"' in query2
+
+
+class TestSyncVectorStoreIndexUnit:
+    def test_sync_apply_vector_index_leaves_index_name_none(self):
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_conn
+        mock_ctx.__aexit__.return_value = None
+        mock_pool.begin.return_value = mock_ctx
+
+        async_vs = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        async_vs.table_name = "sync_table"
+        async_vs.schema_name = "public"
+        async_vs.embedding_column = "embedding"
+        async_vs.engine = MagicMock(_pool=mock_pool)
+
+        sync_vs = AlloyDBVectorStore.__new__(AlloyDBVectorStore)
+        mock_engine = MagicMock()
+        mock_engine._run_as_sync.side_effect = lambda coro: asyncio.run(coro)
+        sync_vs._engine = mock_engine
+        sync_vs._PGVectorStore__vs = async_vs
+
+        index = HNSWIndex(name=None)
+        sync_vs.apply_vector_index(index)
+
+        assert index.name is None
+        assert mock_conn.execute.call_count == 1
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        expected_index_name = f"sync_table{DEFAULT_INDEX_NAME_SUFFIX}"
+        assert f'"{expected_index_name}"' in executed_query

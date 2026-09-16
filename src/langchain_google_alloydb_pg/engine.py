@@ -106,7 +106,7 @@ class AlloyDBEngine(PGEngine):
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> Future:
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
@@ -144,7 +144,7 @@ class AlloyDBEngine(PGEngine):
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -158,9 +158,9 @@ class AlloyDBEngine(PGEngine):
             password (Optional[str]): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
-            engine_args (Mapping): Additional arguments that are passed directly to
-                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
-                used to specify additional parameters to the underlying pool during it's creation.
+            engine_args (Optional[Mapping[str, Any]]): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during its creation.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
@@ -193,7 +193,7 @@ class AlloyDBEngine(PGEngine):
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread: Optional[Thread] = None,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -209,9 +209,9 @@ class AlloyDBEngine(PGEngine):
             loop (Optional[asyncio.AbstractEventLoop]): Async event loop used to create the engine.
             thread (Optional[Thread]): Thread used to create the engine async.
             iam_account_email (Optional[str]): IAM service account email.
-            engine_args (Mapping): Additional arguments that are passed directly to
-                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
-                used to specify additional parameters to the underlying pool during it's creation.
+            engine_args (Optional[Mapping[str, Any]]): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during its creation.
 
         Raises:
             ValueError: Raises error if only one of 'user' or 'password' is specified.
@@ -261,10 +261,11 @@ class AlloyDBEngine(PGEngine):
             )
             return conn
 
+        engine_kwargs = dict(engine_args) if engine_args is not None else {}
         engine = create_async_engine(
             "postgresql+asyncpg://",
             async_creator=getconn,
-            **engine_args,
+            **engine_kwargs,
         )
         return cls(PGEngine._PGEngine__create_key, engine, loop, thread)  # type: ignore
 
@@ -280,7 +281,7 @@ class AlloyDBEngine(PGEngine):
         password: Optional[str] = None,
         ip_type: Union[str, IPTypes] = IPTypes.PUBLIC,
         iam_account_email: Optional[str] = None,
-        engine_args: Mapping = {},
+        engine_args: Optional[Mapping[str, Any]] = None,
     ) -> AlloyDBEngine:
         """Create an AlloyDBEngine from an AlloyDB instance.
 
@@ -294,9 +295,9 @@ class AlloyDBEngine(PGEngine):
             password (Optional[str], optional): Cloud AlloyDB user password. Defaults to None.
             ip_type (Union[str, IPTypes], optional): IP address type. Defaults to IPTypes.PUBLIC.
             iam_account_email (Optional[str], optional): IAM service account email. Defaults to None.
-            engine_args (Mapping): Additional arguments that are passed directly to
-                :func:`~sqlalchemy.ext.asyncio.mymodule.MyClass.create_async_engine`. This can be
-                used to specify additional parameters to the underlying pool during it's creation.
+            engine_args (Optional[Mapping[str, Any]]): Additional arguments that are passed directly to
+                :func:`~sqlalchemy.ext.asyncio.create_async_engine`. This can be
+                used to specify additional parameters to the underlying pool during its creation.
 
         Returns:
             AlloyDBEngine: A newly created AlloyDBEngine instance.
@@ -321,15 +322,17 @@ class AlloyDBEngine(PGEngine):
         url: str | URL,
         **kwargs: Any,
     ) -> AlloyDBEngine:
-        """Create an AlloyDBEngine instance from arguments
-        Args:
-            url (Optional[str]): the URL used to connect to a database. Use url or set other arguments.
-        Raises:
-            ValueError: If not all database url arguments are specified
-        Returns:
-            AlloyDBEngine
-        """
+        """Create an AlloyDBEngine instance from arguments.
 
+        Args:
+            url (str | URL): The URL used to connect to a database.
+
+        Raises:
+            ValueError: If not all database url arguments are specified.
+
+        Returns:
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
+        """
         return AlloyDBEngine.from_engine_args(url=url, **kwargs)
 
     @classmethod
@@ -338,16 +341,16 @@ class AlloyDBEngine(PGEngine):
         url: str | URL,
         **kwargs: Any,
     ) -> AlloyDBEngine:
-        """Create an AlloyDBEngine instance from arguments
+        """Create an AlloyDBEngine instance from arguments.
 
         Args:
-            url (Optional[str]): the URL used to connect to a database. Use url or set other arguments.
+            url (str | URL): The URL used to connect to a database.
 
         Raises:
-            ValueError: If not all database url arguments are specified
+            ValueError: If not all database url arguments are specified.
 
         Returns:
-            AlloyDBEngine
+            AlloyDBEngine: A newly created AlloyDBEngine instance.
         """
         # Running a loop in a background thread allows us to support
         # async methods from non-async environments
@@ -366,6 +369,50 @@ class AlloyDBEngine(PGEngine):
 
         engine = create_async_engine(url, **kwargs)
         return cls(PGEngine._PGEngine__create_key, engine, cls._default_loop, cls._default_thread)  # type: ignore
+
+    @classmethod
+    def from_engine(
+        cls: type[AlloyDBEngine],
+        engine: Any,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AlloyDBEngine:
+        """Create an AlloyDBEngine instance from an AsyncEngine."""
+        return cls(PGEngine._PGEngine__create_key, engine, loop, None)  # type: ignore
+
+    def close(self) -> None:  # type: ignore[override]
+        """Synchronously dispose of the connection pool."""
+        if self._loop and self._loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(self._pool.dispose(), self._loop)
+            future.result()
+        elif self._default_loop and self._default_loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(
+                self._pool.dispose(), self._default_loop
+            )
+            future.result()
+        else:
+            asyncio.run(self._pool.dispose())
+
+    async def aclose(self) -> None:
+        """Asynchronously dispose of the connection pool."""
+        await self._run_as_async(self._pool.dispose())
+
+    async def __aenter__(self) -> AlloyDBEngine:
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.aclose()
+
+    def __enter__(self) -> AlloyDBEngine:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     async def _ainit_chat_history_table(
         self, table_name: str, schema_name: str = "public"
@@ -414,7 +461,7 @@ class AlloyDBEngine(PGEngine):
     def init_chat_history_table(
         self, table_name: str, schema_name: str = "public"
     ) -> None:
-        """Create a Cloud SQL table to store chat history.
+        """Create an AlloyDB table to store chat history.
 
         Args:
             table_name (str): Table name to store chat history.
@@ -610,9 +657,10 @@ class AlloyDBEngine(PGEngine):
     def init_checkpoint_table(
         self, table_name: str = CHECKPOINTS_TABLE, schema_name: str = "public"
     ) -> None:
-        """Create Cloud SQL tables to store checkpoints.
+        """Create AlloyDB tables to store checkpoints.
 
         Args:
+            table_name (str): The checkpoint table name. Default: "checkpoints".
             schema_name (str): The schema name to store checkpoint tables.
                 Default: "public".
 
