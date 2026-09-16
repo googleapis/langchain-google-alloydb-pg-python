@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import re
 from typing import Any, Optional
 
@@ -25,6 +26,13 @@ from google.cloud import storage  # type: ignore
 from langchain_core.documents import Document
 from langchain_postgres.v2.async_vectorstore import AsyncPGVectorStore
 from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
+
+
+def _quote_ident(ident: str) -> str:
+    """Quote a PostgreSQL identifier to prevent SQL injection and syntax errors."""
+    return '"' + ident.replace('"', '""') + '"'
 
 
 class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
@@ -142,18 +150,15 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
     async def aset_maintenance_work_mem(
         self, num_leaves: Optional[int], vector_size: int
     ) -> None:
-        """Set database maintenance work memory (for ScaNN index creation)."""
-        if not num_leaves:
-            return
-        # Required index memory in MB (minimum 10 MB for ScaNN)
-        buffer = 1
-        index_memory_required = max(
-            10, round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + buffer
+        """Deprecated: maintenance_work_mem is now automatically managed during aapply_vector_index."""
+        import warnings
+
+        warnings.warn(
+            "aset_maintenance_work_mem is deprecated and has no effect. "
+            "aapply_vector_index automatically calculates and sets maintenance_work_mem.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        query = f"SET maintenance_work_mem TO '{index_memory_required} MB';"
-        async with self.engine.connect() as conn:
-            await conn.execute(text(query))
-            await conn.commit()
 
     set_maintenance_work_mem = aset_maintenance_work_mem
 
@@ -176,38 +181,52 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             await self.adrop_vector_index()
             return
 
-        if index.extension_name:
-            async with self._pool_engine.connect() as conn:
-                await conn.execute(
-                    text(f"CREATE EXTENSION IF NOT EXISTS {index.extension_name}")
-                )
-                await conn.commit()
+        # Note: CREATE EXTENSION is omitted here as it requires SUPERUSER privileges.
+        # Extensions should be created during database setup by an administrator.
+
         function = index.get_index_function()
 
         filter = f"WHERE ({index.partial_indexes})" if index.partial_indexes else ""
         params = "WITH " + index.index_options()
         if name is None:
-            if index.name is None:
-                index.name = self.table_name + DEFAULT_INDEX_NAME_SUFFIX
-            name = index.name
-        stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} "{name}" ON "{self.schema_name}"."{self.table_name}" USING {index.index_type} ({self.embedding_column} {function}) {params} {filter};'
+            name = index.name or (self.table_name + DEFAULT_INDEX_NAME_SUFFIX)
+
+        schema = getattr(self, "schema_name", None)
+        table_identifier = (
+            f"{_quote_ident(schema)}.{_quote_ident(self.table_name)}"
+            if schema
+            else _quote_ident(self.table_name)
+        )
+        stmt = f'CREATE INDEX {"CONCURRENTLY" if concurrently else ""} {_quote_ident(name)} ON {table_identifier} USING {index.index_type} ({_quote_ident(self.embedding_column)} {function}) {params} {filter};'
 
         mem_query = None
-        if isinstance(index, ScaNNIndex) and index.num_leaves is not None:
-            num_leaves: int = index.num_leaves
-            # Fetch vector_size from embedding_service if available, otherwise default to 768
+        if isinstance(index, ScaNNIndex):
+            # For mode="AUTO", num_leaves is None. Use a default estimate of 1000 for memory calculation.
+            num_leaves: int = index.num_leaves if index.num_leaves is not None else 1000
+
+            # Resolve vector_size with proper precedence and no blocking/deadlocking I/O:
+            # 1. self.vector_size (explicitly set on store)
+            # 2. embedding_service.embedding_size (if present)
+            # 3. Fallback to 768
             vector_size: int = 768
-            if hasattr(self, "embedding_service") and hasattr(
-                self.embedding_service, "embedding_size"
+            if hasattr(self, "vector_size") and self.vector_size is not None:
+                vector_size = getattr(self, "vector_size", 768) or 768
+            elif (
+                hasattr(self, "embedding_service")
+                and self.embedding_service is not None
+                and hasattr(self.embedding_service, "embedding_size")
             ):
                 vector_size = (
                     getattr(self.embedding_service, "embedding_size", 768) or 768
                 )
-            elif hasattr(self, "vector_size"):
-                vector_size = getattr(self, "vector_size", 768) or 768
-            mem_mb = max(
-                10,
-                round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
+
+            # Calculate required memory in MB, capping at PostgreSQL's maximum limit of 2,097,151 MB (2 GB - 1 kB)
+            mem_mb = min(
+                2_097_151,
+                max(
+                    10,
+                    round(50 * num_leaves * vector_size * 4 / 1024 / 1024) + 1,
+                ),
             )
             mem_query = f"SET maintenance_work_mem TO '{mem_mb} MB';"
 
@@ -222,9 +241,13 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
                     await autocommit_conn.execute(text(stmt))
                 finally:
                     if mem_query:
-                        await autocommit_conn.execute(
-                            text("RESET maintenance_work_mem;")
-                        )
+                        try:
+                            await autocommit_conn.execute(
+                                text("RESET maintenance_work_mem;")
+                            )
+                        except Exception:
+                            # Preserve the original CREATE INDEX exception if the connection is broken
+                            pass
         else:
             async with self._pool_engine.begin() as conn:
                 if mem_query:
