@@ -16,6 +16,7 @@ import json
 import os
 import uuid
 from typing import Sequence
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -27,6 +28,10 @@ from sqlalchemy.engine.row import RowMapping
 
 from langchain_google_alloydb_pg import AlloyDBEngine, Column
 from langchain_google_alloydb_pg.async_vectorstore import AsyncAlloyDBVectorStore
+from langchain_google_alloydb_pg.indexes import (
+    DistanceStrategy,
+    ScaNNIndex,
+)
 
 DEFAULT_TABLE = "test_table" + str(uuid.uuid4())
 DEFAULT_TABLE_SYNC = "test_table_sync" + str(uuid.uuid4())
@@ -472,4 +477,237 @@ class TestVectorStore:
                 content_column="mycontent",
                 embedding_column="myembedding",
                 metadata_columns=["random_column"],  # invalid metadata column
+            )
+
+    async def test_live_columnar_engine(self, vs):
+        """Test enabling columnar engine against live AlloyDB instance."""
+        try:
+            await vs.aenable_columnar_engine(["content"])
+            await vs.aenable_columnar_engine()
+        except Exception as e:
+            pytest.skip(f"Columnar engine not supported/enabled on instance: {e}")
+
+    async def test_live_auto_columnarization(self, vs):
+        """Test triggering auto columnarization recommendations against live AlloyDB instance."""
+        try:
+            await vs.aenable_auto_columnarization()
+        except Exception as e:
+            pytest.skip(f"Auto columnarization not supported/enabled on instance: {e}")
+
+    async def test_live_vector_assist(self, vs):
+        """Test vector assist spec definition, application, and recommendations against live AlloyDB instance."""
+        try:
+            specs = await vs.adefine_vector_assist_spec()
+            assert isinstance(specs, list)
+            apply_res = await vs.aapply_vector_assist_spec()
+            assert isinstance(apply_res, list)
+            recs = await vs.aget_vector_assist_recommendations()
+            assert isinstance(recs, list)
+        except Exception as e:
+            pytest.skip(f"Vector assist not supported/enabled on instance: {e}")
+
+
+@pytest.mark.asyncio
+class TestAsyncVectorStoreUnit:
+    @pytest.fixture
+    def vs(self):
+        vs = AsyncAlloyDBVectorStore.__new__(AsyncAlloyDBVectorStore)
+        vs.engine = MagicMock()
+        vs.schema_name = "public"
+        vs.table_name = "test_table"
+        vs.content_column = "content"
+        vs.embedding_column = "embedding"
+        return vs
+
+    async def test_aenable_columnar_engine(self, vs):
+        """Test enabling the columnar engine executes queries on engine with columns."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aenable_columnar_engine(["content"])
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            assert call_args[0][1] == {"table_name": "test_table", "columns": "content"}
+
+    async def test_aenable_columnar_engine_without_columns(self, vs):
+        """Test enabling columnar engine without specifying columns."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aenable_columnar_engine()
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "SELECT google_columnar_engine_add(:table_name)"
+            assert call_args[0][1] == {"table_name": "test_table"}
+
+    async def test_aenable_auto_columnarization(self, vs):
+        """Test enabling auto columnarization executes queries on engine."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aenable_auto_columnarization()
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "SELECT google_columnar_engine_recommend('AUTO_COLUMNARIZATION')"
+
+    async def test_adefine_vector_assist_spec(self, vs):
+        """Test definition of vector assist specification."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [{"spec": "ok"}]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            res = await vs.adefine_vector_assist_spec()
+            assert res == [{"spec": "ok"}]
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+            assert call_args[0][1] == {
+                "table_name": "test_table",
+                "embedding_column": "embedding",
+            }
+
+    async def test_aapply_vector_assist_spec(self, vs):
+        """Test applying vector assist specifications."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.mappings.return_value = [{"apply": "ok"}]
+            mock_conn.execute.return_value = mock_result
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            res = await vs.aapply_vector_assist_spec()
+            assert res == [{"apply": "ok"}]
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
+            assert call_args[0][1] == {
+                "table_name": "test_table",
+                "embedding_column": "embedding",
+            }
+
+    async def test_aget_vector_assist_recommendations(self, vs):
+        """Test retrieving vector assist recommendations."""
+        with patch.object(
+            vs,
+            "adefine_vector_assist_spec",
+            return_value=[{"vector_spec_id": "spec123"}],
+        ):
+            with patch.object(vs.engine, "connect") as mock_connect:
+                mock_conn = AsyncMock()
+                mock_result = MagicMock()
+                mock_result.mappings.return_value = [{"rec": "ok"}]
+                mock_conn.execute.return_value = mock_result
+                mock_connect.return_value.__aenter__.return_value = mock_conn
+                res = await vs.aget_vector_assist_recommendations()
+                assert res == [{"rec": "ok"}]
+                call_args = mock_conn.execute.call_args
+                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
+                assert call_args[0][1] == {"spec_id": "spec123"}
+
+    async def test_aget_vector_assist_recommendations_spec_id_zero(self, vs):
+        """Test retrieving vector assist recommendations when spec_id is 0."""
+        with patch.object(
+            vs,
+            "adefine_vector_assist_spec",
+            return_value=[{"vector_spec_id": 0}],
+        ):
+            with patch.object(vs.engine, "connect") as mock_connect:
+                mock_conn = AsyncMock()
+                mock_result = MagicMock()
+                mock_result.mappings.return_value = [{"rec": "ok_zero"}]
+                mock_conn.execute.return_value = mock_result
+                mock_connect.return_value.__aenter__.return_value = mock_conn
+                res = await vs.aget_vector_assist_recommendations()
+                assert res == [{"rec": "ok_zero"}]
+                call_args = mock_conn.execute.call_args
+                assert str(call_args[0][0]) == "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
+                assert call_args[0][1] == {"spec_id": 0}
+
+    async def test_aget_vector_assist_recommendations_empty_specs(self, vs):
+        """Test retrieving vector assist recommendations when no specs exist."""
+        with patch.object(vs, "adefine_vector_assist_spec", return_value=[]):
+            res = await vs.aget_vector_assist_recommendations()
+            assert res == []
+
+    async def test_aget_vector_assist_recommendations_no_spec_id(self, vs):
+        """Test retrieving vector assist recommendations when spec has no ID."""
+        with patch.object(
+            vs, "adefine_vector_assist_spec", return_value=[{"other_key": "val"}]
+        ):
+            res = await vs.aget_vector_assist_recommendations()
+            assert res == []
+
+    async def test_ainitialize_auto_vector_embeddings(self, vs):
+        """Test initializing auto vector embeddings asynchronously."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.ainitialize_auto_vector_embeddings(
+                model_id="test-model",
+            )
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            assert call_args[0][1] == {
+                "model_id": "test-model",
+                "table_name": '"public"."test_table"',
+                "content_column": "content",
+                "embedding_column": "embedding",
+            }
+
+    async def test_ainitialize_auto_vector_embeddings_custom_columns(self, vs):
+        """Test initializing auto vector embeddings with custom columns and schema."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.ainitialize_auto_vector_embeddings(
+                model_id="test-model",
+                content_column="custom_content",
+                embedding_column="custom_embedding",
+                schema_name="myschema",
+            )
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+            assert call_args[0][1] == {
+                "model_id": "test-model",
+                "table_name": '"myschema"."test_table"',
+                "content_column": "custom_content",
+                "embedding_column": "custom_embedding",
+            }
+
+    async def test_ainitialize_auto_vector_embeddings_missing_columns(self, vs):
+        """Test error raised when required column names are missing."""
+        vs.content_column = None
+        with pytest.raises(
+            ValueError, match="content_column must be provided or configured"
+        ):
+            await vs.ainitialize_auto_vector_embeddings(model_id="test-model")
+
+    async def test_aset_maintenance_work_mem_none(self, vs):
+        """Test setting maintenance work mem with None returns without executing SQL."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            await vs.aset_maintenance_work_mem(None, 768)
+            assert not mock_connect.called
+
+    async def test_aset_maintenance_work_mem_valid(self, vs):
+        """Test setting maintenance work mem with valid num_leaves executes SQL."""
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aset_maintenance_work_mem(10, 768)
+            call_args = mock_conn.execute.call_args
+            assert str(call_args[0][0]) == "SET maintenance_work_mem TO '2 MB';"
+
+    async def test_aapply_vector_index_scann_auto(self, vs):
+        """Test applying ScaNN index in AUTO mode without live DB."""
+        index = ScaNNIndex(
+            name="scann_auto",
+            mode="AUTO",
+            distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+        )
+        with patch.object(vs.engine, "connect") as mock_connect:
+            mock_conn = AsyncMock()
+            mock_connect.return_value.__aenter__.return_value = mock_conn
+            await vs.aapply_vector_index(index)
+            executed_sqls = [str(call[0][0]) for call in mock_conn.execute.call_args_list]
+            assert any("CREATE EXTENSION IF NOT EXISTS alloydb_scann" in s for s in executed_sqls)
+            assert any(
+                'CREATE INDEX  "scann_auto" ON "public"."test_table" USING ScaNN (embedding cosine) WITH (mode = \'AUTO\')' in s
+                for s in executed_sqls
             )

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import re
 from typing import Any, Optional
 
@@ -25,6 +26,8 @@ from google.cloud import storage  # type: ignore
 from langchain_core.documents import Document
 from langchain_postgres.v2.async_vectorstore import AsyncPGVectorStore
 from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
@@ -134,8 +137,12 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
             embedding=embedding, k=k, filter=filter, **kwargs
         )
 
-    async def set_maintenance_work_mem(self, num_leaves: int, vector_size: int) -> None:
+    async def aset_maintenance_work_mem(
+        self, num_leaves: Optional[int], vector_size: int
+    ) -> None:
         """Set database maintenance work memory (for ScaNN index creation)."""
+        if not num_leaves:
+            return
         # Required index memory in MB
         buffer = 1
         index_memory_required = (
@@ -145,6 +152,125 @@ class AsyncAlloyDBVectorStore(AsyncPGVectorStore):
         async with self.engine.connect() as conn:
             await conn.execute(text(query))
             await conn.commit()
+
+    set_maintenance_work_mem = aset_maintenance_work_mem
+
+    async def ainitialize_auto_vector_embeddings(
+        self,
+        model_id: str,
+        content_column: Optional[str] = None,
+        embedding_column: Optional[str] = None,
+        schema_name: Optional[str] = None,
+    ) -> None:
+        """Asynchronously initialize auto vector embeddings.
+
+        Args:
+            model_id: The ID of the model to use for embeddings.
+            content_column: Optional name of the content column. Defaults to self.content_column.
+            embedding_column: Optional name of the embedding column. Defaults to self.embedding_column.
+            schema_name: Optional name of the database schema. Defaults to self.schema_name.
+        """
+        content_col = content_column or self.content_column
+        embedding_col = embedding_column or self.embedding_column
+        schema = schema_name or getattr(self, "schema_name", "public")
+
+        if not content_col:
+            raise ValueError(
+                "content_column must be provided or configured on the vector store."
+            )
+        if not embedding_col:
+            raise ValueError(
+                "embedding_column must be provided or configured on the vector store."
+            )
+
+        table_identifier = (
+            f'"{schema}"."{self.table_name}"' if schema else f'"{self.table_name}"'
+        )
+        query = "CALL ai.initialize_embeddings(:model_id, :table_name, :content_column, :embedding_column)"
+        async with self.engine.connect() as conn:
+            await conn.execute(
+                text(query),
+                {
+                    "model_id": model_id,
+                    "table_name": table_identifier,
+                    "content_column": content_col,
+                    "embedding_column": embedding_col,
+                },
+            )
+            await conn.commit()
+
+    async def aenable_columnar_engine(
+        self,
+        columns: Optional[list[str]] = None,
+    ) -> None:
+        """Asynchronously add the table and its columns to the columnar engine.
+
+        Args:
+            columns: Optional list of column names to add to the columnar engine.
+        """
+        if columns:
+            columns_str = ",".join(columns)
+            query = "SELECT google_columnar_engine_add(relation => :table_name, columns => :columns)"
+            params = {"table_name": self.table_name, "columns": columns_str}
+        else:
+            query = "SELECT google_columnar_engine_add(:table_name)"
+            params = {"table_name": self.table_name}
+
+        async with self.engine.connect() as conn:
+            await conn.execute(text(query), params)
+            await conn.commit()
+
+    async def aenable_auto_columnarization(self) -> None:
+        """Asynchronously trigger auto-columnarization recommendations."""
+        query = "SELECT google_columnar_engine_recommend('AUTO_COLUMNARIZATION')"
+        async with self.engine.connect() as conn:
+            await conn.execute(text(query))
+            await conn.commit()
+
+    async def adefine_vector_assist_spec(self) -> list[dict]:
+        """Asynchronously define a Vector Assist spec for the current table."""
+        query = "SELECT * FROM vector_assist.define_spec(table_name => :table_name, vector_column_name => :embedding_column)"
+        params = {
+            "table_name": self.table_name,
+            "embedding_column": self.embedding_column,
+        }
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), params)
+            return [dict(row) for row in result.mappings()]
+
+    async def aapply_vector_assist_spec(self) -> list[dict]:
+        """Asynchronously apply the Vector Assist spec for the current table."""
+        query = "SELECT * FROM vector_assist.apply_spec(table_name => :table_name, column_name => :embedding_column)"
+        params = {
+            "table_name": self.table_name,
+            "embedding_column": self.embedding_column,
+        }
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), params)
+            return [dict(row) for row in result.mappings()]
+
+    async def aget_vector_assist_recommendations(self) -> list[dict]:
+        """Asynchronously get Vector Assist recommendations for the current table."""
+        # First we need to get the spec ID for the current table
+        specs = await self.adefine_vector_assist_spec()
+        if not specs:
+            logger.warning(
+                "No vector assist spec found for table '%s'.", self.table_name
+            )
+            return []
+
+        spec_id = specs[0].get("vector_spec_id")
+        if spec_id is None:
+            logger.warning(
+                "Vector assist spec for table '%s' does not contain 'vector_spec_id'.",
+                self.table_name,
+            )
+            return []
+
+        query = "SELECT * FROM vector_assist.get_recommendations(:spec_id)"
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), {"spec_id": spec_id})
+            return [dict(row) for row in result.mappings()]
 
     def add_images(
         self,
