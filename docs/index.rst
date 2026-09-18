@@ -9,6 +9,7 @@ API Reference
   langchain_google_alloydb_pg/vectorstore
   langchain_google_alloydb_pg/loader
   langchain_google_alloydb_pg/history
+  langchain_google_alloydb_pg/tools
 
 How to Choose a Nearest-Neighbor Index Guide
 --------------------------------------------
