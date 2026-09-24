@@ -353,8 +353,10 @@ class TestAsyncIndex:
     async def test_aapply_scann_index_auto_mode(self, omni_engine):
         table_name = "auto_scann_" + str(uuid.uuid4()).replace("-", "_")
         try:
-            # AUTO mode needs existing data to tune the index.
-            await self._aseed_omni_table(omni_engine, table_name, 10_005)
+            # AUTO mode requires at least 10,000 rows. The server estimates the row
+            # count by sampling heap blocks, so seed well above the minimum to keep
+            # the estimate from dipping below it.
+            await self._aseed_omni_table(omni_engine, table_name, 20_000)
             vs = await AlloyDBVectorStore.create(
                 omni_engine,
                 embedding_service=embeddings_service,
