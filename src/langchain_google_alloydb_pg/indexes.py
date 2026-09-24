@@ -30,6 +30,15 @@ from langchain_postgres.v2.indexes import (
     StrategyMixin,
 )
 
+# PostgreSQL int4 upper bound; ScaNN integer options are int4 on the server.
+_MAX_INT32 = 2**31 - 1
+_SCANN_MODES = ("AUTO", "MANUAL")
+
+
+def _is_int(value: object) -> bool:
+    """True for ints, excluding bools (bool is a subclass of int)."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
 
 @dataclass
 class IVFIndex(BaseIndex):
@@ -66,49 +75,42 @@ class ScaNNIndex(BaseIndex):
     """ScaNN index configuration for AlloyDB.
 
     Args:
-        mode (Optional[str]): Index mode (e.g. 'AUTO' for auto-tuned indexing). Defaults to None.
-        num_leaves (Optional[int]): Number of leaves in index clusters. Defaults to 5.
-        extension_name (str): Extension name. Defaults to 'alloydb_scann'.
+        num_leaves (int): Number of partitions. Used when ``mode`` is ``None``
+            or ``"MANUAL"``; ignored when ``mode="AUTO"``. Defaults to 5.
+        mode (Optional[str]): Keyword-only. ``"AUTO"`` creates an automatically
+            tuned index (the server chooses the number of leaves); ``"MANUAL"``
+            creates a manually tuned index using ``num_leaves``. Defaults to
+            ``None``, which emits the same options as previous releases.
     """
 
     index_type: str = "ScaNN"
-    mode: Optional[str] = None
-    num_leaves: Optional[int] = 5
+    num_leaves: int = 5
     quantizer: str = field(
         default="sq8", init=False
     )  # Disable `quantizer` initialization currently only supports the value "sq8"
     extension_name: str = "alloydb_scann"
+    # kw_only keeps the positional order of all existing fields unchanged.
+    mode: Optional[str] = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
-        if self.mode is None and self.num_leaves is None:
+        super().__post_init__()
+        if not _is_int(self.num_leaves) or not 1 <= self.num_leaves <= _MAX_INT32:
             raise ValueError(
-                "Either 'mode' must be 'AUTO' or 'num_leaves' must be specified."
+                f"num_leaves must be an integer between 1 and {_MAX_INT32}."
             )
-
-        if self.num_leaves is not None:
-            if (
-                isinstance(self.num_leaves, bool)
-                or not isinstance(self.num_leaves, int)
-                or self.num_leaves <= 0
-            ):
-                raise ValueError("num_leaves must be a positive integer.")
-            if self.num_leaves > 2_147_483_647:
-                raise ValueError(
-                    "num_leaves exceeds maximum 32-bit integer limit (2,147,483,647)."
-                )
-
         if self.mode is not None:
-            if not isinstance(self.mode, str) or self.mode.upper() != "AUTO":
+            if not isinstance(self.mode, str) or self.mode.upper() not in _SCANN_MODES:
                 raise ValueError(
-                    f"Invalid mode '{self.mode}'. Only mode='AUTO' is currently supported."
+                    f"Invalid mode {self.mode!r}. Supported modes are 'AUTO' and 'MANUAL'."
                 )
-            self.mode = "AUTO"
-            self.num_leaves = None
+            self.mode = self.mode.upper()
 
     def index_options(self) -> str:
         """Set index query options for vector store initialization."""
-        if self.mode is not None:
+        if self.mode == "AUTO":
             return "(mode = 'AUTO')"
+        if self.mode == "MANUAL":
+            return f"(mode = 'MANUAL', num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
         return f"(num_leaves = {self.num_leaves}, quantizer = {self.quantizer})"
 
     def get_index_function(self) -> str:
@@ -125,56 +127,46 @@ class ScaNNQueryOptions(QueryOptions):
     """Query options for ScaNN index.
 
     Args:
-        num_leaves_to_search (Optional[int]): Absolute number of leaves to search. Defaults to 1.
-        pre_reordering_num_neighbors (int): Number of neighbors to consider before reordering. Defaults to -1.
-        pct_leaves_to_search (Optional[float]): Percentage of leaves to search (0.0 to 1.0 or proportion).
-            When specified, this takes precedence over `num_leaves_to_search`.
+        num_leaves_to_search (int): Number of leaves to search. ``0`` lets the
+            server choose. Defaults to 1.
+        pre_reordering_num_neighbors (int): Defaults to -1.
+        pct_leaves_to_search (Optional[float]): Percentage (0-100, fractional
+            values allowed) of leaves to search. When set, it is sent in addition to
+            ``num_leaves_to_search``; the server uses the percentage and falls
+            back to ``num_leaves_to_search`` if the percentage resolves to zero
+            leaves. Defaults to ``None`` (not sent).
     """
 
-    num_leaves_to_search: Optional[int] = 1
+    num_leaves_to_search: int = 1
     pre_reordering_num_neighbors: int = -1
     pct_leaves_to_search: Optional[float] = None
 
     def __post_init__(self) -> None:
+        if (
+            not _is_int(self.num_leaves_to_search)
+            or not 0 <= self.num_leaves_to_search <= _MAX_INT32
+        ):
+            raise ValueError(
+                f"num_leaves_to_search must be an integer between 0 and {_MAX_INT32}."
+            )
         if self.pct_leaves_to_search is not None:
-            if not isinstance(self.pct_leaves_to_search, (int, float)) or isinstance(
-                self.pct_leaves_to_search, bool
+            if isinstance(self.pct_leaves_to_search, bool) or not isinstance(
+                self.pct_leaves_to_search, (int, float)
             ):
                 raise TypeError(
-                    "pct_leaves_to_search must be a float between 0.0 and 1.0."
+                    "pct_leaves_to_search must be a number between 0 and 100."
                 )
-            if not (0.0 < self.pct_leaves_to_search <= 1.0):
-                raise ValueError(
-                    "pct_leaves_to_search must be strictly greater than 0.0 and less than or equal to 1.0."
-                )
-        if self.num_leaves_to_search is not None:
-            if not isinstance(self.num_leaves_to_search, int) or isinstance(
-                self.num_leaves_to_search, bool
-            ):
-                raise TypeError("num_leaves_to_search must be an integer.")
-            if self.num_leaves_to_search <= 0:
-                raise ValueError("num_leaves_to_search must be a positive integer.")
-            if self.num_leaves_to_search > 2_147_483_647:
-                raise ValueError(
-                    "num_leaves_to_search exceeds maximum 32-bit integer limit (2,147,483,647)."
-                )
+            if not 0 <= self.pct_leaves_to_search <= 100:
+                raise ValueError("pct_leaves_to_search must be between 0 and 100.")
 
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
-        params = []
+        params = [
+            f"scann.num_leaves_to_search = {self.num_leaves_to_search}",
+            f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
+        ]
         if self.pct_leaves_to_search is not None:
-            if self.num_leaves_to_search is not None and self.num_leaves_to_search != 1:
-                warnings.warn(
-                    "Both 'pct_leaves_to_search' and 'num_leaves_to_search' were provided. "
-                    "'pct_leaves_to_search' takes precedence.",
-                    UserWarning,
-                )
             params.append(f"scann.pct_leaves_to_search = {self.pct_leaves_to_search}")
-        elif self.num_leaves_to_search is not None:
-            params.append(f"scann.num_leaves_to_search = {self.num_leaves_to_search}")
-        params.append(
-            f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}"
-        )
         return params
 
     def to_string(self) -> str:

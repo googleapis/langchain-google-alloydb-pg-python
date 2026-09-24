@@ -14,6 +14,8 @@
 
 import warnings
 
+import pytest
+
 from langchain_google_alloydb_pg.indexes import (  # type: ignore
     DistanceStrategy,
     HNSWIndex,
@@ -110,60 +112,61 @@ class TestAlloyDBIndex:
         assert index.index_options() == "(num_leaves = 10, quantizer = sq8)"
 
     def test_scann_index_auto_mode(self):
-        index = ScaNNIndex(name="test_index", mode="AUTO")
+        index = ScaNNIndex(name="test_index", mode="auto")
         assert index.index_type == "ScaNN"
         assert index.mode == "AUTO"
+        assert index.num_leaves == 5  # retained, but ignored for AUTO
         assert index.index_options() == "(mode = 'AUTO')"
 
-    def test_scann_index_invalid_mode(self):
-        import pytest
+    def test_scann_index_manual_mode(self):
+        index = ScaNNIndex(name="test_index", mode="MANUAL", num_leaves=10)
+        assert index.mode == "MANUAL"
+        assert (
+            index.index_options()
+            == "(mode = 'MANUAL', num_leaves = 10, quantizer = sq8)"
+        )
 
-        with pytest.raises(ValueError, match="Invalid mode 'INVALID'"):
-            ScaNNIndex(name="test_index", mode="INVALID")
+    def test_scann_index_default_mode_options_unchanged(self):
+        assert (
+            ScaNNIndex(num_leaves=10).index_options()
+            == "(num_leaves = 10, quantizer = sq8)"
+        )
 
-    def test_scann_index_num_leaves_validation(self):
-        import pytest
+    def test_scann_index_positional_args_backward_compatible(self):
+        index = ScaNNIndex(
+            "idx", "ScaNN", DistanceStrategy.EUCLIDEAN, None, "alloydb_scann", 42
+        )
+        assert index.num_leaves == 42
+        assert index.mode is None
 
-        # Test bool (True/False)
-        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
-            ScaNNIndex(num_leaves=True)
-        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
-            ScaNNIndex(num_leaves=False)
+    def test_scann_index_mode_is_keyword_only(self):
+        with pytest.raises(TypeError):
+            ScaNNIndex(  # type: ignore[misc]
+                "idx",
+                "ScaNN",
+                DistanceStrategy.EUCLIDEAN,
+                None,
+                "alloydb_scann",
+                5,
+                "AUTO",
+            )
 
-        # Test float
-        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
-            ScaNNIndex(num_leaves=5.5)
+    @pytest.mark.parametrize("mode", ["INVALID", "", 1])
+    def test_scann_index_invalid_mode(self, mode):
+        with pytest.raises(ValueError, match="Invalid mode"):
+            ScaNNIndex(name="test_index", mode=mode)
 
-        # Test str
-        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
-            ScaNNIndex(num_leaves="5")
+    @pytest.mark.parametrize("num_leaves", [0, -5, True, False, 5.5, "5", 2**31])
+    def test_scann_index_num_leaves_validation(self, num_leaves):
+        with pytest.raises(ValueError, match="num_leaves must be an integer"):
+            ScaNNIndex(num_leaves=num_leaves)
 
-        # Test 0
-        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
-            ScaNNIndex(num_leaves=0)
+    def test_scann_index_num_leaves_max_allowed(self):
+        assert ScaNNIndex(num_leaves=2**31 - 1).num_leaves == 2**31 - 1
 
-        # Test negative int
-        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
-            ScaNNIndex(num_leaves=-5)
-
-        # Test mode="AUTO" with negative num_leaves (should fail because num_leaves is validated before mode="AUTO" is applied)
-        with pytest.raises(ValueError, match="num_leaves must be a positive integer."):
-            ScaNNIndex(mode="AUTO", num_leaves=-5)
-
-        # Test num_leaves > 2_147_483_647 (should fail)
-        with pytest.raises(
-            ValueError, match="num_leaves exceeds maximum 32-bit integer limit"
-        ):
-            ScaNNIndex(num_leaves=3_000_000_000)
-
-    def test_scann_query_options_num_leaves_overflow(self):
-        import pytest
-
-        with pytest.raises(
-            ValueError,
-            match="num_leaves_to_search exceeds maximum 32-bit integer limit",
-        ):
-            ScaNNQueryOptions(num_leaves_to_search=2_147_483_648)
+    def test_scann_index_calls_base_post_init(self):
+        with pytest.raises(ValueError):
+            ScaNNIndex(extension_name="bad name;")
 
     def test_scann_index_functions(self):
         idx_l2 = ScaNNIndex(distance_strategy=DistanceStrategy.EUCLIDEAN)
@@ -196,37 +199,43 @@ class TestAlloyDBIndex:
                 w[-1].message
             )
 
-    def test_scann_query_options_pct_leaves(self):
+    def test_scann_query_options_num_leaves_zero_allowed(self):
+        options = ScaNNQueryOptions(num_leaves_to_search=0)
+        assert options.to_parameter()[0] == "scann.num_leaves_to_search = 0"
+
+    @pytest.mark.parametrize("value", [-1, 2**31, True, 1.5])
+    def test_scann_query_options_num_leaves_invalid(self, value):
+        with pytest.raises(ValueError, match="num_leaves_to_search must be an integer"):
+            ScaNNQueryOptions(num_leaves_to_search=value)
+
+    @pytest.mark.parametrize("pct", [0, 0.5, 2.5, 50, 100])
+    def test_scann_query_options_pct_valid(self, pct):
         options = ScaNNQueryOptions(
-            pre_reordering_num_neighbors=10,
-            pct_leaves_to_search=0.2,
+            pre_reordering_num_neighbors=10, pct_leaves_to_search=pct
         )
         assert options.to_parameter() == [
-            "scann.pct_leaves_to_search = 0.2",
+            "scann.num_leaves_to_search = 1",
             "scann.pre_reordering_num_neighbors = 10",
+            f"scann.pct_leaves_to_search = {pct}",
         ]
-        with warnings.catch_warnings(record=True) as w:
-            to_str = options.to_string()
-            assert (
-                to_str
-                == "scann.pct_leaves_to_search = 0.2, scann.pre_reordering_num_neighbors = 10"
-            )
 
-    def test_scann_query_options_both_params_warns(self):
-        options = ScaNNQueryOptions(
-            num_leaves_to_search=5,
-            pre_reordering_num_neighbors=10,
-            pct_leaves_to_search=0.5,
-        )
+    @pytest.mark.parametrize("pct", [-0.1, 100.1])
+    def test_scann_query_options_pct_out_of_range(self, pct):
+        with pytest.raises(ValueError, match="between 0 and 100"):
+            ScaNNQueryOptions(pct_leaves_to_search=pct)
+
+    @pytest.mark.parametrize("pct", [True, "10"])
+    def test_scann_query_options_pct_wrong_type(self, pct):
+        with pytest.raises(TypeError):
+            ScaNNQueryOptions(pct_leaves_to_search=pct)
+
+    def test_scann_query_options_pct_to_string(self):
+        options = ScaNNQueryOptions(num_leaves_to_search=5, pct_leaves_to_search=20)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            params = options.to_parameter()
-            assert len(w) == 1
-            assert (
-                "Both 'pct_leaves_to_search' and 'num_leaves_to_search' were provided"
-                in str(w[-1].message)
+            assert options.to_string() == (
+                "scann.num_leaves_to_search = 5, "
+                "scann.pre_reordering_num_neighbors = -1, "
+                "scann.pct_leaves_to_search = 20"
             )
-            assert params == [
-                "scann.pct_leaves_to_search = 0.5",
-                "scann.pre_reordering_num_neighbors = 10",
-            ]
+            assert len(w) == 1
