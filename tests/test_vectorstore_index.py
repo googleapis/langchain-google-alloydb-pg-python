@@ -368,7 +368,9 @@ class TestAsyncIndex:
             try:
                 await vs.aapply_vector_index(index)
             except sqlalchemy.exc.DBAPIError as e:
-                if "mode" in str(e).lower():
+                # Check the server message only: str(e) also contains the SQL
+                # statement, which always includes "mode = 'AUTO'".
+                if "mode" in str(e.orig).lower():
                     pytest.skip(f"Omni instance does not support ScaNN mode=AUTO: {e}")
                 raise
             assert await vs.ais_valid_index(table_name + "_idx")
@@ -389,7 +391,8 @@ class TestAsyncIndex:
             try:
                 results = await vs.asimilarity_search("Document 1", k=3)
             except sqlalchemy.exc.DBAPIError as e:
-                if "pct_leaves_to_search" in str(e):
+                # Check the server message only: str(e) also contains the SQL.
+                if "pct_leaves_to_search" in str(e.orig):
                     pytest.skip(
                         f"Omni instance does not support scann.pct_leaves_to_search: {e}"
                     )
