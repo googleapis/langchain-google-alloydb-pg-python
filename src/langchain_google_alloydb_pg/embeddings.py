@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from langchain_core.embeddings import Embeddings
 from sqlalchemy import text
@@ -128,8 +129,16 @@ class AlloyDBEmbeddings(Embeddings):
             "Embedding functions are not implemented. Use VertexAIEmbeddings interface instead."
         )
 
+    def embed_query_inline_template(self, param_name: str = ":content") -> str:
+        if not re.match(r"^:[a-zA-Z_][a-zA-Z0-9_]*$", param_name):
+            raise ValueError(f"Invalid parameter name: {param_name}")
+        clean_model_id = self.model_id.replace("'", "''")
+        return f"embedding('{clean_model_id}', {param_name})::vector"
+
     def embed_query_inline(self, query: str) -> str:
-        return f"embedding('{self.model_id}', '{query}')::vector"
+        clean_query = query.replace("'", "''")
+        clean_model_id = self.model_id.replace("'", "''")
+        return f"embedding('{clean_model_id}', '{clean_query}')::vector"
 
     async def aembed_query(self, text: str) -> list[float]:
         """Asynchronous Embed query text.
@@ -163,9 +172,11 @@ class AlloyDBEmbeddings(Embeddings):
         Returns:
             list[float]: Embedding.
         """
-        query = f" SELECT embedding('{self.model_id}', '{query}')::vector "
+        stmt = text("SELECT embedding(:model_id, :query)::vector")
         async with self._engine._pool.connect() as conn:
-            result = await conn.execute(text(query))
+            result = await conn.execute(
+                stmt, {"model_id": self.model_id, "query": query}
+            )
             result_map = result.mappings()
             results = result_map.fetchall()
         return json.loads(results[0]["embedding"])
