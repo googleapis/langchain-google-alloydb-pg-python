@@ -153,7 +153,7 @@ class ScaNNQueryOptions(QueryOptions):
             )
         if self.pct_leaves_to_search is not None:
             if isinstance(self.pct_leaves_to_search, bool) or not isinstance(
-                self.pct_leaves_to_search, (int, float)
+                self.pct_leaves_to_search, numbers.Real
             ):
                 raise TypeError(
                     "pct_leaves_to_search must be a number between 0 and 100."

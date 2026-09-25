@@ -236,10 +236,27 @@ class TestAlloyDBIndex:
         with pytest.raises(ValueError, match="between 0 and 100"):
             ScaNNQueryOptions(pct_leaves_to_search=pct)
 
-    @pytest.mark.parametrize("pct", [True, "10"])
+    @pytest.mark.parametrize("pct", [True, "10", np.bool_(True)])
     def test_scann_query_options_pct_wrong_type(self, pct):
         with pytest.raises(TypeError):
             ScaNNQueryOptions(pct_leaves_to_search=pct)
+
+    @pytest.mark.parametrize(
+        "pct, expected",
+        [(np.int64(20), "20"), (np.float64(2.5), "2.5"), (np.float32(2.5), "2.5")],
+    )
+    def test_scann_query_options_pct_numpy_number(self, pct, expected):
+        options = ScaNNQueryOptions(pct_leaves_to_search=pct)
+        assert options.to_parameter()[-1] == f"scann.pct_leaves_to_search = {expected}"
+
+    @pytest.mark.parametrize("value", [np.int64(3), np.int32(3)])
+    def test_scann_query_options_num_leaves_numpy_int(self, value):
+        options = ScaNNQueryOptions(num_leaves_to_search=value)
+        assert options.to_parameter()[0] == "scann.num_leaves_to_search = 3"
+
+    def test_scann_query_options_num_leaves_numpy_bool_rejected(self):
+        with pytest.raises(ValueError, match="num_leaves_to_search must be an integer"):
+            ScaNNQueryOptions(num_leaves_to_search=np.bool_(True))
 
     def test_scann_query_options_pct_to_string(self):
         options = ScaNNQueryOptions(num_leaves_to_search=5, pct_leaves_to_search=20)
