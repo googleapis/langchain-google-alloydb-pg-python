@@ -14,6 +14,7 @@
 
 import warnings
 
+import numpy as np
 import pytest
 
 from langchain_google_alloydb_pg.indexes import (  # type: ignore
@@ -160,6 +161,17 @@ class TestAlloyDBIndex:
     def test_scann_index_num_leaves_validation(self, num_leaves):
         with pytest.raises(ValueError, match="num_leaves must be an integer"):
             ScaNNIndex(num_leaves=num_leaves)
+
+    @pytest.mark.parametrize("num_leaves", [np.int64(7), np.int32(7)])
+    def test_scann_index_num_leaves_numpy_int(self, num_leaves):
+        assert (
+            ScaNNIndex(num_leaves=num_leaves).index_options()
+            == "(num_leaves = 7, quantizer = sq8)"
+        )
+
+    def test_scann_index_num_leaves_numpy_bool_rejected(self):
+        with pytest.raises(ValueError, match="num_leaves must be an integer"):
+            ScaNNIndex(num_leaves=np.bool_(True))
 
     def test_scann_index_num_leaves_max_allowed(self):
         assert ScaNNIndex(num_leaves=2**31 - 1).num_leaves == 2**31 - 1

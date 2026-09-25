@@ -296,7 +296,7 @@ class ScaNNQueryOptions(QueryOptions):
 For the ScaNN index, the `num_leaves` parameter impacts search recalls:
 
 - `num_leaves`: the number of partitions to apply to this index. Increaseing `num_leaves` also increases index build time. To learn more about tuning this parameter, see [Tune a `scann` index](https://cloud.google.com/alloydb/docs/ai/work-with-embeddings#tune-scann).
-- `mode`: set to `"AUTO"` to let AlloyDB tune the index automatically (`num_leaves` is ignored), or `"MANUAL"` to use `num_leaves`. See [Create a ScaNN index](https://cloud.google.com/alloydb/docs/ai/create-scann-index).
+- `mode`: set to `"AUTO"` to let AlloyDB tune the index automatically (`num_leaves` is ignored; the table must contain at least 10,000 rows), or `"MANUAL"` to use `num_leaves`. See [Create a ScaNN index](https://cloud.google.com/alloydb/docs/ai/create-scann-index).
 - `pct_leaves_to_search` (query option): percentage of leaves to search (0-100). When set, the server prefers it over `num_leaves_to_search`.
 
 ### ScaNN Index Tuning

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
 import warnings
 from dataclasses import dataclass, field
 from typing import Optional
@@ -36,8 +37,8 @@ _SCANN_MODES = ("AUTO", "MANUAL")
 
 
 def _is_int(value: object) -> bool:
-    """True for ints, excluding bools (bool is a subclass of int)."""
-    return isinstance(value, int) and not isinstance(value, bool)
+    """True for integers (including numpy integers), excluding bools."""
+    return isinstance(value, numbers.Integral) and not isinstance(value, bool)
 
 
 @dataclass
@@ -78,7 +79,8 @@ class ScaNNIndex(BaseIndex):
         num_leaves (int): Number of partitions. Used when ``mode`` is ``None``
             or ``"MANUAL"``; ignored when ``mode="AUTO"``. Defaults to 5.
         mode (Optional[str]): Keyword-only. ``"AUTO"`` creates an automatically
-            tuned index (the server chooses the number of leaves); ``"MANUAL"``
+            tuned index (the server chooses the number of leaves; the table
+            must contain at least 10,000 rows); ``"MANUAL"``
             creates a manually tuned index using ``num_leaves``. Defaults to
             ``None``, which emits the same options as previous releases.
     """
