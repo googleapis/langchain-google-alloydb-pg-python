@@ -131,7 +131,9 @@ class ScaNNQueryOptions(QueryOptions):
     Args:
         num_leaves_to_search (int): Number of leaves to search. ``0`` lets the
             server choose. Defaults to 1.
-        pre_reordering_num_neighbors (int): Defaults to -1.
+        pre_reordering_num_neighbors (int): Number of neighbors to return
+            before reordering. ``-1`` (the default) uses the server default.
+            Must be an integer >= -1; the server enforces its own upper bound.
         pct_leaves_to_search (Optional[float]): Percentage (0-100, fractional
             values allowed) of leaves to search. When set, it is sent in addition to
             ``num_leaves_to_search``; the server uses the percentage and falls
@@ -151,6 +153,15 @@ class ScaNNQueryOptions(QueryOptions):
             raise ValueError(
                 f"num_leaves_to_search must be an integer between 0 and {_MAX_INT32}."
             )
+        # Interpolated into a SET statement, so it must be a plain integer.
+        if (
+            not _is_int(self.pre_reordering_num_neighbors)
+            or not -1 <= self.pre_reordering_num_neighbors <= _MAX_INT32
+        ):
+            raise ValueError(
+                "pre_reordering_num_neighbors must be an integer between -1 and "
+                f"{_MAX_INT32}."
+            )
         if self.pct_leaves_to_search is not None:
             if isinstance(self.pct_leaves_to_search, bool) or not isinstance(
                 self.pct_leaves_to_search, numbers.Real
@@ -164,11 +175,15 @@ class ScaNNQueryOptions(QueryOptions):
     def to_parameter(self) -> list[str]:
         """Convert index attributes to list of configurations."""
         params = [
-            f"scann.num_leaves_to_search = {self.num_leaves_to_search}",
-            f"scann.pre_reordering_num_neighbors = {self.pre_reordering_num_neighbors}",
+            f"scann.num_leaves_to_search = {int(self.num_leaves_to_search)}",
+            f"scann.pre_reordering_num_neighbors = {int(self.pre_reordering_num_neighbors)}",
         ]
         if self.pct_leaves_to_search is not None:
-            params.append(f"scann.pct_leaves_to_search = {self.pct_leaves_to_search}")
+            # Render as a plain int/float literal: str() of other Real types
+            # (e.g. Fraction(1, 2) -> "1/2") is not valid in a SET statement.
+            pct = self.pct_leaves_to_search
+            pct_literal = int(pct) if isinstance(pct, numbers.Integral) else float(pct)
+            params.append(f"scann.pct_leaves_to_search = {pct_literal}")
         return params
 
     def to_string(self) -> str:

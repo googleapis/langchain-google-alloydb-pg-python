@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import warnings
+from decimal import Decimal
+from fractions import Fraction
 
 import numpy as np
 import pytest
@@ -257,6 +259,36 @@ class TestAlloyDBIndex:
     def test_scann_query_options_num_leaves_numpy_bool_rejected(self):
         with pytest.raises(ValueError, match="num_leaves_to_search must be an integer"):
             ScaNNQueryOptions(num_leaves_to_search=np.bool_(True))
+
+    @pytest.mark.parametrize(
+        "pct, expected",
+        [(Fraction(1, 2), "0.5"), (Fraction(20), "20.0"), (Decimal("2.5"), None)],
+    )
+    def test_scann_query_options_pct_other_real_types(self, pct, expected):
+        """Non-builtin Reals are rendered as plain literals (never "1/2");
+        Decimal is not a numbers.Real and is rejected."""
+        if expected is None:
+            with pytest.raises(TypeError):
+                ScaNNQueryOptions(pct_leaves_to_search=pct)
+            return
+        options = ScaNNQueryOptions(pct_leaves_to_search=pct)
+        assert options.to_parameter()[-1] == f"scann.pct_leaves_to_search = {expected}"
+
+    @pytest.mark.parametrize("value", [-1, 0, 50, np.int64(50), 2**31 - 1])
+    def test_scann_query_options_pre_reordering_valid(self, value):
+        options = ScaNNQueryOptions(pre_reordering_num_neighbors=value)
+        assert options.to_parameter()[1] == (
+            f"scann.pre_reordering_num_neighbors = {int(value)}"
+        )
+
+    @pytest.mark.parametrize(
+        "value", [-2, 2**31, 1.5, True, np.bool_(True), "10; RESET ALL", None]
+    )
+    def test_scann_query_options_pre_reordering_invalid(self, value):
+        with pytest.raises(
+            ValueError, match="pre_reordering_num_neighbors must be an integer"
+        ):
+            ScaNNQueryOptions(pre_reordering_num_neighbors=value)
 
     def test_scann_query_options_pct_to_string(self):
         options = ScaNNQueryOptions(num_leaves_to_search=5, pct_leaves_to_search=20)
