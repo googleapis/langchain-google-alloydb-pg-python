@@ -5,9 +5,11 @@ The ``langchain_google_alloydb_pg`` package provides LangChain tools that call A
 
 - **AlloyDBSentimentTool**: Analyzes the sentiment of text using ``google_ml.analyze_sentiment``.
 - **AlloyDBSummaryTool**: Summarizes text using ``google_ml.summarize``.
+- **AlloyDBIfTool**: Evaluates a natural-language condition and returns ``True`` or ``False`` using ``google_ml.if``.
 
 .. note::
    ``google_ml.analyze_sentiment`` and ``google_ml.summarize`` require AlloyDB running **PostgreSQL 17 or higher** with ``google_ml_integration``, and the ``google_ml_integration.enable_ai_query_engine`` and ``google_ml_integration.enable_preview_ai_functions`` database flags turned on.
+   ``google_ml.if`` needs only the ``google_ml_integration.enable_ai_query_engine`` flag.
 
 The tools are standard LangChain tools. Call them with ``invoke`` / ``ainvoke``, or pass them to an agent:
 

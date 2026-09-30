@@ -26,7 +26,12 @@ from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
-from .tools import AlloyDBSentimentTool, AlloyDBSummaryTool, AlloyDBToolError
+from .tools import (
+    AlloyDBIfTool,
+    AlloyDBSentimentTool,
+    AlloyDBSummaryTool,
+    AlloyDBToolError,
+)
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
@@ -44,6 +49,7 @@ __all__ = [
     "AlloyDBDocumentCompressor",
     "AlloyDBSentimentTool",
     "AlloyDBSummaryTool",
+    "AlloyDBIfTool",
     "AlloyDBToolError",
     "HybridSearchConfig",
     "reciprocal_rank_fusion",
