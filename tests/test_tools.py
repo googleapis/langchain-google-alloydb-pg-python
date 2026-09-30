@@ -27,11 +27,13 @@ from sqlalchemy.exc import DBAPIError
 
 from langchain_google_alloydb_pg import (
     AlloyDBEngine,
+    AlloyDBIfTool,
     AlloyDBSentimentTool,
     AlloyDBSummaryTool,
     AlloyDBToolError,
 )
 from langchain_google_alloydb_pg.tools import (
+    AlloyDBIfInput,
     SentimentInput,
     SummaryInput,
     _afetch_scalar,
@@ -385,3 +387,65 @@ class TestAlloyDBSummaryTool:
             "  article  ",
             " bullets ",
         )
+
+
+@pytest.mark.asyncio
+class TestAlloyDBIfTool:
+    TRUE_CONDITION = "Is 2 + 2 equal to 4?"
+    FALSE_CONDITION = "Is 2 + 2 equal to 5?"
+
+    @pytest_asyncio.fixture(scope="module")
+    async def if_tool(self, engine):
+        return await available_tool(
+            engine,
+            AlloyDBIfTool(engine=engine),
+            {"condition": self.TRUE_CONDITION},
+            [AI_QUERY_ENGINE_FLAG],
+        )
+
+    async def test_metadata(self, engine):
+        tool = AlloyDBIfTool(engine=engine)
+        assert tool.name == "alloydb_if_tool"
+        assert "semantic condition" in tool.description.lower()
+        assert tool.args_schema is AlloyDBIfInput
+        assert list(tool.args) == ["condition"]
+        assert tool.handle_tool_error is False
+        assert tool.model_id is None
+
+    async def test_invoke(self, if_tool):
+        assert if_tool.invoke({"condition": self.TRUE_CONDITION}) is True
+        assert if_tool.invoke({"condition": self.FALSE_CONDITION}) is False
+
+    async def test_ainvoke(self, if_tool):
+        assert await if_tool.ainvoke({"condition": self.TRUE_CONDITION}) is True
+        assert await if_tool.ainvoke({"condition": self.FALSE_CONDITION}) is False
+
+    async def test_model_id(self, engine, if_tool):
+        tool = AlloyDBIfTool(engine=engine, model_id=MODEL_ID)
+        condition = {"condition": self.TRUE_CONDITION}
+        assert await ainvoke_with_model_id(tool, condition) is True
+        condition = {"condition": self.FALSE_CONDITION}
+        assert await ainvoke_with_model_id(tool, condition) is False
+
+    async def test_unknown_model_id_raises(self, engine, if_tool):
+        tool = AlloyDBIfTool(engine=engine, model_id=UNKNOWN_MODEL_ID)
+        with pytest.raises(DBAPIError):
+            await tool.ainvoke({"condition": self.TRUE_CONDITION, "model_id": MODEL_ID})
+
+    async def test_null_result_raises(self, engine, if_tool, null_model_id):
+        # A NULL result raises instead of being returned as a (truthy) message.
+        tool = AlloyDBIfTool(engine=engine, model_id=null_model_id)
+        with pytest.raises(AlloyDBToolError, match="returned NULL"):
+            await tool.ainvoke({"condition": self.TRUE_CONDITION})
+        with pytest.raises(AlloyDBToolError, match="returned NULL"):
+            tool.invoke({"condition": self.TRUE_CONDITION})
+
+    async def test_input_validation(self, engine):
+        tool = AlloyDBIfTool(engine=engine)
+        with pytest.raises(ValidationError, match="condition must be a non-empty"):
+            await tool.ainvoke({"condition": "   "})
+        with pytest.raises(ValidationError):
+            AlloyDBIfInput(condition="")
+        with pytest.raises(ValidationError, match="model_id must be a non-empty"):
+            AlloyDBIfTool(engine=engine, model_id="   ")
+        assert AlloyDBIfInput(condition=" is valid? ").condition == " is valid? "
