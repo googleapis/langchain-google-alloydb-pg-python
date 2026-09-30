@@ -152,3 +152,116 @@ class AlloyDBSentimentTool(BaseTool):
             "wasn't positive, negative or neutral.",
         )
         return str(value)
+
+
+class SummaryInput(BaseModel):
+    """Input for AlloyDBSummaryTool."""
+
+    content: str = Field(
+        description="The text content to summarize.",
+        min_length=1,
+    )
+    additional_instructions: Optional[str] = Field(
+        default=None,
+        description="Optional additional instructions for summarization style or format.",
+    )
+
+    @field_validator("content")
+    @classmethod
+    def check_content(cls, v: str) -> str:
+        return _check_text(v, "content")
+
+    @field_validator("additional_instructions")
+    @classmethod
+    def check_additional_instructions(cls, v: Optional[str]) -> Optional[str]:
+        return None if v is None else _check_text(v, "additional_instructions")
+
+
+class AlloyDBSummaryTool(BaseTool):
+    """Summarizes text with ``google_ml.summarize``.
+
+    Requires AlloyDB running PostgreSQL 17 or higher with
+    ``google_ml_integration``. Like any LangChain tool, call it with
+    ``invoke`` / ``ainvoke`` or give it to an agent:
+
+    .. code-block:: python
+
+        tool = AlloyDBSummaryTool(engine=engine)
+        tool.invoke(
+            {"content": article, "additional_instructions": "In 3 bullet points"}
+        )
+
+    ``model_id`` works as in :class:`AlloyDBSentimentTool`: it is set on the
+    tool, and ``None`` uses the database's default model.
+    ``additional_instructions`` can be set on the tool or passed per call; a
+    per-call value replaces the tool's.
+    """
+
+    name: str = "alloydb_summary_tool"
+    description: str = (
+        "Summarize the given text. Useful for condensing long articles or"
+        " descriptions into shorter summaries."
+    )
+    args_schema: Type[BaseModel] = SummaryInput
+    engine: AlloyDBEngine
+    model_id: Optional[str] = None
+    additional_instructions: Optional[str] = None
+
+    @field_validator("model_id")
+    @classmethod
+    def check_model_id(cls, v: Optional[str]) -> Optional[str]:
+        return _check_model_id(v)
+
+    @field_validator("additional_instructions")
+    @classmethod
+    def check_additional_instructions(cls, v: Optional[str]) -> Optional[str]:
+        return None if v is None else _check_text(v, "additional_instructions")
+
+    def _run(
+        self,
+        content: str,
+        additional_instructions: Optional[str] = None,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> str:
+        """Summarize synchronously. Called by ``invoke`` and ``run``."""
+        _check_engine_loop(self.engine)
+        return self.engine._run_as_sync(
+            self.__asummarize(content, additional_instructions)
+        )
+
+    async def _arun(
+        self,
+        content: str,
+        additional_instructions: Optional[str] = None,
+        run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
+    ) -> str:
+        """Summarize asynchronously. Called by ``ainvoke`` and ``arun``."""
+        return await self.engine._run_as_async(
+            self.__asummarize(content, additional_instructions)
+        )
+
+    async def __asummarize(
+        self, content: str, additional_instructions: Optional[str]
+    ) -> str:
+        model_id = self.model_id
+        instructions = additional_instructions or self.additional_instructions
+        params = {"content": content}
+        if instructions and model_id:
+            query = "SELECT google_ml.summarize(:content, :instructions, :model_id)"
+            params.update(instructions=instructions, model_id=model_id)
+        elif instructions:
+            query = "SELECT google_ml.summarize(:content, :instructions)"
+            params.update(instructions=instructions)
+        elif model_id:
+            query = "SELECT google_ml.summarize(:content, NULL, :model_id)"
+            params.update(model_id=model_id)
+        else:
+            query = "SELECT google_ml.summarize(:content)"
+        value = await _afetch_scalar(
+            self.engine,
+            query,
+            params,
+            "AlloyDB AI text summarization returned NULL: the model's reply "
+            "had no text.",
+        )
+        return str(value)
