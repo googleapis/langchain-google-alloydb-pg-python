@@ -285,15 +285,22 @@ class ScaNNIndex(BaseIndex):
     quantizer: str = field(
         default="sq8", init=False
     )  # Excludes `quantizer` from initialization currently only supports the value "sq8"
+    mode: Optional[str] = field(default=None, kw_only=True)  # "AUTO" or "MANUAL"
 
 class ScaNNQueryOptions(QueryOptions):
     num_leaves_to_search: int = 1
     pre_reordering_num_neighbors: int = -1
+    pct_leaves_to_search: Optional[float] = None  # percentage, 0-100
 ```
 
 For the ScaNN index, the `num_leaves` parameter impacts search recalls:
 
 - `num_leaves`: the number of partitions to apply to this index. Increaseing `num_leaves` also increases index build time. To learn more about tuning this parameter, see [Tune a `scann` index](https://cloud.google.com/alloydb/docs/ai/work-with-embeddings#tune-scann).
+- `mode`: chooses how the index is configured. See [Create a ScaNN index](https://cloud.google.com/alloydb/docs/ai/create-scann-index).
+  - `"AUTO"`: AlloyDB chooses the index settings for you, and any `num_leaves` value is ignored. The table must already contain at least 10,000 rows when you create the index.
+  - `"MANUAL"`: the index is built with the `num_leaves` value you provide.
+  - Not set (default): same behavior as before this option was added.
+- `pct_leaves_to_search` (query option): percentage of leaves to search (0-100). When set, the server prefers it over `num_leaves_to_search`.
 
 ### ScaNN Index Tuning
 
