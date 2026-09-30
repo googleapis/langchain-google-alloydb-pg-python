@@ -135,10 +135,7 @@ class AlloyDBEmbeddings(Embeddings):
         clean_model_id = self.model_id.replace("'", "''")
         return f"embedding('{clean_model_id}', {param_name})::vector"
 
-    def embed_query_inline(self, query: str) -> str:
-        clean_query = query.replace("'", "''")
-        clean_model_id = self.model_id.replace("'", "''")
-        return f"embedding('{clean_model_id}', '{clean_query}')::vector"
+
 
     async def aembed_query(self, text: str) -> list[float]:
         """Asynchronous Embed query text.
