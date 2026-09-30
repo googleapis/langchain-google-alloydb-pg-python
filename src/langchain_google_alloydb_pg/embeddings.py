@@ -135,8 +135,6 @@ class AlloyDBEmbeddings(Embeddings):
         clean_model_id = self.model_id.replace("'", "''")
         return f"embedding('{clean_model_id}', {param_name})::vector"
 
-
-
     async def aembed_query(self, text: str) -> list[float]:
         """Asynchronous Embed query text.
 
