@@ -173,3 +173,117 @@ class TestAlloyDBDocumentCompressor:
             "page": 42,
             "relevance_score": 0.95,
         }
+
+    async def test_invalid_query(self, engine):
+        compressor = AlloyDBDocumentCompressor(engine=engine, model_id=RANKING_MODEL_ID)
+        for query in ("", "   \n\t  "):
+            with pytest.raises(ValueError, match="Query string cannot be empty"):
+                await compressor.acompress_documents(DOCUMENTS, query)
+            with pytest.raises(ValueError, match="Query string cannot be empty"):
+                compressor.compress_documents(DOCUMENTS, query)
+
+    async def test_invalid_top_n(self, engine):
+        for top_n in (0, -1):
+            compressor = AlloyDBDocumentCompressor(
+                engine=engine, model_id=RANKING_MODEL_ID, top_n=top_n
+            )
+            with pytest.raises(ValueError, match="top_n must be a positive integer"):
+                await compressor.acompress_documents(DOCUMENTS, QUERY)
+            with pytest.raises(ValueError, match="top_n must be a positive integer"):
+                compressor.compress_documents(DOCUMENTS, QUERY)
+
+    async def test_compress_documents_on_engine_loop(self, engine):
+        compressor = AlloyDBDocumentCompressor(engine=engine, model_id=RANKING_MODEL_ID)
+
+        async def call_sync_on_engine_loop() -> Sequence[Document]:
+            return compressor.compress_documents(DOCUMENTS, QUERY)
+
+        with pytest.raises(RuntimeError, match="Use 'acompress_documents' instead"):
+            await engine._run_as_async(call_sync_on_engine_loop())
+
+    async def test_top_n_larger_than_documents(self, engine, ranking):
+        compressor = AlloyDBDocumentCompressor(
+            engine=engine, model_id=RANKING_MODEL_ID, top_n=10
+        )
+        result = await compressor.acompress_documents(DOCUMENTS, QUERY)
+        self.check_ranked(result, expected_len=3)
+
+    async def test_input_documents_not_modified(self, engine, ranking):
+        documents = [
+            Document(page_content=doc.page_content, metadata=dict(doc.metadata))
+            for doc in DOCUMENTS
+        ]
+        compressor = AlloyDBDocumentCompressor(engine=engine, model_id=RANKING_MODEL_ID)
+        result = await compressor.acompress_documents(documents, QUERY)
+        assert all(doc is not orig for doc in result for orig in documents)
+        assert [doc.metadata for doc in documents] == [
+            doc.metadata for doc in DOCUMENTS
+        ]
+
+    async def test_duplicate_documents(self, engine, ranking):
+        documents = [
+            Document(page_content=DOCUMENTS[1].page_content, metadata={"id": 1}),
+            Document(page_content=DOCUMENTS[1].page_content, metadata={"id": 2}),
+        ]
+        compressor = AlloyDBDocumentCompressor(engine=engine, model_id=RANKING_MODEL_ID)
+        result = await compressor.acompress_documents(documents, QUERY)
+        assert sorted(doc.metadata["id"] for doc in result) == [1, 2]
+
+    async def test_to_ranked_documents_skips_null_scores(self):
+        result = _to_ranked_documents(DOCUMENTS, [(2, None), (1, 0.85)])
+        assert len(result) == 1
+        assert result[0].page_content == DOCUMENTS[0].page_content
+        assert result[0].metadata["relevance_score"] == 0.85
+
+    async def test_to_ranked_documents_skips_out_of_range_indexes(self):
+        rows = [(0, 0.99), (-1, 0.95), (4, 0.9), (999, 0.9), (2, 0.85)]
+        result = _to_ranked_documents(DOCUMENTS, rows)
+        assert len(result) == 1
+        assert result[0].page_content == DOCUMENTS[1].page_content
+        assert result[0].metadata["relevance_score"] == 0.85
+
+    async def test_to_ranked_documents_returns_copies(self):
+        document = Document(page_content="text", metadata={"source": "test"})
+        result = _to_ranked_documents([document], [(1, 0.5)])
+        assert result[0] is not document
+        assert result[0].metadata == {"source": "test", "relevance_score": 0.5}
+        assert document.metadata == {"source": "test"}
+
+    async def test_to_ranked_documents_no_rows(self):
+        assert _to_ranked_documents(DOCUMENTS, []) == []
+
+    async def test_rank_rows_from_server(self, engine):
+        # google_ml.rank builds its result rows with this output transform.
+        # Feeding it a Vertex AI ranking response checks the row shape and the
+        # 1-based index against the installed extension, without calling
+        # Vertex AI.
+        response = (
+            '{"records": [{"id": "2", "score": 0.9}, {"id": "3", "score": 0.4},'
+            ' {"id": "1", "score": 0.1}]}'
+        )
+
+        async def fetch_rows():
+            async with engine._pool.connect() as conn:
+                result = await conn.execute(
+                    text(
+                        "SELECT index, score FROM"
+                        " google_ml.vertexai_reranking_output_transform("
+                        "CAST(:model_id AS VARCHAR), CAST(:response AS JSON))"
+                    ),
+                    {"model_id": RANKING_MODEL_ID, "response": response},
+                )
+                return result.fetchall()
+
+        try:
+            rows = await engine._run_as_async(fetch_rows())
+        except DBAPIError as e:
+            if getattr(e.orig, "sqlstate", None) == "42883":
+                pytest.skip(
+                    "google_ml_integration on this instance has no "
+                    "vertexai_reranking_output_transform (SQLSTATE 42883)."
+                )
+            raise
+        result = _to_ranked_documents(DOCUMENTS, rows)
+        sources = [doc.metadata["source"] for doc in result]
+        assert sources == ["book_b", "book_c", "book_a"]
+        assert result[0].metadata["relevance_score"] == pytest.approx(0.9)
