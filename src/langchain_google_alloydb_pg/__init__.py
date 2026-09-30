@@ -21,6 +21,7 @@ from langchain_postgres.v2.hybrid_search_config import (
 
 from .chat_message_history import AlloyDBChatMessageHistory
 from .checkpoint import AlloyDBSaver
+from .document_compressor import AlloyDBDocumentCompressor
 from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
@@ -39,6 +40,7 @@ __all__ = [
     "AlloyDBModelManager",
     "AlloyDBModel",
     "AlloyDBSaver",
+    "AlloyDBDocumentCompressor",
     "HybridSearchConfig",
     "reciprocal_rank_fusion",
     "weighted_sum_ranking",
