@@ -150,7 +150,7 @@ def _columnar_column_list(columns: list[str]) -> str:
     return ",".join(columns)
 
 
-def _require_name(value: Any, name: str) -> None:
+def _validate_field(value: Any, name: str) -> None:
     """Raise ValueError unless ``value`` is a non-empty, non-blank string."""
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a non-empty string.")
@@ -770,11 +770,11 @@ class AlloyDBEngine(PGEngine):
 
         See :meth:`ainitialize_embeddings` for the full description.
         """
-        _require_name(table_name, "table_name")
-        _require_name(model_id, "model_id")
-        _require_name(content_column, "content_column")
-        _require_name(embedding_column, "embedding_column")
-        _require_name(schema_name, "schema_name")
+        _validate_field(table_name, "table_name")
+        _validate_field(model_id, "model_id")
+        _validate_field(content_column, "content_column")
+        _validate_field(embedding_column, "embedding_column")
+        _validate_field(schema_name, "schema_name")
 
         table_identifier = f"{_quote_ident(schema_name)}.{_quote_ident(table_name)}"
         if not overwrite:
@@ -965,8 +965,8 @@ class AlloyDBEngine(PGEngine):
 
         See :meth:`aenable_columnar_engine` for the full description.
         """
-        _require_name(table_name, "table_name")
-        _require_name(schema_name, "schema_name")
+        _validate_field(table_name, "table_name")
+        _validate_field(schema_name, "schema_name")
         table_identifier = f"{_quote_ident(schema_name)}.{_quote_ident(table_name)}"
 
         if columns is not None:
@@ -1170,9 +1170,9 @@ class AlloyDBEngine(PGEngine):
 
         See :meth:`adefine_vector_assist_spec` for the full description.
         """
-        _require_name(table_name, "table_name")
-        _require_name(embedding_column, "embedding_column")
-        _require_name(schema_name, "schema_name")
+        _validate_field(table_name, "table_name")
+        _validate_field(embedding_column, "embedding_column")
+        _validate_field(schema_name, "schema_name")
         query = (
             "SELECT * FROM vector_assist.define_spec("
             "table_name => :table_name, schema_name => :schema_name, "
@@ -1301,9 +1301,9 @@ class AlloyDBEngine(PGEngine):
 
         See :meth:`aapply_vector_assist_spec` for the full description.
         """
-        _require_name(table_name, "table_name")
-        _require_name(embedding_column, "embedding_column")
-        _require_name(schema_name, "schema_name")
+        _validate_field(table_name, "table_name")
+        _validate_field(embedding_column, "embedding_column")
+        _validate_field(schema_name, "schema_name")
         try:
             async with self._pool.connect() as conn:
                 if spec_id is None:
@@ -1420,9 +1420,9 @@ class AlloyDBEngine(PGEngine):
 
         See :meth:`aget_vector_assist_recommendations` for the full description.
         """
-        _require_name(table_name, "table_name")
-        _require_name(embedding_column, "embedding_column")
-        _require_name(schema_name, "schema_name")
+        _validate_field(table_name, "table_name")
+        _validate_field(embedding_column, "embedding_column")
+        _validate_field(schema_name, "schema_name")
         try:
             async with self._pool.connect() as conn:
                 spec_id = await self._afetch_latest_vector_assist_spec_id(
