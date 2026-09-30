@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.16.0...v0.17.0) (2026-09-30)
+
+
+### Features
+
+* Add ScaNN vector index and query options support ([#628](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/628)) ([0d1a61d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/0d1a61d00d3f987c4cb6216d3811baea7a974999))
+
 ## [0.16.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.15.0...v0.16.0) (2026-09-15)
 
 
