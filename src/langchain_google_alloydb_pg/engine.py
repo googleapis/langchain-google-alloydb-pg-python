@@ -89,6 +89,10 @@ async def _get_iam_principal_email(
     return email.replace(".gserviceaccount.com", "")
 
 
+# Largest horizon google_ml.forecast accepts (AlloyDB model endpoint reference).
+_MAX_FORECAST_HORIZON = 128
+
+
 class AlloyDBEngine(PGEngine):
     """A class for managing connections to a AlloyDB database."""
 
@@ -660,3 +664,201 @@ class AlloyDBEngine(PGEngine):
             )
 
         return metadata.tables[f"{schema_name}.{table_name}"]
+
+    async def _aforecast(
+        self,
+        model_id: str,
+        *,
+        timestamp_column: str,
+        data_column: str,
+        horizon: int,
+        conf_level: float,
+        table_name: Optional[str] = None,
+        schema_name: str = "public",
+        query: Optional[str] = None,
+    ) -> list[dict]:
+        """Run google_ml.forecast on the engine's loop; see ``aforecast``."""
+
+        # Reject empty or blank strings, but pass values through exactly as
+        # given: identifiers are case- and whitespace-sensitive once quoted.
+        def validate(name: str, value: Any) -> None:
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be a non-empty string.")
+
+        validate("model_id", model_id)
+        validate("timestamp_column", timestamp_column)
+        validate("data_column", data_column)
+        if table_name is not None and query is None:
+            validate("table_name", table_name)
+            validate("schema_name", schema_name)
+            # google_ml.forecast resolves source_table with ::regclass, so
+            # quote both parts.
+            quoted_schema = self._escape_postgres_identifier(schema_name)
+            quoted_table = self._escape_postgres_identifier(table_name)
+            source_arg = "source_table"
+            source = f'"{quoted_schema}"."{quoted_table}"'
+        elif query is not None and table_name is None:
+            validate("query", query)
+            source_arg, source = "source_query", query
+        else:
+            raise ValueError("Exactly one of 'table_name' or 'query' must be provided.")
+
+        if not 1 <= horizon <= _MAX_FORECAST_HORIZON:
+            raise ValueError(f"horizon must be between 1 and {_MAX_FORECAST_HORIZON}.")
+        if not 0 < conf_level < 1:
+            raise ValueError("conf_level must be strictly between 0 and 1.")
+
+        # Only the Python argument names differ; google_ml.forecast's own
+        # parameters are source_table/source_query, timestamp_col and data_col.
+        statement = (
+            "SELECT * FROM google_ml.forecast(model_id => :model_id, "
+            f"{source_arg} => :source, timestamp_col => :timestamp_column, "
+            "data_col => :data_column, horizon => :horizon, conf_level => :conf_level)"
+        )
+        params: dict[str, Any] = {
+            "model_id": model_id,
+            "source": source,
+            "timestamp_column": timestamp_column,
+            "data_column": data_column,
+            "horizon": horizon,
+            "conf_level": float(conf_level),
+        }
+        async with self._pool.connect() as conn:
+            result = await conn.execute(text(statement), params)
+            return [dict(row) for row in result.mappings()]
+
+    async def aforecast(
+        self,
+        model_id: str,
+        *,
+        timestamp_column: str,
+        data_column: str,
+        horizon: int,
+        conf_level: float,
+        table_name: Optional[str] = None,
+        schema_name: str = "public",
+        query: Optional[str] = None,
+    ) -> list[dict]:
+        """Asynchronously get forecasting from AlloyDB AI.
+
+        Requires the ``google_ml_integration`` extension (``google_ml.forecast``)
+        in the database. All arguments after ``model_id`` are keyword-only.
+        Names and values are passed to the server exactly as given: they are
+        not stripped, and quoted names are case-sensitive.
+
+        Args:
+            model_id: The ID of a model registered with
+                ``google_ml.create_model`` using ``model_type => 'ts_forecasting'``.
+            timestamp_column: The column containing the timestamp.
+            data_column: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast, an integer from
+                1 to 128 (the range ``google_ml.forecast`` accepts).
+            conf_level: Confidence level for the prediction intervals, strictly
+                between 0 and 1 (for example 0.8). Required, because
+                ``google_ml.forecast`` rejects a NULL conf_level.
+            table_name: The table containing the historical time series data.
+                Mutually exclusive with query.
+            schema_name: The schema of table_name. Ignored when query is
+                given. Default: "public".
+            query: Query that returns the historical time series data. The
+                server runs it as SQL with the caller's privileges, so do not
+                build it from untrusted input. Mutually exclusive with
+                table_name.
+
+        Returns:
+            A list of dictionaries, one per forecast step, keyed by the columns
+            that ``google_ml.forecast`` returns: forecast_timestamp,
+            forecast_value, confidence_level, prediction_interval_lower_bound,
+            prediction_interval_upper_bound and ai_forecast_status.
+
+        Raises:
+            ValueError: If neither or both of table_name and query are given,
+                if model_id, timestamp_column, data_column, table_name,
+                schema_name or query is empty, blank or not a string, if
+                horizon is not between 1 and 128, or if conf_level is not
+                strictly between 0 and 1.
+            sqlalchemy.exc.DBAPIError: Database errors (for example, a missing
+                extension or table, an unregistered model, forecasting disabled
+                on the instance, or an error from the model endpoint) are
+                raised unchanged.
+        """
+        return await self._run_as_async(
+            self._aforecast(
+                model_id,
+                timestamp_column=timestamp_column,
+                data_column=data_column,
+                horizon=horizon,
+                conf_level=conf_level,
+                table_name=table_name,
+                schema_name=schema_name,
+                query=query,
+            )
+        )
+
+    def forecast(
+        self,
+        model_id: str,
+        *,
+        timestamp_column: str,
+        data_column: str,
+        horizon: int,
+        conf_level: float,
+        table_name: Optional[str] = None,
+        schema_name: str = "public",
+        query: Optional[str] = None,
+    ) -> list[dict]:
+        """Synchronously get forecasting from AlloyDB AI.
+
+        Requires the ``google_ml_integration`` extension (``google_ml.forecast``)
+        in the database. All arguments after ``model_id`` are keyword-only.
+        Names and values are passed to the server exactly as given: they are
+        not stripped, and quoted names are case-sensitive.
+
+        Args:
+            model_id: The ID of a model registered with
+                ``google_ml.create_model`` using ``model_type => 'ts_forecasting'``.
+            timestamp_column: The column containing the timestamp.
+            data_column: The column containing the data to forecast.
+            horizon: Number of future time steps to forecast, an integer from
+                1 to 128 (the range ``google_ml.forecast`` accepts).
+            conf_level: Confidence level for the prediction intervals, strictly
+                between 0 and 1 (for example 0.8). Required, because
+                ``google_ml.forecast`` rejects a NULL conf_level.
+            table_name: The table containing the historical time series data.
+                Mutually exclusive with query.
+            schema_name: The schema of table_name. Ignored when query is
+                given. Default: "public".
+            query: Query that returns the historical time series data. The
+                server runs it as SQL with the caller's privileges, so do not
+                build it from untrusted input. Mutually exclusive with
+                table_name.
+
+        Returns:
+            A list of dictionaries, one per forecast step, keyed by the columns
+            that ``google_ml.forecast`` returns: forecast_timestamp,
+            forecast_value, confidence_level, prediction_interval_lower_bound,
+            prediction_interval_upper_bound and ai_forecast_status.
+
+        Raises:
+            ValueError: If neither or both of table_name and query are given,
+                if model_id, timestamp_column, data_column, table_name,
+                schema_name or query is empty, blank or not a string, if
+                horizon is not between 1 and 128, or if conf_level is not
+                strictly between 0 and 1.
+            sqlalchemy.exc.DBAPIError: Database errors (for example, a missing
+                extension or table, an unregistered model, forecasting disabled
+                on the instance, or an error from the model endpoint) are
+                raised unchanged.
+        """
+        return self._run_as_sync(
+            self._aforecast(
+                model_id,
+                timestamp_column=timestamp_column,
+                data_column=data_column,
+                horizon=horizon,
+                conf_level=conf_level,
+                table_name=table_name,
+                schema_name=schema_name,
+                query=query,
+            )
+        )
