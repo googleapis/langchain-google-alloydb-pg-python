@@ -27,7 +27,7 @@ from langchain_google_alloydb_pg import AlloyDBEngine
 
 async def aexecute(engine: AlloyDBEngine, query: str) -> None:
     # Run on the engine's background loop, like aforecast/forecast do. Pooled
-    # asyncpg connections are bound to the event loop that opened them; using
+    # asyncpg connections are bound to the event loop that opened them. Using
     # engine._pool directly from the test's loop hands aforecast a connection
     # from another loop, whose BEGIN then fails and whose rollback on close
     # raises "cannot rollback; the transaction is in error state".
@@ -65,7 +65,7 @@ def skip_if_forecasting_disabled(error: sqlalchemy.exc.DBAPIError) -> None:
 class TestEngineForecast:
     """Live tests. No ts_forecasting model is registered on the test instance,
     so they check that calls reach google_ml.forecast and that its errors
-    reach the caller; the real forecast test skips until a model is
+    reach the caller. The real forecast test skips until a model is
     registered."""
 
     @pytest.fixture(scope="module")
@@ -116,7 +116,7 @@ class TestEngineForecast:
         await aexecute(engine, f'DROP TABLE IF EXISTS "{table}"')
 
     async def test_forecast(self, engine, ts_table):
-        """A real forecast; skips while no forecast model is registered."""
+        """A real forecast, skipped while no forecast model is registered."""
         model_id = os.environ.get("FORECAST_MODEL_ID", "test_model")
         try:
             results = await engine.aforecast(
@@ -151,7 +151,7 @@ class TestEngineForecast:
         own error (P0001 for an unregistered model, which the server checks
         before reading the source) reaches the caller unchanged. The padded
         model_id in the message shows it was bound exactly as given, without
-        stripping. This relies on the server checking the model first; update
+        stripping. This relies on the server checking the model first. Update
         the test if an extension upgrade changes that order."""
         model_id = "  langchain_missing_model_" + uuid.uuid4().hex + "  "
         source_kwargs: dict[str, Any] = {

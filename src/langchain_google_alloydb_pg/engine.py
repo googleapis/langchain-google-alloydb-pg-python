@@ -677,7 +677,7 @@ class AlloyDBEngine(PGEngine):
         schema_name: str = "public",
         query: Optional[str] = None,
     ) -> list[dict]:
-        """Run google_ml.forecast on the engine's loop; see ``aforecast``."""
+        """Run google_ml.forecast on the engine's loop. See ``aforecast``."""
 
         # Reject empty or blank strings, but pass values through exactly as
         # given: identifiers are case- and whitespace-sensitive once quoted.
@@ -708,7 +708,7 @@ class AlloyDBEngine(PGEngine):
         if not 0 < conf_level < 1:
             raise ValueError("conf_level must be strictly between 0 and 1.")
 
-        # Only the Python argument names differ; google_ml.forecast's own
+        # Only the Python argument names differ. google_ml.forecast's own
         # parameters are source_table/source_query, timestamp_col and data_col.
         statement = (
             "SELECT * FROM google_ml.forecast(model_id => :model_id, "
