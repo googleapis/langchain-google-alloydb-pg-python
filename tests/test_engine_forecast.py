@@ -323,6 +323,29 @@ class TestEngineForecast:
         assert "Model does not exist" not in str(orig), orig
 
     @pytest.mark.parametrize("api", ["aforecast", "forecast"])
+    @pytest.mark.parametrize("source", ["mixed_case_schema_and_table", "query"])
+    async def test_forecast_mixed_case_source(
+        self, engine, ts_table, mixed_case_table, api, source
+    ):
+        """A forecast from a mixed-case table in a mixed-case schema, by name
+        or through a query, with mixed-case columns. The table holds the same
+        series as ts_table."""
+        results = await acall(
+            engine,
+            api,
+            FORECAST_MODEL_ID,
+            horizon=3,
+            conf_level=0.8,
+            **self.source_kwargs(source, ts_table, mixed_case_table),
+        )
+        assert_forecast(
+            results,
+            horizon=3,
+            conf_level=0.8,
+            last_input_timestamp=TS_TABLE_LAST_TIMESTAMP,
+        )
+
+    @pytest.mark.parametrize("api", ["aforecast", "forecast"])
     @pytest.mark.parametrize(
         "case, sqlstate",
         [
@@ -367,24 +390,48 @@ class TestEngineForecast:
     @pytest.mark.parametrize(
         "horizon, conf_level",
         [
-            (1, 1e-9),
-            (128, 0.999),
+            (1, 0.8),
+            (128, 0.8),
             (np.int64(7), np.float32(0.5)),
         ],
     )
-    async def test_forecast_boundary_values_reach_server(
+    async def test_forecast_horizon_boundaries(
         self, engine, ts_table, horizon, conf_level
     ):
-        """The horizon and conf_level boundaries pass client-side validation
+        """The smallest and largest horizon google_ml.forecast accepts, and
+        numpy scalars, pass client-side validation and the driver, and return
+        exactly horizon forecast rows. The model's endpoint must be deployed
+        with a maximum horizon of at least 128."""
+        results = await engine.aforecast(
+            FORECAST_MODEL_ID,
+            timestamp_column="ts",
+            data_column="val",
+            horizon=horizon,
+            conf_level=conf_level,
+            table_name=ts_table,
+        )
+        assert_forecast(
+            results,
+            horizon=int(horizon),
+            conf_level=float(conf_level),
+            last_input_timestamp=TS_TABLE_LAST_TIMESTAMP,
+        )
+
+    @pytest.mark.parametrize("conf_level", [1e-9, 0.999])
+    async def test_forecast_conf_level_boundaries_reach_server(
+        self, engine, ts_table, conf_level
+    ):
+        """conf_level values just inside (0, 1) pass client-side validation
         and are accepted by the driver. The server then reports the
-        unregistered model."""
+        unregistered model. This does not check what a real model returns for
+        them."""
         model_id = "langchain_missing_model_" + uuid.uuid4().hex
         with pytest.raises(sqlalchemy.exc.DBAPIError) as exc_info:
             await engine.aforecast(
                 model_id,
                 timestamp_column="ts",
                 data_column="val",
-                horizon=horizon,
+                horizon=3,
                 conf_level=conf_level,
                 table_name=ts_table,
             )
