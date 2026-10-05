@@ -15,6 +15,7 @@
 import asyncio
 import os
 import uuid
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -53,20 +54,74 @@ async def acall(engine: AlloyDBEngine, api: str, *args: Any, **kwargs: Any) -> A
     return await engine.aforecast(*args, **kwargs)
 
 
-def skip_if_forecasting_disabled(error: sqlalchemy.exc.DBAPIError) -> None:
-    # google_ml.forecast checks the google_ml_integration.enable_forecasting
-    # flag before anything else. Check the server message only: str(error)
-    # also contains the SQL and its parameters.
-    if "enable_forecasting" in str(error.orig):
-        pytest.skip(f"Forecasting is disabled on the instance: {error.orig}")
+# The ts_forecasting model the success tests call. It must be registered on
+# the instance with google_ml.create_model(model_type => 'ts_forecasting').
+FORECAST_MODEL_ID = os.environ.get("FORECAST_MODEL_ID", "timesfm")
+
+# The columns google_ml.forecast returns, in order.
+FORECAST_COLUMNS = [
+    "forecast_timestamp",
+    "forecast_value",
+    "confidence_level",
+    "prediction_interval_lower_bound",
+    "prediction_interval_upper_bound",
+    "ai_forecast_status",
+]
+
+# The last timestamp in ts_table (2026-01-01 plus 29 days).
+TS_TABLE_LAST_TIMESTAMP = datetime(2026, 1, 30)
+
+# The ways to pass ts_table as the source. See ts_table_source_kwargs.
+TS_TABLE_SOURCES = ["table_name", "table_name_with_schema_name", "query"]
+
+
+def ts_table_source_kwargs(source: str, ts_table: str) -> dict[str, Any]:
+    """Keyword arguments that read ts_table through the given source."""
+    return {
+        "table_name": {"table_name": ts_table},
+        "table_name_with_schema_name": {
+            "table_name": ts_table,
+            "schema_name": "public",
+        },
+        "query": {"query": f'SELECT ts, val FROM "{ts_table}"'},
+    }[source]
+
+
+def assert_forecast(
+    results: list[dict],
+    *,
+    horizon: int,
+    conf_level: float,
+    last_input_timestamp: datetime,
+) -> None:
+    """Check the shape of a forecast, not the forecast values themselves.
+    The engine returns rows in whatever order the server produces them, and
+    SQL does not guarantee one, so the rows are checked in timestamp order."""
+    assert len(results) == horizon, results
+    assert all(row.get("forecast_timestamp") is not None for row in results), results
+    rows = sorted(results, key=lambda row: row["forecast_timestamp"])
+    for row in rows:
+        assert list(row) == FORECAST_COLUMNS, row
+        assert all(row[c] is not None for c in FORECAST_COLUMNS[:5]), row
+        assert row["confidence_level"] == pytest.approx(conf_level), row
+        assert (
+            row["prediction_interval_lower_bound"]
+            <= row["forecast_value"]
+            <= row["prediction_interval_upper_bound"]
+        ), row
+    timestamps = [row["forecast_timestamp"] for row in rows]
+    assert len(set(timestamps)) == len(timestamps), timestamps
+    assert all(ts > last_input_timestamp for ts in timestamps), timestamps
 
 
 @pytest.mark.asyncio
 class TestEngineForecast:
-    """Live tests. No ts_forecasting model is registered on the test instance,
-    so they check that calls reach google_ml.forecast and that its errors
-    reach the caller. The real forecast test skips until a model is
-    registered."""
+    """Live tests. They need forecasting enabled on the instance
+    (google_ml_integration.enable_forecasting) and fail, not skip, without
+    it. The success tests call the ts_forecasting model FORECAST_MODEL_ID
+    (default "timesfm") and fail when it is not registered. The error tests
+    use a model_id that is never registered, so they check that calls reach
+    google_ml.forecast and that its errors reach the caller unchanged."""
 
     @pytest.fixture(scope="module")
     def db_project(self) -> str:
@@ -115,35 +170,32 @@ class TestEngineForecast:
         yield table
         await aexecute(engine, f'DROP TABLE IF EXISTS "{table}"')
 
-    async def test_forecast(self, engine, ts_table):
-        """A real forecast, skipped while no forecast model is registered."""
-        model_id = os.environ.get("FORECAST_MODEL_ID", "test_model")
-        try:
-            results = await engine.aforecast(
-                model_id,
-                timestamp_column="ts",
-                data_column="val",
-                horizon=3,
-                conf_level=0.8,
-                table_name=ts_table,
-            )
-        except sqlalchemy.exc.DBAPIError as e:
-            skip_if_forecasting_disabled(e)
-            if f"Model does not exist for model_id: {model_id}" in str(e.orig):
-                pytest.skip(f"Forecast model {model_id!r} is not registered: {e.orig}")
-            raise
-        assert len(results) == 3
-        assert {"forecast_timestamp", "forecast_value"} <= set(results[0])
+    @pytest.mark.parametrize("api", ["aforecast", "forecast"])
+    @pytest.mark.parametrize("source", TS_TABLE_SOURCES)
+    async def test_forecast(self, engine, ts_table, api, source):
+        """Both entry points and every source return a real forecast: one row
+        per step with the google_ml.forecast columns, the requested
+        confidence level, the forecast inside its prediction interval, and
+        distinct timestamps after the last input timestamp."""
+        results = await acall(
+            engine,
+            api,
+            FORECAST_MODEL_ID,
+            timestamp_column="ts",
+            data_column="val",
+            horizon=3,
+            conf_level=0.8,
+            **ts_table_source_kwargs(source, ts_table),
+        )
+        assert_forecast(
+            results,
+            horizon=3,
+            conf_level=0.8,
+            last_input_timestamp=TS_TABLE_LAST_TIMESTAMP,
+        )
 
     @pytest.mark.parametrize("api", ["aforecast", "forecast"])
-    @pytest.mark.parametrize(
-        "source",
-        [
-            "table_name",
-            "table_name_with_schema_name",
-            "query",
-        ],
-    )
+    @pytest.mark.parametrize("source", TS_TABLE_SOURCES)
     async def test_forecast_server_error_reaches_caller(
         self, engine, ts_table, api, source
     ):
@@ -154,14 +206,6 @@ class TestEngineForecast:
         stripping. This relies on the server checking the model first. Update
         the test if an extension upgrade changes that order."""
         model_id = "  langchain_missing_model_" + uuid.uuid4().hex + "  "
-        source_kwargs: dict[str, Any] = {
-            "table_name": {"table_name": ts_table},
-            "table_name_with_schema_name": {
-                "table_name": ts_table,
-                "schema_name": "public",
-            },
-            "query": {"query": f'SELECT ts, val FROM "{ts_table}"'},
-        }[source]
         with pytest.raises(sqlalchemy.exc.DBAPIError) as exc_info:
             await acall(
                 engine,
@@ -171,9 +215,8 @@ class TestEngineForecast:
                 data_column="val",
                 horizon=3,
                 conf_level=0.8,
-                **source_kwargs,
+                **ts_table_source_kwargs(source, ts_table),
             )
-        skip_if_forecasting_disabled(exc_info.value)
         orig = exc_info.value.orig
         assert getattr(orig, "sqlstate", None) == "P0001", exc_info.value
         assert f"Model does not exist for model_id: {model_id}" in str(orig)
