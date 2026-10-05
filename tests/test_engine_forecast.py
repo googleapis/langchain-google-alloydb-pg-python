@@ -208,9 +208,9 @@ class TestEngineForecast:
     async def non_forecast_model(self, engine):
         """A registered text_embedding model. google_ml.forecast checks only
         that the model exists before it reads the source, so this gets a call
-        to the point where the table or query and the columns are read; it
+        to the point where the table or query and the columns are read. It
         fails later because the model is not a forecasting model. Tests using
-        it rely on that check order; update them if an extension upgrade
+        it rely on that check order. Update them if an extension upgrade
         changes it."""
         model_id = "forecast_live_model_" + uuid.uuid4().hex
         model_manager = await AlloyDBModelManager.create(engine)
@@ -338,8 +338,8 @@ class TestEngineForecast:
         """Missing tables and columns are the server's own errors, raised
         unchanged. This is also the control for test_forecast_reads_source:
         schema_name matters, and names are used exactly as given, neither
-        case-folded nor stripped (we quote the schema and table; the server
-        quotes the columns)."""
+        case-folded nor stripped (we quote the schema and table, and the
+        server quotes the columns)."""
         schema, table = mixed_case_table
         kwargs: dict[str, Any] = {
             "wrong_schema": {"table_name": table},
@@ -376,7 +376,7 @@ class TestEngineForecast:
         self, engine, ts_table, horizon, conf_level
     ):
         """The horizon and conf_level boundaries pass client-side validation
-        and are accepted by the driver; the server then reports the
+        and are accepted by the driver. The server then reports the
         unregistered model."""
         model_id = "langchain_missing_model_" + uuid.uuid4().hex
         with pytest.raises(sqlalchemy.exc.DBAPIError) as exc_info:
@@ -479,7 +479,7 @@ class TestEngineForecast:
 
 APIS = ["_aforecast", "aforecast", "forecast"]
 
-# Valid keyword arguments after model_id; tests override single entries.
+# Valid keyword arguments after model_id. Tests override single entries.
 VALID_KWARGS: dict[str, Any] = dict(
     timestamp_column="ts",
     data_column="val",
@@ -497,8 +497,8 @@ def forecast_signature(api: str) -> inspect.Signature:
 
 @pytest.mark.parametrize("api", APIS)
 def test_forecast_signature(api):
-    """model_id may be positional; everything after it is keyword-only.
-    conf_level has no default; schema_name defaults to "public" and the
+    """model_id may be positional. Everything after it is keyword-only.
+    conf_level has no default, while schema_name defaults to "public" and the
     sources to None."""
     params = forecast_signature(api).parameters
     assert list(params) == [
