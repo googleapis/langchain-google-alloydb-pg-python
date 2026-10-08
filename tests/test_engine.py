@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 import uuid
+import warnings
+from threading import Thread
 from typing import Sequence
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg  # type: ignore
 import pytest
@@ -397,6 +401,14 @@ class TestEngineAsync:
         for row in results:
             assert row in expected
 
+    async def test_adrop_table(self, engine):
+        table_name = f"test_adrop_{uuid.uuid4().hex[:8]}"
+        await engine.ainit_vectorstore_table(table_name, VECTOR_SIZE)
+        await engine.adrop_table(table_name)
+        stmt = f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{table_name}');"
+        results = await afetch(engine, stmt)
+        assert results[0]["exists"] is False
+
 
 @pytest.mark.asyncio
 class TestEngineSync:
@@ -617,3 +629,127 @@ class TestEngineSync:
         ]
         for row in results:
             assert row in expected
+
+    async def test_drop_table(self, engine):
+        table_name = f"test_drop_sync_{uuid.uuid4().hex[:8]}"
+        engine.init_vectorstore_table(table_name, VECTOR_SIZE)
+        engine.drop_table(table_name)
+        stmt = f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{table_name}');"
+        results = await afetch(engine, stmt)
+        assert results[0]["exists"] is False
+
+
+class TestEngineDropTableUnit:
+    @pytest.mark.asyncio
+    async def test_adrop_table_default_schema(self):
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_conn
+        mock_ctx.__aexit__.return_value = None
+        mock_pool.connect.return_value = mock_ctx
+
+        engine = AlloyDBEngine.from_engine(mock_pool)
+        await engine.adrop_table("my_table")
+
+        assert mock_conn.execute.call_count == 1
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        assert executed_query == 'DROP TABLE IF EXISTS "public"."my_table";'
+        assert mock_conn.commit.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_adrop_table_custom_schema(self):
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_conn
+        mock_ctx.__aexit__.return_value = None
+        mock_pool.connect.return_value = mock_ctx
+
+        engine = AlloyDBEngine.from_engine(mock_pool)
+        await engine.adrop_table("my_table", schema_name="custom_schema")
+
+        assert mock_conn.execute.call_count == 1
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        assert executed_query == 'DROP TABLE IF EXISTS "custom_schema"."my_table";'
+        assert mock_conn.commit.call_count == 1
+
+    def test_drop_table_sync_default_schema(self):
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_conn
+        mock_ctx.__aexit__.return_value = None
+        mock_pool.connect.return_value = mock_ctx
+
+        loop = asyncio.new_event_loop()
+        thread = Thread(target=loop.run_forever, daemon=True)
+        thread.start()
+        try:
+            engine = AlloyDBEngine.from_engine(mock_pool, loop=loop)
+            engine.drop_table("my_sync_table")
+
+            assert mock_conn.execute.call_count == 1
+            executed_query = str(mock_conn.execute.call_args[0][0])
+            assert executed_query == 'DROP TABLE IF EXISTS "public"."my_sync_table";'
+            assert mock_conn.commit.call_count == 1
+        finally:
+            loop.call_soon_threadsafe(loop.stop)
+            thread.join()
+
+    def test_drop_table_sync_custom_schema(self):
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_conn
+        mock_ctx.__aexit__.return_value = None
+        mock_pool.connect.return_value = mock_ctx
+
+        loop = asyncio.new_event_loop()
+        thread = Thread(target=loop.run_forever, daemon=True)
+        thread.start()
+        try:
+            engine = AlloyDBEngine.from_engine(mock_pool, loop=loop)
+            engine.drop_table("my_sync_table", schema_name="custom_schema")
+
+            assert mock_conn.execute.call_count == 1
+            executed_query = str(mock_conn.execute.call_args[0][0])
+            assert (
+                executed_query
+                == 'DROP TABLE IF EXISTS "custom_schema"."my_sync_table";'
+            )
+            assert mock_conn.commit.call_count == 1
+        finally:
+            loop.call_soon_threadsafe(loop.stop)
+            thread.join()
+
+    @pytest.mark.asyncio
+    async def test_close_is_awaitable(self):
+        mock_pool = MagicMock()
+        mock_pool.dispose = AsyncMock()
+        engine = AlloyDBEngine.from_engine(mock_pool)
+        assert isinstance(engine, AlloyDBEngine)
+        await engine.close()
+        mock_pool.dispose.assert_awaited_once()
+
+    def test_drop_table_sync_without_loop_raises_exception(self):
+        mock_pool = MagicMock()
+        engine = AlloyDBEngine.from_engine(mock_pool, loop=None)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            with pytest.raises(Exception, match="without a background loop"):
+                engine.drop_table("my_sync_table")
+
+    @pytest.mark.asyncio
+    async def test_adrop_table_error_propagation(self):
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        mock_conn.execute.side_effect = RuntimeError("Database connection lost")
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_conn
+        mock_ctx.__aexit__.return_value = None
+        mock_pool.connect.return_value = mock_ctx
+
+        engine = AlloyDBEngine.from_engine(mock_pool)
+        with pytest.raises(RuntimeError, match="Database connection lost"):
+            await engine.adrop_table("error_table")
