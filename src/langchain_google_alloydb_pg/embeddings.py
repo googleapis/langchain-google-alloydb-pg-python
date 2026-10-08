@@ -180,3 +180,68 @@ class AlloyDBEmbeddings(Embeddings):
             result_map = result.mappings()
             results = result_map.fetchall()
         return json.loads(results[0]["embedding"])
+
+    async def aembed_image(self, image_uri: str) -> list[float]:
+        """Asynchronous Embed image using ``google_ml.image_embedding``.
+
+        Requires the ``google_ml_integration`` extension with the
+        ``google_ml_integration.enable_model_support`` database flag set to
+        ``on`` and a registered multimodal embedding model such as
+        ``multimodalembedding@001``.
+
+        Args:
+            image_uri (str): Cloud Storage URI (``gs://...``) or base64-encoded
+                image string to embed.
+
+        Returns:
+            list[float]: Embedding vector.
+
+        Raises:
+            ValueError: If ``image_uri`` is empty or whitespace.
+            sqlalchemy.exc.DBAPIError: If the database query fails.
+        """
+        return await self._engine._run_as_async(self.__aembed_image(image_uri))
+
+    def embed_image(self, image_uri: str) -> list[float]:
+        """Embed image using ``google_ml.image_embedding``.
+
+        Requires the ``google_ml_integration`` extension with the
+        ``google_ml_integration.enable_model_support`` database flag set to
+        ``on`` and a registered multimodal embedding model such as
+        ``multimodalembedding@001``.
+
+        Args:
+            image_uri (str): Cloud Storage URI (``gs://...``) or base64-encoded
+                image string to embed.
+
+        Returns:
+            list[float]: Embedding vector.
+
+        Raises:
+            ValueError: If ``image_uri`` is empty or whitespace.
+            sqlalchemy.exc.DBAPIError: If the database query fails.
+        """
+        return self._engine._run_as_sync(self.__aembed_image(image_uri))
+
+    async def __aembed_image(self, image_uri: str) -> list[float]:
+        """Coroutine for generating embeddings for a given image.
+
+        Args:
+            image_uri (str): Cloud Storage URI (``gs://...``) or base64-encoded
+                image string to embed.
+
+        Returns:
+            list[float]: Embedding vector.
+        """
+        if not image_uri or not image_uri.strip():
+            raise ValueError("image_uri must be a non-empty string.")
+        stmt = text(
+            "SELECT google_ml.image_embedding(:model_id, :image_uri)::vector AS embedding"
+        )
+        async with self._engine._pool.connect() as conn:
+            result = await conn.execute(
+                stmt, {"model_id": self.model_id, "image_uri": image_uri}
+            )
+            result_map = result.mappings()
+            results = result_map.fetchall()
+        return json.loads(results[0]["embedding"])
