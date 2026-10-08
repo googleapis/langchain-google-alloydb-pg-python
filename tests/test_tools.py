@@ -28,10 +28,12 @@ from sqlalchemy.exc import DBAPIError
 from langchain_google_alloydb_pg import (
     AlloyDBEngine,
     AlloyDBSentimentTool,
+    AlloyDBSummaryTool,
     AlloyDBToolError,
 )
 from langchain_google_alloydb_pg.tools import (
     SentimentInput,
+    SummaryInput,
     _afetch_scalar,
 )
 
@@ -290,3 +292,96 @@ class TestAlloyDBSentimentTool:
         # Values reach the database as given.
         assert SentimentInput(content="  good  ").content == "  good  "
         assert AlloyDBSentimentTool(engine=engine, model_id=" m ").model_id == " m "
+
+
+@pytest.mark.asyncio
+class TestAlloyDBSummaryTool:
+    CONTENT = (
+        "AlloyDB for PostgreSQL is a fully managed, PostgreSQL-compatible "
+        "database service. It combines Google's storage and compute "
+        "technology to deliver high performance for transactional and "
+        "analytical workloads, and includes AlloyDB AI for calling machine "
+        "learning models directly from SQL."
+    )
+
+    @pytest_asyncio.fixture(scope="module")
+    async def summary_tool(self, engine):
+        return await available_tool(
+            engine,
+            AlloyDBSummaryTool(engine=engine),
+            {"content": self.CONTENT},
+            [AI_QUERY_ENGINE_FLAG, PREVIEW_AI_FUNCTIONS_FLAG],
+        )
+
+    def check_summary(self, summary: Any) -> None:
+        assert isinstance(summary, str)
+        assert summary.strip()
+
+    async def test_metadata(self, engine):
+        tool = AlloyDBSummaryTool(engine=engine)
+        assert tool.name == "alloydb_summary_tool"
+        assert "summarize" in tool.description.lower()
+        assert tool.args_schema is SummaryInput
+        assert list(tool.args) == ["content", "additional_instructions"]
+        assert tool.handle_tool_error is False
+        assert tool.model_id is None
+        assert tool.additional_instructions is None
+
+    async def test_invoke(self, summary_tool):
+        self.check_summary(summary_tool.invoke({"content": self.CONTENT}))
+
+    async def test_ainvoke(self, summary_tool):
+        self.check_summary(await summary_tool.ainvoke({"content": self.CONTENT}))
+
+    async def test_additional_instructions(self, engine, summary_tool):
+        instructions = "In one short sentence"
+        tool = AlloyDBSummaryTool(engine=engine, additional_instructions=instructions)
+        self.check_summary(await tool.ainvoke({"content": self.CONTENT}))
+        self.check_summary(
+            await summary_tool.ainvoke(
+                {"content": self.CONTENT, "additional_instructions": instructions}
+            )
+        )
+
+    async def test_model_id(self, engine, summary_tool):
+        tool = AlloyDBSummaryTool(engine=engine, model_id=MODEL_ID)
+        self.check_summary(await ainvoke_with_model_id(tool, {"content": self.CONTENT}))
+        self.check_summary(
+            await ainvoke_with_model_id(
+                tool,
+                {
+                    "content": self.CONTENT,
+                    "additional_instructions": "In one short sentence",
+                },
+            )
+        )
+
+    async def test_unknown_model_id_raises(self, engine, summary_tool):
+        tool = AlloyDBSummaryTool(engine=engine, model_id=UNKNOWN_MODEL_ID)
+        with pytest.raises(DBAPIError):
+            await tool.ainvoke({"content": self.CONTENT, "model_id": MODEL_ID})
+
+    async def test_null_result_raises(self, engine, summary_tool, null_model_id):
+        tool = AlloyDBSummaryTool(engine=engine, model_id=null_model_id)
+        with pytest.raises(AlloyDBToolError, match="returned NULL"):
+            await tool.ainvoke({"content": self.CONTENT})
+        with pytest.raises(AlloyDBToolError, match="returned NULL"):
+            tool.invoke({"content": self.CONTENT})
+
+    async def test_input_validation(self, engine):
+        tool = AlloyDBSummaryTool(engine=engine)
+        with pytest.raises(ValidationError, match="content must be a non-empty"):
+            await tool.ainvoke({"content": "   "})
+        with pytest.raises(ValidationError, match="additional_instructions must"):
+            SummaryInput(content="valid", additional_instructions="   ")
+        with pytest.raises(ValidationError, match="additional_instructions must"):
+            AlloyDBSummaryTool(engine=engine, additional_instructions="   ")
+        with pytest.raises(ValidationError, match="model_id must be a non-empty"):
+            AlloyDBSummaryTool(engine=engine, model_id="   ")
+        parsed = SummaryInput(
+            content="  article  ", additional_instructions=" bullets "
+        )
+        assert (parsed.content, parsed.additional_instructions) == (
+            "  article  ",
+            " bullets ",
+        )
