@@ -265,3 +265,84 @@ class AlloyDBSummaryTool(BaseTool):
             "had no text.",
         )
         return str(value)
+
+
+class AlloyDBIfInput(BaseModel):
+    """Input for AlloyDBIfTool."""
+
+    condition: str = Field(
+        description=(
+            "The semantic condition to evaluate (e.g. 'Is the text positive?')"
+        ),
+        min_length=1,
+    )
+
+    @field_validator("condition")
+    @classmethod
+    def check_condition(cls, v: str) -> str:
+        return _check_text(v, "condition")
+
+
+class AlloyDBIfTool(BaseTool):
+    """Evaluates a natural-language condition with ``google_ml.if``.
+
+    Returns ``True`` or ``False``. Requires AlloyDB with
+    ``google_ml_integration``. Like any LangChain tool, call it with
+    ``invoke`` / ``ainvoke`` or give it to an agent:
+
+    .. code-block:: python
+
+        tool = AlloyDBIfTool(engine=engine)
+        tool.invoke({"condition": "Is 2 + 2 equal to 4?"})  # True
+
+    ``model_id`` works as in :class:`AlloyDBSentimentTool`. If the model's
+    reply is neither true nor false, ``google_ml.if`` returns NULL and the
+    tool raises :class:`AlloyDBToolError` rather than returning a value.
+    """
+
+    name: str = "alloydb_if_tool"
+    description: str = (
+        "A tool that uses AlloyDB AI to evaluate a semantic condition and"
+        " returns True or False. Useful for semantic routing, classification,"
+        " or filtering."
+    )
+    args_schema: Type[BaseModel] = AlloyDBIfInput
+    engine: AlloyDBEngine
+    model_id: Optional[str] = None
+
+    @field_validator("model_id")
+    @classmethod
+    def check_model_id(cls, v: Optional[str]) -> Optional[str]:
+        return _check_model_id(v)
+
+    def _run(
+        self,
+        condition: str,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> bool:
+        """Evaluate the condition synchronously. Called by ``invoke`` and ``run``."""
+        _check_engine_loop(self.engine)
+        return self.engine._run_as_sync(self.__aevaluate(condition))
+
+    async def _arun(
+        self,
+        condition: str,
+        run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
+    ) -> bool:
+        """Evaluate the condition asynchronously. Called by ``ainvoke`` and ``arun``."""
+        return await self.engine._run_as_async(self.__aevaluate(condition))
+
+    async def __aevaluate(self, condition: str) -> bool:
+        if self.model_id:
+            query = "SELECT google_ml.if(:condition, :model_id)"
+            params = {"condition": condition, "model_id": self.model_id}
+        else:
+            query = "SELECT google_ml.if(:condition)"
+            params = {"condition": condition}
+        value = await _afetch_scalar(
+            self.engine,
+            query,
+            params,
+            "AlloyDB AI google_ml.if returned NULL (evaluation ambiguous or failed).",
+        )
+        return bool(value)
