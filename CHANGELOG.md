@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.17.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.16.0...v0.17.0) (2026-10-08)
+
+
+### Features
+
+* Add AlloyDBDocumentCompressor using google_ml.rank ([#641](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/641)) ([d0ac67c](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/d0ac67c233420e730b3281ca809fb50758b23192))
+* Add AlloyDBIfTool ([#651](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/651)) ([9efa37e](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/9efa37e08be78d0169f50054d7d6339ab45aa056))
+* Add AlloyDBSentimentTool and shared AlloyDB AI tool support ([#642](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/642)) ([57cf616](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/57cf61690771900a6311dcdd1b35db09b6c42dbd))
+* Add AlloyDBSummaryTool ([#650](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/650)) ([f167af5](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/f167af5ec9296f4198edb207f82ce487ff90b76c))
+* Add Columnar Engine, Auto-Columnarization, and Vector Assist op… ([#629](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/629)) ([6927ea3](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/6927ea39f4d4d58038eecff1efd09f8b933e732a))
+* Add image embeddings support to AlloyDBEmbeddings ([#623](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/623)) ([40eefd4](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/40eefd46368bf477764e810e1fd3a48e1b4f71d4))
+* Add ScaNN vector index and query options support ([#628](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/628)) ([0d1a61d](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/0d1a61d00d3f987c4cb6216d3811baea7a974999))
+* Add time-series forecasting to AlloyDBEngine ([#630](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/630)) ([7497e88](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/7497e88b30b6d42992dbb613aea73a6e27f99e3e))
+
 ## [0.16.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.15.0...v0.16.0) (2026-09-15)
 
 
