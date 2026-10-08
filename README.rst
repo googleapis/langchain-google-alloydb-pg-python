@@ -13,7 +13,7 @@ AlloyDB instances from the LangChain ecosystem while providing the following ben
 - **Improved performance & Simplified management**: use a single-table schema can lead to faster query execution, especially for large collections.
 - **Improved metadata handling**: store metadata in columns instead of JSON, resulting in significant performance improvements.
 - **Clear separation**: clearly separate table and extension creation, allowing for distinct permissions and streamlined workflows.
-- **Better integration with AlloyDB**: built-in methods to take advantage of AlloyDB's advanced indexing and scalability capabilities.
+- **Better integration with AlloyDB**: built-in methods to take advantage of AlloyDB's advanced indexing, in-database AI functions, and scalability capabilities.
 
 .. |preview| image:: https://img.shields.io/badge/support-preview-orange.svg
    :target: https://github.com/googleapis/google-cloud-python/blob/main/README.rst#stability-levels
@@ -103,7 +103,7 @@ Use a vector store to store embedded data and perform vector search.
 Hybrid Search
 ~~~~~~~~~~~~~
 
-The `AlloyDBVectorStore` supports hybrid search (dense vectors + full text) for more comprehensive and relevant search results.
+The ``AlloyDBVectorStore`` supports hybrid search (dense vectors + full text) for more comprehensive and relevant search results.
 
 .. code-block:: python
 
@@ -117,8 +117,28 @@ The `AlloyDBVectorStore` supports hybrid search (dense vectors + full text) for 
         fusion_function=reciprocal_rank_fusion
       ),
   )
-  hybrid_docs = vector_store.similarity_search("products", k=5)
+  hybrid_docs = vs.similarity_search("products", k=5)
 
+Vector Indexing with ScaNN
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create and tune a ScaNN index on your vector store table using ``ScaNNIndex`` and ``ScaNNQueryOptions``. ScaNN index creation needs sufficient maintenance work memory, so call ``set_maintenance_work_mem`` before applying the index:
+
+.. code-block:: python
+
+   from langchain_google_alloydb_pg.indexes import ScaNNIndex, ScaNNQueryOptions
+
+   index = ScaNNIndex(num_leaves=5)
+   vectorstore.set_maintenance_work_mem(index.num_leaves, vector_size=768)
+   vectorstore.apply_vector_index(index)
+
+   # Tune search-time behavior with ScaNNQueryOptions
+   vectorstore = AlloyDBVectorStore.create_sync(
+       engine,
+       table_name="my-table",
+       embedding_service=embeddings_service,
+       index_query_options=ScaNNQueryOptions(num_leaves_to_search=2),
+   )
 
 See the full `Vector Store`_ tutorial.
 
@@ -184,6 +204,105 @@ Use ``AlloyDBSaver`` to save snapshots of the graph state at a given point in ti
 See the full `Checkpoint`_ tutorial.
 
 .. _`Checkpoint`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/langgraph_checkpoint.ipynb
+
+Embeddings & Model Endpoint Management
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``AlloyDBEmbeddings`` to generate text embeddings and multimodal image embeddings directly inside AlloyDB via ``google_ml_integration``, and ``AlloyDBModelManager`` to manage registered model endpoints.
+
+.. code-block:: python
+
+   from langchain_google_alloydb_pg import AlloyDBEmbeddings, AlloyDBModelManager
+
+   embeddings = AlloyDBEmbeddings.create_sync(
+       engine=engine,
+       model_id="text-embedding-005",
+   )
+   query_vector = embeddings.embed_query("What is AlloyDB?")
+
+   image_embeddings = AlloyDBEmbeddings.create_sync(
+       engine=engine,
+       model_id="multimodalembedding@001",
+   )
+   image_vector = image_embeddings.embed_image("gs://my-bucket/image.jpg")
+
+   model_manager = AlloyDBModelManager.create_sync(engine=engine)
+
+See the full `Model Endpoint Management`_ tutorial.
+
+.. _`Model Endpoint Management`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/model_endpoint_management.ipynb
+
+Document Reranking Usage
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``AlloyDBDocumentCompressor`` to rerank retrieved documents in the database with ``google_ml.rank``:
+
+.. code-block:: python
+
+   from langchain_google_alloydb_pg import AlloyDBDocumentCompressor
+
+   compressor = AlloyDBDocumentCompressor(
+       engine=engine,
+       model_id="semantic-ranker-default-003",
+       top_n=3,
+   )
+   reranked_docs = compressor.compress_documents(docs, "What is AlloyDB?")
+
+Generative AI Tools Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``AlloyDBSentimentTool``, ``AlloyDBSummaryTool``, and ``AlloyDBIfTool`` to call AlloyDB AI functions (``google_ml.analyze_sentiment``, ``google_ml.summarize``, and ``google_ml.if``) directly from LangChain agents or chains:
+
+.. code-block:: python
+
+   from langchain_google_alloydb_pg import (
+       AlloyDBIfTool,
+       AlloyDBSentimentTool,
+       AlloyDBSummaryTool,
+   )
+
+   sentiment_tool = AlloyDBSentimentTool(engine=engine, model_id="gemini-2.5-flash")
+   sentiment = sentiment_tool.invoke({"content": "I love this database!"})
+
+   summary_tool = AlloyDBSummaryTool(engine=engine, model_id="gemini-2.5-flash")
+   summary = summary_tool.invoke({"content": "Long article text..."})
+
+   if_tool = AlloyDBIfTool(engine=engine, model_id="gemini-2.5-flash")
+   is_match = if_tool.invoke({"condition": "Is AlloyDB compatible with PostgreSQL?"})
+
+Engine AI & Performance Operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``AlloyDBEngine`` provides built-in methods for automated vector embeddings (``initialize_embeddings``), time-series forecasting (``forecast``), columnar engine management (``enable_columnar_engine`` and ``run_auto_columnarization``), and Vector Assist (``define_vector_assist_spec``, ``get_vector_assist_recommendations``, and ``apply_vector_assist_spec``):
+
+.. code-block:: python
+
+   # Automated embeddings for a table column
+   engine.initialize_embeddings(
+       table_name="products",
+       model_id="text-embedding-005",
+       content_column="description",
+       embedding_column="embedding",
+   )
+
+   # Time-series forecasting with google_ml.forecast
+   forecast_rows = engine.forecast(
+       "timesfm-2-0",
+       table_name="metrics",
+       timestamp_column="ts",
+       data_column="requests",
+       horizon=24,
+       conf_level=0.95,
+   )
+
+   # Columnar engine & Vector Assist
+   engine.enable_columnar_engine(table_name="products", columns=["description"])
+   engine.run_auto_columnarization()
+   engine.define_vector_assist_spec(table_name="products", embedding_column="embedding")
+   recommendations = engine.get_vector_assist_recommendations(
+       table_name="products", embedding_column="embedding"
+   )
+   engine.apply_vector_assist_spec(table_name="products", embedding_column="embedding")
 
 Example Usage
 -------------
