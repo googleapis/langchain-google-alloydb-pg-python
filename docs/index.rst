@@ -10,6 +10,8 @@ API Reference
   langchain_google_alloydb_pg/indexes
   langchain_google_alloydb_pg/loader
   langchain_google_alloydb_pg/history
+  langchain_google_alloydb_pg/document_compressor
+  langchain_google_alloydb_pg/tools
 
 How to Choose a Nearest-Neighbor Index Guide
 --------------------------------------------
