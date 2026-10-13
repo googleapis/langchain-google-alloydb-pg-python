@@ -4,7 +4,7 @@ Model Manager
 ``AlloyDBModelManager`` lists, registers, retrieves, and drops model endpoints in AlloyDB AI `model endpoint management <https://cloud.google.com/alloydb/docs/ai/model-endpoint-overview>`_. Registered models can then be used by ``AlloyDBEmbeddings``, by the AI tools, and directly from SQL.
 
 .. note::
-   Requires the ``google_ml_integration`` extension (version 1.5.3 or later) and the ``google_ml_integration.enable_model_support`` database flag turned on; ``create`` / ``create_sync`` check both and raise if they are missing. Google `pre-registered models <https://cloud.google.com/alloydb/docs/reference/supported-ai-models>`_ don't need to be registered.
+   Requires the ``google_ml_integration.enable_model_support`` database flag turned on. ``create`` / ``create_sync`` install the ``google_ml_integration`` extension if it is missing, and raise if the installed version is older than 1.5.3 or the flag is off. Google `pre-registered models <https://cloud.google.com/alloydb/docs/reference/supported-ai-models>`_ don't need to be registered.
 
 The management methods are async; create the manager with ``create`` or ``create_sync``.
 

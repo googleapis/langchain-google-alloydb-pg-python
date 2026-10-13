@@ -109,10 +109,11 @@ The ``AlloyDBVectorStore`` supports hybrid search (dense vectors + full text) fo
 
   from langchain_google_alloydb_pg import HybridSearchConfig, reciprocal_rank_fusion
 
+  # Continues from the Vector Store example above.
   vs = AlloyDBVectorStore.create_sync(
       engine=engine,
-      table_name=TABLE_NAME,
-      embedding_service=embedding,
+      table_name="my-table",
+      embedding_service=embeddings_service,
       hybrid_search_config=HybridSearchConfig(
         fusion_function=reciprocal_rank_fusion
       ),
@@ -215,11 +216,15 @@ features below call AlloyDB AI functions inside the database. Before you use the
 - `Integrate your AlloyDB cluster with Vertex AI`_ and create the ``google_ml_integration``
   extension in your database (``CREATE EXTENSION IF NOT EXISTS google_ml_integration``).
 - Use a model that is `pre-registered in AlloyDB`_ (for example ``text-embedding-005``), or
-  register your own with ``AlloyDBModelManager``.
-- Some functions need additional database flags, a minimum PostgreSQL version, or IAM roles
-  (for example, ``google_ml.rank`` needs ``google_ml_integration.enable_ai_query_engine``, and
-  ``google_ml.analyze_sentiment`` / ``google_ml.summarize`` need PostgreSQL 17 or later). See
-  the `AlloyDB AI documentation`_ and the API Reference pages for each component.
+  register your own with ``AlloyDBModelManager``. ``AlloyDBEmbeddings`` and
+  ``AlloyDBModelManager`` both need the ``google_ml_integration.enable_model_support`` database
+  flag turned on.
+- Some functions need additional database flags, a minimum extension or PostgreSQL version, or
+  IAM roles. For example, ``google_ml.rank`` needs ``google_ml_integration.enable_ai_query_engine``;
+  ``google_ml.analyze_sentiment`` and ``google_ml.summarize`` need PostgreSQL 17 or later and
+  ``google_ml_integration.enable_preview_ai_functions``; ``AlloyDBSummaryTool`` needs
+  ``google_ml_integration`` 1.6.1 or later. See the `AlloyDB AI documentation`_ and the API
+  Reference pages for each component.
 
 .. _`Integrate your AlloyDB cluster with Vertex AI`: https://cloud.google.com/alloydb/docs/ai/configure-vertex-ai
 .. _`pre-registered in AlloyDB`: https://cloud.google.com/alloydb/docs/reference/supported-ai-models
@@ -324,7 +329,9 @@ async variant prefixed with ``a`` (for example ``aforecast``).
    engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
 
    # Generate embeddings for every row of an existing table (ai.initialize_embeddings).
-   # The embedding column must already exist as a vector(N) column.
+   # Needs google_ml_integration 1.5.6+ with the enable_model_support and
+   # enable_faster_embedding_generation flags on. The embedding column must already
+   # exist as a vector(N) column; pass overwrite=True to replace existing values.
    engine.initialize_embeddings(
        table_name="products",
        model_id="text-embedding-005",
@@ -345,6 +352,7 @@ async variant prefixed with ``a`` (for example ``aforecast``).
    )
 
    # Vector Assist: get and apply index tuning recommendations for an embedding column.
+   # Needs `CREATE EXTENSION vector_assist CASCADE;` in the database.
    engine.define_vector_assist_spec(table_name="products", embedding_column="embedding")
    recommendations = engine.get_vector_assist_recommendations(
        table_name="products", embedding_column="embedding"
@@ -352,6 +360,7 @@ async variant prefixed with ``a`` (for example ``aforecast``).
    engine.apply_vector_assist_spec(table_name="products", embedding_column="embedding")
 
    # Columnar engine: add columns to the columnar store, or let AlloyDB recommend them.
+   # Needs the columnar engine enabled on the instance (google_columnar_engine.enabled).
    engine.enable_columnar_engine(table_name="products", columns=["description"])
    engine.run_auto_columnarization()
 
