@@ -1,7 +1,10 @@
 Embeddings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``AlloyDBEmbeddings`` generates text and image embeddings directly inside AlloyDB using the ``google_ml_integration`` extension (``embedding()`` for text queries and ``google_ml.image_embedding()`` for image URIs or base64-encoded images).
+``AlloyDBEmbeddings`` generates text and image embeddings directly inside AlloyDB using the ``google_ml_integration`` extension: ``embedding()`` for text and ``google_ml.image_embedding()`` for image URIs or base64-encoded images. Because the database calls the model, you can use the same model from SQL (for example, with ``AlloyDBEngine.initialize_embeddings``) and from LangChain.
+
+.. note::
+   Requires the ``google_ml_integration`` extension and `Vertex AI integration <https://cloud.google.com/alloydb/docs/ai/configure-vertex-ai>`_ on the cluster. ``model_id`` must be a `pre-registered model <https://cloud.google.com/alloydb/docs/reference/supported-ai-models>`_ such as ``text-embedding-005``, or a model registered with ``AlloyDBModelManager``. Image embeddings also need the ``google_ml_integration.enable_model_support`` database flag turned on and a registered multimodal model such as ``multimodalembedding@001``.
 
 .. code-block:: python
 
@@ -16,6 +19,8 @@ Embeddings
         engine=engine, model_id="multimodalembedding@001"
     )
     image_vector = image_embeddings.embed_image("gs://my-bucket/image.jpg")
+
+``embed_documents`` is not implemented; use ``embed_query`` per text, or generate embeddings for a whole table with ``AlloyDBEngine.initialize_embeddings``.
 
 .. automodule:: langchain_google_alloydb_pg.embeddings
   :members:

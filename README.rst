@@ -10,7 +10,7 @@ The **AlloyDB for PostgreSQL for LangChain** package provides a first class expe
 AlloyDB instances from the LangChain ecosystem while providing the following benefits:
 
 - **Simplified & Secure Connections**: easily and securely create shared connection pools to connect to Google Cloud databases utilizing IAM for authorization and database authentication without needing to manage SSL certificates, configure firewall rules, or enable authorized networks.
-- **Improved performance & Simplified management**: use a single-table schema can lead to faster query execution, especially for large collections.
+- **Improved performance & Simplified management**: a single-table schema leads to faster query execution, especially for large collections.
 - **Improved metadata handling**: store metadata in columns instead of JSON, resulting in significant performance improvements.
 - **Clear separation**: clearly separate table and extension creation, allowing for distinct permissions and streamlined workflows.
 - **Better integration with AlloyDB**: built-in methods to take advantage of AlloyDB's advanced indexing, in-database AI functions, and scalability capabilities.
@@ -93,7 +93,7 @@ Use a vector store to store embedded data and perform vector search.
 
 
    engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
-   embeddings_service = VertexAIEmbeddings(model_name="textembedding-gecko@003")
+   embeddings_service = VertexAIEmbeddings(model_name="text-embedding-005")
    vectorstore = AlloyDBVectorStore.create_sync(
        engine,
        table_name="my-table",
@@ -128,6 +128,7 @@ Create and tune a ScaNN index on your vector store table using ``ScaNNIndex`` an
 
    from langchain_google_alloydb_pg.indexes import ScaNNIndex, ScaNNQueryOptions
 
+   # Continues from the Vector Store example above (768-dimensional vectors).
    index = ScaNNIndex(num_leaves=5)
    vectorstore.set_maintenance_work_mem(index.num_leaves, vector_size=768)
    vectorstore.apply_vector_index(index)
@@ -188,7 +189,7 @@ See the full `Chat Message History`_ tutorial.
 
 .. _`Chat Message History`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/chat_message_history.ipynb
 
-Langgraph Checkpoint Usage
+LangGraph Checkpoint Usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use ``AlloyDBSaver`` to save snapshots of the graph state at a given point in time.
@@ -205,79 +206,125 @@ See the full `Checkpoint`_ tutorial.
 
 .. _`Checkpoint`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/langgraph_checkpoint.ipynb
 
+AlloyDB AI Prerequisites
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The embeddings, document reranking, generative AI tools, forecasting, and auto-embedding
+features below call AlloyDB AI functions inside the database. Before you use them:
+
+- `Integrate your AlloyDB cluster with Vertex AI`_ and create the ``google_ml_integration``
+  extension in your database (``CREATE EXTENSION IF NOT EXISTS google_ml_integration``).
+- Use a model that is `pre-registered in AlloyDB`_ (for example ``text-embedding-005``), or
+  register your own with ``AlloyDBModelManager``.
+- Some functions need additional database flags, a minimum PostgreSQL version, or IAM roles
+  (for example, ``google_ml.rank`` needs ``google_ml_integration.enable_ai_query_engine``, and
+  ``google_ml.analyze_sentiment`` / ``google_ml.summarize`` need PostgreSQL 17 or later). See
+  the `AlloyDB AI documentation`_ and the API Reference pages for each component.
+
+.. _`Integrate your AlloyDB cluster with Vertex AI`: https://cloud.google.com/alloydb/docs/ai/configure-vertex-ai
+.. _`pre-registered in AlloyDB`: https://cloud.google.com/alloydb/docs/reference/supported-ai-models
+.. _`AlloyDB AI documentation`: https://cloud.google.com/alloydb/docs/ai
+
 Embeddings & Model Endpoint Management
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``AlloyDBEmbeddings`` to generate text embeddings and multimodal image embeddings directly inside AlloyDB via ``google_ml_integration``, and ``AlloyDBModelManager`` to manage registered model endpoints.
+Use ``AlloyDBEmbeddings`` to generate text embeddings and multimodal image embeddings directly
+inside AlloyDB with ``google_ml_integration``. Unlike ``VertexAIEmbeddings``, the database calls
+the model, so you can use the same model from SQL and from LangChain.
 
 .. code-block:: python
 
-   from langchain_google_alloydb_pg import AlloyDBEmbeddings, AlloyDBModelManager
+   from langchain_google_alloydb_pg import AlloyDBEmbeddings, AlloyDBEngine
 
-   embeddings = AlloyDBEmbeddings.create_sync(
-       engine=engine,
-       model_id="text-embedding-005",
-   )
+
+   engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+
+   embeddings = AlloyDBEmbeddings.create_sync(engine=engine, model_id="text-embedding-005")
    query_vector = embeddings.embed_query("What is AlloyDB?")
 
-   image_embeddings = AlloyDBEmbeddings.create_sync(
-       engine=engine,
-       model_id="multimodalembedding@001",
-   )
+   # Image embeddings need a registered multimodal model, such as multimodalembedding@001.
+   image_embeddings = AlloyDBEmbeddings.create_sync(engine=engine, model_id="multimodalembedding@001")
    image_vector = image_embeddings.embed_image("gs://my-bucket/image.jpg")
 
-   model_manager = AlloyDBModelManager.create_sync(engine=engine)
-
-See the full `Model Endpoint Management`_ tutorial.
+Use ``AlloyDBModelManager`` (an async API) to list, register, and drop model endpoints. See the
+full `Model Endpoint Management`_ tutorial.
 
 .. _`Model Endpoint Management`: https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/model_endpoint_management.ipynb
 
 Document Reranking Usage
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``AlloyDBDocumentCompressor`` to rerank retrieved documents in the database with ``google_ml.rank``:
+Use ``AlloyDBDocumentCompressor`` to rerank retrieved documents in the database with
+``google_ml.rank``. Reranking adds a model call per query, so it is most useful when retrieval
+returns many similar candidates and answer quality matters more than latency.
 
 .. code-block:: python
 
-   from langchain_google_alloydb_pg import AlloyDBDocumentCompressor
+   from langchain_core.documents import Document
+   from langchain_google_alloydb_pg import AlloyDBDocumentCompressor, AlloyDBEngine
 
+
+   engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
    compressor = AlloyDBDocumentCompressor(
        engine=engine,
        model_id="semantic-ranker-default-003",
        top_n=3,
    )
+   docs = [
+       Document(page_content="AlloyDB is a PostgreSQL-compatible database."),
+       Document(page_content="Cloud Storage stores objects."),
+   ]
    reranked_docs = compressor.compress_documents(docs, "What is AlloyDB?")
+
+To rerank the results of a retriever automatically, wrap it in LangChain's
+``ContextualCompressionRetriever`` with ``base_compressor=compressor``.
 
 Generative AI Tools Usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``AlloyDBSentimentTool``, ``AlloyDBSummaryTool``, and ``AlloyDBIfTool`` to call AlloyDB AI functions (``google_ml.analyze_sentiment``, ``google_ml.summarize``, and ``google_ml.if``) directly from LangChain agents or chains:
+Use ``AlloyDBSentimentTool``, ``AlloyDBSummaryTool``, and ``AlloyDBIfTool`` to call AlloyDB AI
+functions (``google_ml.analyze_sentiment``, ``google_ml.summarize``, and ``google_ml.if``) from
+LangChain agents or chains. ``model_id`` is fixed when you create the tool, so the agent can't
+change it; omit it to use the database's default model.
 
 .. code-block:: python
 
    from langchain_google_alloydb_pg import (
+       AlloyDBEngine,
        AlloyDBIfTool,
        AlloyDBSentimentTool,
        AlloyDBSummaryTool,
    )
 
+
+   engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+
    sentiment_tool = AlloyDBSentimentTool(engine=engine, model_id="gemini-2.5-flash")
-   sentiment = sentiment_tool.invoke({"content": "I love this database!"})
+   sentiment = sentiment_tool.invoke({"content": "I love this database!"})  # "positive"
 
    summary_tool = AlloyDBSummaryTool(engine=engine, model_id="gemini-2.5-flash")
-   summary = summary_tool.invoke({"content": "Long article text..."})
+   summary = summary_tool.invoke(
+       {"content": "Long article text...", "additional_instructions": "In one sentence"}
+   )
 
    if_tool = AlloyDBIfTool(engine=engine, model_id="gemini-2.5-flash")
-   is_match = if_tool.invoke({"condition": "Is AlloyDB compatible with PostgreSQL?"})
+   is_match = if_tool.invoke({"condition": "Is AlloyDB compatible with PostgreSQL?"})  # True
 
 Engine AI & Performance Operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``AlloyDBEngine`` provides built-in methods for automated vector embeddings (``initialize_embeddings``), time-series forecasting (``forecast``), columnar engine management (``enable_columnar_engine`` and ``run_auto_columnarization``), and Vector Assist (``define_vector_assist_spec``, ``get_vector_assist_recommendations``, and ``apply_vector_assist_spec``):
+``AlloyDBEngine`` also exposes in-database AI and performance operations. Each method has an
+async variant prefixed with ``a`` (for example ``aforecast``).
 
 .. code-block:: python
 
-   # Automated embeddings for a table column
+   from langchain_google_alloydb_pg import AlloyDBEngine
+
+
+   engine = AlloyDBEngine.from_instance("project-id", "region", "my-cluster", "my-instance", "my-database")
+
+   # Generate embeddings for every row of an existing table (ai.initialize_embeddings).
+   # The embedding column must already exist as a vector(N) column.
    engine.initialize_embeddings(
        table_name="products",
        model_id="text-embedding-005",
@@ -285,9 +332,11 @@ Engine AI & Performance Operations
        embedding_column="embedding",
    )
 
-   # Time-series forecasting with google_ml.forecast
+   # Time-series forecasting (google_ml.forecast). The model must be deployed and
+   # registered with google_ml.create_model(model_type => 'ts_forecasting'); see
+   # https://cloud.google.com/alloydb/docs/ai/perform-time-series-forecasting
    forecast_rows = engine.forecast(
-       "timesfm-2-0",
+       "timesfm_v2",
        table_name="metrics",
        timestamp_column="ts",
        data_column="requests",
@@ -295,14 +344,16 @@ Engine AI & Performance Operations
        conf_level=0.95,
    )
 
-   # Columnar engine & Vector Assist
-   engine.enable_columnar_engine(table_name="products", columns=["description"])
-   engine.run_auto_columnarization()
+   # Vector Assist: get and apply index tuning recommendations for an embedding column.
    engine.define_vector_assist_spec(table_name="products", embedding_column="embedding")
    recommendations = engine.get_vector_assist_recommendations(
        table_name="products", embedding_column="embedding"
    )
    engine.apply_vector_assist_spec(table_name="products", embedding_column="embedding")
+
+   # Columnar engine: add columns to the columnar store, or let AlloyDB recommend them.
+   engine.enable_columnar_engine(table_name="products", columns=["description"])
+   engine.run_auto_columnarization()
 
 Example Usage
 -------------
@@ -342,7 +393,7 @@ Update sync methods to `await` async methods
    vectorstore = await AlloyDBVectorStore.create(
       engine,
       table_name="my-table",
-      embedding_service=VertexAIEmbeddings(model_name="textembedding-gecko@003")
+      embedding_service=VertexAIEmbeddings(model_name="text-embedding-005")
    )
 
 Run the code: notebooks
@@ -365,8 +416,8 @@ Update routes to use `async def`.
 Run the code: Local python file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is recommend to create a top-level async method definition: `async def` to wrap multiple async methods.
-Then use `asyncio.run()` to run the the top-level entrypoint, e.g. "main()"
+It is recommended to create a top-level async method definition: `async def` to wrap multiple async methods.
+Then use `asyncio.run()` to run the top-level entrypoint, e.g. "main()"
 
 .. code:: python
 
