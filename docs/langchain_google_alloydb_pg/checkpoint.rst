@@ -20,7 +20,7 @@ Initialize the checkpoint tables once with ``AlloyDBEngine.init_checkpoint_table
     config = {"configurable": {"thread_id": "user-123"}}
     graph.invoke({"messages": [("user", "Hello")]}, config)
 
-See the full `LangGraph Checkpoint <https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/langgraph_checkpoint.ipynb>`_ tutorial.
+See the full `LangGraph Checkpoint <https://github.com/googleapis/langchain-google-alloydb-pg-python/tree/main/docs/langgraph_checkpoint.ipynb>`__ tutorial.
 
 .. automodule:: langchain_google_alloydb_pg.checkpoint
   :members:

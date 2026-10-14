@@ -392,7 +392,9 @@ async variant prefixed with ``a`` (for example ``aforecast``).
    # Generate embeddings for every row of an existing table (ai.initialize_embeddings).
    # Needs google_ml_integration 1.5.6+ with the enable_model_support and
    # enable_faster_embedding_generation flags on. The embedding column must already
-   # exist as a vector(N) column; pass overwrite=True to replace existing values.
+   # exist as a vector(N) column. The procedure runs once per table; use
+   # ai.refresh_embeddings to update it later. overwrite=True only lets the call run on
+   # a column that already contains values (for example, migrated vectors).
    engine.initialize_embeddings(
        table_name="products",
        model_id="text-embedding-005",

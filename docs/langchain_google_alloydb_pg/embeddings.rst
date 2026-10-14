@@ -4,7 +4,7 @@ Embeddings
 ``AlloyDBEmbeddings`` generates text and image embeddings directly inside AlloyDB using the ``google_ml_integration`` extension: ``embedding()`` for text and ``google_ml.image_embedding()`` for image URIs or base64-encoded images. Because the database calls the model, you can use the same model from SQL (for example, with ``AlloyDBEngine.initialize_embeddings``) and from LangChain.
 
 .. note::
-   Requires the ``google_ml_integration`` extension (1.5.3 or later), `Vertex AI integration <https://cloud.google.com/alloydb/docs/ai/configure-vertex-ai>`_ on the cluster, and the ``google_ml_integration.enable_model_support`` database flag turned on (``create`` / ``create_sync`` check for the model through ``AlloyDBModelManager``). ``model_id`` must be a `pre-registered model <https://cloud.google.com/alloydb/docs/reference/supported-ai-models>`_ such as ``text-embedding-005``, or a model registered with ``AlloyDBModelManager``. Image embeddings need a registered multimodal model such as ``multimodalembedding@001``.
+   Requires the ``google_ml_integration`` extension (1.5.3 or later), `Vertex AI integration <https://cloud.google.com/alloydb/docs/ai/configure-vertex-ai>`__ on the cluster, and the ``google_ml_integration.enable_model_support`` database flag turned on (``create`` / ``create_sync`` check for the model through ``AlloyDBModelManager``). ``model_id`` must be a `pre-registered model <https://cloud.google.com/alloydb/docs/reference/supported-ai-models>`__ such as ``text-embedding-005``, or a model registered with ``AlloyDBModelManager``. Image embeddings need a registered multimodal model such as ``multimodalembedding@001``.
 
 .. code-block:: python
 
