@@ -123,24 +123,85 @@ The ``AlloyDBVectorStore`` supports hybrid search (dense vectors + full text) fo
 Vector Indexing with ScaNN
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create and tune a ScaNN index on your vector store table using ``ScaNNIndex`` and ``ScaNNQueryOptions``. ScaNN index creation needs sufficient maintenance work memory, so call ``set_maintenance_work_mem`` before applying the index:
+A ScaNN index makes similarity search fast by sorting the table's vectors into groups
+(called *leaves*) when the index is built, and then only looking inside the most promising
+groups at query time instead of comparing against every row. That leaves you with two
+decisions: how many groups to build, and how many groups to look inside per query.
+
+**1. Build time: how many groups?** Use ``ScaNNIndex``.
+
+.. list-table::
+   :header-rows: 1
+
+   * - You write
+     - What happens
+   * - ``ScaNNIndex(num_leaves=N)``
+     - You pick the number of groups. AlloyDB recommends ``sqrt(rows)`` for a balance of
+       build time and quality, or ``rows / 100`` for best quality.
+   * - ``ScaNNIndex(mode="AUTO")``
+     - AlloyDB picks the number of groups from the table size and tunes it over time.
+       ``num_leaves`` is ignored. On tables with fewer than 10,000 rows the build is
+       deferred until the table reaches 10,000 rows.
+   * - ``ScaNNIndex(num_leaves=N, mode="MANUAL")``
+     - Same as the first form, written explicitly.
+
+Index creation needs enough ``maintenance_work_mem``; ``set_maintenance_work_mem`` computes
+and sets it for you.
 
 .. code-block:: python
 
    from langchain_google_alloydb_pg.indexes import ScaNNIndex, ScaNNQueryOptions
 
    # Continues from the Vector Store example above (768-dimensional vectors).
-   index = ScaNNIndex(num_leaves=5)
+
+   # Option A: you choose the number of groups (here, sqrt of ~10,000 rows).
+   index = ScaNNIndex(num_leaves=100)
    vectorstore.set_maintenance_work_mem(index.num_leaves, vector_size=768)
    vectorstore.apply_vector_index(index)
 
-   # Tune search-time behavior with ScaNNQueryOptions
+   # Option B: let AlloyDB choose and tune the number of groups.
+   vectorstore.apply_vector_index(ScaNNIndex(name="my_table_auto_idx", mode="AUTO"))
+
+**2. Query time: how many groups to look inside?** Use ``ScaNNQueryOptions``. Looking inside
+more groups finds more of the true nearest neighbors (higher recall) but takes longer.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Option
+     - Meaning
+   * - ``num_leaves_to_search=N``
+     - Look inside ``N`` groups (default ``1``). Raise it until recall meets your target;
+       ``0`` lets the server choose.
+   * - ``pct_leaves_to_search=P``
+     - Look inside ``P`` percent of the groups. Use this with ``mode="AUTO"`` indexes, where
+       you don't know how many groups exist.
+   * - ``pre_reordering_num_neighbors=M``
+     - Advanced: how many candidates to collect before exact re-scoring. Leave the default
+       (``-1``) unless you are tuning recall on high-dimensional vectors.
+
+.. code-block:: python
+
+   # Manually tuned index: look inside 10 of the 100 groups.
    vectorstore = AlloyDBVectorStore.create_sync(
        engine,
        table_name="my-table",
        embedding_service=embeddings_service,
-       index_query_options=ScaNNQueryOptions(num_leaves_to_search=2),
+       index_query_options=ScaNNQueryOptions(num_leaves_to_search=10),
    )
+
+   # Auto-tuned index: look inside 10% of the groups, however many there are.
+   auto_vectorstore = AlloyDBVectorStore.create_sync(
+       engine,
+       table_name="my-table",
+       embedding_service=embeddings_service,
+       index_query_options=ScaNNQueryOptions(pct_leaves_to_search=10),
+   )
+
+For the full tuning procedure, see `Tune ScaNN indexes`_ and `Create a ScaNN index`_.
+
+.. _`Tune ScaNN indexes`: https://cloud.google.com/alloydb/docs/ai/best-practices-tuning-scann
+.. _`Create a ScaNN index`: https://cloud.google.com/alloydb/docs/ai/create-scann-index
 
 See the full `Vector Store`_ tutorial.
 
@@ -352,8 +413,13 @@ async variant prefixed with ``a`` (for example ``aforecast``).
    )
 
    # Vector Assist: get and apply index tuning recommendations for an embedding column.
-   # Needs `CREATE EXTENSION vector_assist CASCADE;` in the database.
-   engine.define_vector_assist_spec(table_name="products", embedding_column="embedding")
+   # Needs `CREATE EXTENSION vector_assist CASCADE;` in the database. Pass the model
+   # that generated the embeddings when the column is already populated.
+   engine.define_vector_assist_spec(
+       table_name="products",
+       embedding_column="embedding",
+       embedding_model="text-embedding-005",
+   )
    recommendations = engine.get_vector_assist_recommendations(
        table_name="products", embedding_column="embedding"
    )
