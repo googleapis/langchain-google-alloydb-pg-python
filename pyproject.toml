@@ -51,7 +51,8 @@ test = [
     "pytest==9.0.3",
     "pytest-cov==7.1.0",
     "pytest-depends==1.0.1",
-    "Pillow==13.0.0",
+    "Pillow==13.0.0; python_version >= '3.11'",
+    "Pillow==12.3.0; python_version == '3.10'",
     "langchain-tests==1.1.9"
 ]
 
