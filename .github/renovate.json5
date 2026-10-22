@@ -65,5 +65,14 @@
       "semanticCommitType": "feat",
       "groupName": "langchain-postgres"
     },
+    {
+      description: 'Disable Pillow updates for Python <= 3.10',
+      matchPackageNames: [
+        'Pillow',
+        'pillow',
+      ],
+      matchCurrentValue: '/12\\./',
+      enabled: false,
+    },
   ],
 }
