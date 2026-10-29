@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.17.0...v1.0.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove vulnerable embed_query_inline method ([#647](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/647))
+
+### Bug Fixes
+
+* Remove vulnerable embed_query_inline method ([#647](https://github.com/googleapis/langchain-google-alloydb-pg-python/issues/647)) ([d8ff8f4](https://github.com/googleapis/langchain-google-alloydb-pg-python/commit/d8ff8f47c7fcc0ecc6412b492279f124edec66c6))
+
 ## [0.17.0](https://github.com/googleapis/langchain-google-alloydb-pg-python/compare/v0.16.0...v0.17.0) (2026-10-26)
 
 
