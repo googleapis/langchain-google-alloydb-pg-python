@@ -21,10 +21,17 @@ from langchain_postgres.v2.hybrid_search_config import (
 
 from .chat_message_history import AlloyDBChatMessageHistory
 from .checkpoint import AlloyDBSaver
+from .document_compressor import AlloyDBDocumentCompressor
 from .embeddings import AlloyDBEmbeddings
 from .engine import AlloyDBEngine
 from .loader import AlloyDBDocumentSaver, AlloyDBLoader
 from .model_manager import AlloyDBModel, AlloyDBModelManager
+from .tools import (
+    AlloyDBIfTool,
+    AlloyDBSentimentTool,
+    AlloyDBSummaryTool,
+    AlloyDBToolError,
+)
 from .vectorstore import AlloyDBVectorStore
 from .version import __version__
 
@@ -39,6 +46,11 @@ __all__ = [
     "AlloyDBModelManager",
     "AlloyDBModel",
     "AlloyDBSaver",
+    "AlloyDBDocumentCompressor",
+    "AlloyDBSentimentTool",
+    "AlloyDBSummaryTool",
+    "AlloyDBIfTool",
+    "AlloyDBToolError",
     "HybridSearchConfig",
     "reciprocal_rank_fusion",
     "weighted_sum_ranking",

@@ -20,6 +20,7 @@ import uuid
 import pytest
 import pytest_asyncio
 import sqlalchemy
+import sqlalchemy.exc
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import text
@@ -32,6 +33,7 @@ from langchain_google_alloydb_pg.indexes import (
     IVFFlatIndex,
     IVFIndex,
     ScaNNIndex,
+    ScaNNQueryOptions,
 )
 
 DEFAULT_TABLE = "table" + str(uuid.uuid4()).replace("-", "_")
@@ -327,3 +329,76 @@ class TestAsyncIndex:
         assert await omni_vs.ais_valid_index("secondindex")
         await omni_vs.adrop_vector_index("secondindex")
         await omni_vs.adrop_vector_index(DEFAULT_INDEX_NAME_OMNI)
+
+    async def _aseed_omni_table(
+        self, omni_engine: AlloyDBEngine, table_name: str, rows: int
+    ) -> None:
+        await omni_engine.ainit_vectorstore_table(table_name, VECTOR_SIZE)
+        # Correlate via WHERE (not inside array_agg): an aggregate whose arguments
+        # contain only outer-level variables belongs to the outer query and would
+        # break the INSERT. The WHERE correlation turns the subquery into a per-row
+        # SubPlan, so every row gets a distinct random vector.
+        await aexecute(
+            omni_engine,
+            f"""
+            INSERT INTO "{table_name}" (langchain_id, content, embedding)
+            SELECT gen_random_uuid(), 'Document ' || g.i,
+                   (SELECT array_agg(random()::float4 * 2 - 1)::vector({VECTOR_SIZE})
+                      FROM generate_series(1, {VECTOR_SIZE}) AS d(j)
+                     WHERE g.i IS NOT NULL)
+            FROM generate_series(1, {rows}) AS g(i);
+            """,
+        )
+
+    async def test_aapply_scann_index_auto_mode(self, omni_engine):
+        table_name = "auto_scann_" + str(uuid.uuid4()).replace("-", "_")
+        try:
+            # AUTO mode requires at least 10,000 rows. The server estimates the row
+            # count by sampling heap blocks, so seed well above the minimum to keep
+            # the estimate from dipping below it.
+            await self._aseed_omni_table(omni_engine, table_name, 20_000)
+            vs = await AlloyDBVectorStore.create(
+                omni_engine,
+                embedding_service=embeddings_service,
+                table_name=table_name,
+            )
+            index = ScaNNIndex(
+                name=table_name + "_idx",
+                mode="AUTO",
+                distance_strategy=DistanceStrategy.COSINE_DISTANCE,
+            )
+            try:
+                await vs.aapply_vector_index(index)
+            except sqlalchemy.exc.DBAPIError as e:
+                # Check the server message only: str(e) also contains the SQL
+                # statement, which always includes "mode = 'AUTO'".
+                if "mode" in str(e.orig).lower():
+                    pytest.skip(f"Omni instance does not support ScaNN mode=AUTO: {e}")
+                raise
+            assert await vs.ais_valid_index(table_name + "_idx")
+        finally:
+            await aexecute(omni_engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE')
+
+    async def test_scann_pct_leaves_to_search_query(self, omni_engine):
+        table_name = "pct_scann_" + str(uuid.uuid4()).replace("-", "_")
+        try:
+            await self._aseed_omni_table(omni_engine, table_name, 1_000)
+            vs = await AlloyDBVectorStore.create(
+                omni_engine,
+                embedding_service=embeddings_service,
+                table_name=table_name,
+                index_query_options=ScaNNQueryOptions(pct_leaves_to_search=50),
+            )
+            await vs.aapply_vector_index(ScaNNIndex(name=table_name + "_idx"))
+            try:
+                results = await vs.asimilarity_search("Document 1", k=3)
+            except sqlalchemy.exc.DBAPIError as e:
+                # Check the server message only: str(e) also contains the SQL.
+                if "pct_leaves_to_search" in str(e.orig):
+                    pytest.skip(
+                        f"Omni instance does not support scann.pct_leaves_to_search: {e}"
+                    )
+                raise
+            assert len(results) == 3
+        finally:
+            await aexecute(omni_engine, f'DROP TABLE IF EXISTS "{table_name}" CASCADE')
