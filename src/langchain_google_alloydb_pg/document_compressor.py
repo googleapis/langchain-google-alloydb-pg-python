@@ -56,6 +56,7 @@ def _to_ranked_documents(
                 metadata={**doc.metadata, "relevance_score": float(score)},
             )
         )
+
     ranked.sort(key=lambda d: d.metadata["relevance_score"], reverse=True)
     return ranked
 
