@@ -37,6 +37,7 @@ from langgraph.checkpoint.base import (
     CheckpointMetadata,
     create_checkpoint,
     empty_checkpoint,
+    get_checkpoint_metadata,
 )
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.prebuilt import (  # type: ignore
@@ -297,11 +298,15 @@ async def test_checkpoint_alist(
     assert len(search_results_1) == 1
     print(metadata[0])
     print(search_results_1[0].metadata)
-    assert search_results_1[0].metadata == metadata[0]
+    assert search_results_1[0].metadata == get_checkpoint_metadata(
+        configs[1], metadata[0]
+    )
 
     search_results_2 = [c async for c in checkpointer.alist(None, filter=query_2)]
     assert len(search_results_2) == 1
-    assert search_results_2[0].metadata == metadata[1]
+    assert search_results_2[0].metadata == get_checkpoint_metadata(
+        configs[2], metadata[1]
+    )
 
     search_results_3 = [c async for c in checkpointer.alist(None, filter=query_3)]
     assert len(search_results_3) == 3
@@ -404,7 +409,10 @@ async def test_checkpoint_aget_tuple(
 
     # Matching checkpoint
     search_results_1 = await checkpointer.aget_tuple(new_config)
-    assert search_results_1.metadata == metadata[0]  # type: ignore
+    assert search_results_1 is not None
+    assert search_results_1.metadata == get_checkpoint_metadata(
+        configs[1], metadata[0]
+    )  # type: ignore
 
     # No matching checkpoint
     assert await checkpointer.aget_tuple(configs[0]) is None
@@ -427,3 +435,30 @@ async def test_metadata(
     ].metadata[
         "my_key"  # type: ignore
     ] == "abc"  # type: ignore
+
+
+@pytest.mark.asyncio
+async def test_metadata_from_config(
+    checkpointer: AsyncAlloyDBSaver,
+    test_data: dict[str, Any],
+) -> None:
+    config: RunnableConfig = {
+        "configurable": {"thread_id": "thread-3", "checkpoint_ns": "", "user_id": "u1"},
+        "metadata": {"tenant": "acme"},
+    }
+    saved_config = await checkpointer.aput(
+        config, test_data["checkpoints"][0], {"source": "loop", "step": 1}, {}
+    )
+    expected = get_checkpoint_metadata(config, {"source": "loop", "step": 1})
+    assert expected["user_id"] == "u1"  # type: ignore[typeddict-item]
+    assert expected["tenant"] == "acme"  # type: ignore[typeddict-item]
+
+    checkpoint_tuple = await checkpointer.aget_tuple(saved_config)
+    assert checkpoint_tuple is not None
+    assert checkpoint_tuple.metadata == expected
+
+    search_results = [
+        c async for c in checkpointer.alist(None, filter={"user_id": "u1"})
+    ]
+    assert len(search_results) == 1
+    assert search_results[0].metadata == expected
